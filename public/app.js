@@ -4,6 +4,8 @@ import {spaces,position,move} from './board.js';
 const STEP_MS=500;
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=loadPlayers();let game=rosterChoice.length?loadGame(rosterChoice):null,players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
 
+const turnDialog=document.getElementById('turnDialog');
+
 function select(index){selected=index;const space=spaces[index];board.querySelectorAll('.space').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));details.replaceChildren();const eyebrow=document.createElement('p');eyebrow.className='eyebrow';eyebrow.textContent='SPACE '+(index+1)+' · '+space.type.replace('gotojail','corner').toUpperCase();const title=document.createElement('h2');title.textContent=space.name;const text=document.createElement('p');text.textContent=space.detail||'A property in the '+space.group.replace('lightblue','light blue')+' color group.';details.append(eyebrow,title,text);details.className='detail-card '+(space.group||'neutral');if(space.price){const price=document.createElement('p');price.className='detail-price';price.textContent=(space.type==='tax'?'Tax · ':'Price · ')+'$'+space.price;details.append(price);}if(game)propertyControls(index);}
 spaces.forEach((space,index)=>{const p=position(index),button=document.createElement('button');button.type='button';button.className=['space',p.side,space.type,index%10===0?'corner':'',space.group||''].join(' ');button.setAttribute('aria-label',space.name+(space.price?', $'+space.price:''));button.setAttribute('aria-pressed','false');button.dataset.index=index;button.style.gridRow=p.row;button.style.gridColumn=p.column;const inner=document.createElement('span');inner.className='space-inner';if(space.group){const strip=document.createElement('span');strip.className='color-strip';inner.append(strip);}const name=document.createElement('span');name.className='space-name';name.textContent=space.name;inner.append(name);if(space.icon){const icon=document.createElement('span');icon.className='space-icon';icon.setAttribute('aria-hidden','true');if(space.icon==='vending'){
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 80');svg.setAttribute('class','vending-icon');
@@ -21,7 +23,7 @@ async function glide(piece,space,index){const before=piece.getBoundingClientRect
  {transform:'translate(0,0) scale(1)',offset:1}
  ],{duration:STEP_MS,easing:'linear'}).finished;}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
-place();roster();select(0);document.querySelector('.economy-card').hidden=!game;if(game){document.getElementById('moveStatus').textContent=players[turn].name+' is at '+spaces[players[turn].position].name+'.';renderEconomy();}
+place();roster();select(0);document.querySelector('.economy-card').hidden=!game;if(game){document.getElementById('moveStatus').textContent=players[turn].name+' is at '+spaces[players[turn].position].name+'.';renderEconomy();openTurnDialog();}
 function makeCube(value){
  const cube=document.createElement('span');cube.className='dice-cube';
  const pipPositions={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]},remaining=[1,2,3,4,5,6].filter(n=>n!==value&&n!==7-value),side=remaining[0],top=remaining.find(n=>n!==side&&n!==7-side);
@@ -67,14 +69,14 @@ document.getElementById('roll').onclick=async()=>{
   else{token=result.position;select(token);}
   document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Landed on '+spaces[token].name+'.';
  }catch(error){document.getElementById('gameError').textContent=error.message;}
- finally{moving=false;roll.disabled=false;reset.disabled=false;place();if(game)renderEconomy();}
+ finally{moving=false;roll.disabled=false;reset.disabled=false;place();if(game){renderEconomy();openTurnDialog();}}
 };
 document.getElementById('reset').onclick=()=>{
  if(game&&!confirm('Start a new game? This resets all balances, property ownership, and upgrades on this device.'))return;
  board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;if(game){game=newGame(rosterChoice);players=game.players;saveGame();}place();roster();select(0);document.getElementById('moveStatus').textContent='Everyone is back at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');if(game)renderEconomy();
 };
 function saveGame(){try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
-async function execute(action){if(moving)return;document.getElementById('gameError').textContent='';try{const next=perform(game,action);if(next.route.length){moving=true;document.getElementById('roll').disabled=true;const actor=game.turn;for(const step of next.route)await glide(pieces[actor],step.position,actor);moving=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){moving=false;document.getElementById('gameError').textContent=error.message;renderEconomy();}}
+async function execute(action){if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';try{const next=perform(game,action);if(next.route.length){turnDialog.close();moving=true;document.getElementById('roll').disabled=true;const actor=game.turn;for(const step of next.route)await glide(pieces[actor],step.position,actor);moving=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog();}else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){moving=false;document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;renderEconomy();}}
 function button(container,label,action,disabled=false){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=label;b.disabled=disabled||moving;b.onclick=()=>execute(action);container.append(b);return b;}
 function paragraph(container,text){const p=document.createElement('p');p.textContent=text;container.append(p);}
 function upgradeIcon(special){const img=document.createElement('img');img.src=special?'upgrades/special-checks.svg':'upgrades/camera.svg';img.alt='';return img;}
@@ -93,15 +95,29 @@ function renderEconomy(){
  document.getElementById('roll').disabled=moving||game.phase!=='roll';
  document.getElementById('bankStock').textContent='Bank: '+game.bank.houses+' Cameras · '+game.bank.hotels+' Special Checks. Hospital Coverage has no jackpot.';
  const log=document.getElementById('gameLog');log.replaceChildren();game.log.slice(0,12).forEach(text=>{const li=document.createElement('li');li.textContent=text;log.append(li);});
+ updateTurnSummary();
  if(game.phase==='over'){document.getElementById('turnTitle').textContent=game.players[game.winner].name+' wins!';paragraph(controls,'Start a new game to play again.');return;}if(game.phase==='auction')document.getElementById('turnTitle').textContent='Property auction';if(game.phase==='debt')document.getElementById('turnTitle').textContent=game.players[game.debts[0].payer].name+'’s payment';
  if(game.phase==='action')button(controls,'End turn →',{type:'end'});
- if(game.phase==='roll'&&game.extraRoll)paragraph(controls,'Doubles! Roll again.');
+ if(game.phase==='roll'&&game.extraRoll)paragraph(controls,'Doubles! You get another roll.');
  if(game.players[game.turn].inJail&&game.phase==='roll'){paragraph(controls,'Two Bridges: roll doubles, pay $50, or use a get-out-free card.');button(controls,'Pay $50 bail',{type:'bail'});button(controls,'Use get-out-free card',{type:'free-card'},game.players[game.turn].freeCards.length===0);}
  if(game.phase==='purchase'){paragraph(controls,spaces[game.offer].name+' is available for $'+deed(game.offer).price+'.');button(controls,'Buy · $'+deed(game.offer).price,{type:'buy'},game.players[game.turn].cash<deed(game.offer).price);button(controls,'Send to auction',{type:'auction'});}
  if(game.phase==='auction'){
   const a=game.auction;paragraph(controls,'Auction: '+spaces[a.index].name+'. High bid: $'+a.high+(a.bidder!==null?' by '+game.players[a.bidder].name:''));paragraph(controls,game.players[a.actor].name+' can bid or pass.');const label=document.createElement('label');label.textContent='Your bid';const input=document.createElement('input');input.type='number';input.min=a.high+1;input.max=game.players[a.actor].cash;input.value=a.high+1;input.id='auctionBid';label.append(input);controls.append(label);const bid=button(controls,'Place bid',{type:'bid',amount:input.value});bid.onclick=()=>execute({type:'bid',amount:input.value});button(controls,'Pass on this auction',{type:'pass'});
  }
  if(game.phase==='debt'){const d=game.debts[0];paragraph(controls,game.players[d.payer].name+' owes $'+d.amount+' for '+d.label+'. Select an owned space to sell upgrades or mortgage it.');const b=button(controls,'Declare bankruptcy',{type:'bankrupt'});b.onclick=()=>{if(confirm('Declare bankruptcy and leave this game?'))execute({type:'bankrupt'});};}
+ if(game.phase==='roll'){const rollAgain=document.createElement('button');rollAgain.className='economy-button';rollAgain.type='button';rollAgain.textContent=game.extraRoll?'Roll again':'Roll the dice';rollAgain.onclick=()=>{turnDialog.close();document.getElementById('roll').click();};controls.append(rollAgain);}
  const manager=game.phase==='debt'?game.debts[0].payer:game.turn;paragraph(economic,game.players[manager].name+'’s properties');const list=document.createElement('div');list.className='owned-list';game.properties.forEach((property,index)=>{if(property?.owner===manager){const b=document.createElement('button');b.type='button';b.textContent=spaces[index].name+(property.mortgaged?' · Mortgaged':'');b.onclick=()=>select(index);list.append(b);}});economic.append(list);if(!list.children.length)paragraph(economic,'No properties yet.');
 }
+function updateTurnSummary(){
+ const title=document.getElementById('turnDialogTitle'),summary=document.getElementById('turnSummary');summary.replaceChildren();const phase=game.phase;
+ title.textContent=phase==='purchase'?'Buy '+spaces[game.offer].name+'?':phase==='auction'?'Auction: '+spaces[game.auction.index].name:phase==='debt'?game.players[game.debts[0].payer].name+' owes $'+game.debts[0].amount:phase==='over'?game.players[game.winner].name+' wins!':game.extraRoll?'Doubles!':phase==='roll'?'Ready to roll':game.events?.some(event=>event.includes('Rent for'))?'Rent paid':'Finish your turn';
+ paragraph(summary,game.players[game.turn].name+' · Cash: $'+game.players[game.turn].cash.toLocaleString());
+ const events=game.events?.length?game.events:[game.log[0]];events.forEach(event=>paragraph(summary,event));
+ if(phase==='action')paragraph(summary,'Ready to end your turn? You can also view the board to manage your properties first.');
+}
+function openTurnDialog(force=false){if(!game||moving)return;document.getElementById('showTurnOptions').hidden=false;if(force||game.phase!=='roll'||game.extraRoll||game.players[game.turn].inJail){if(!turnDialog.open)turnDialog.showModal();const focusTarget=game.phase==='auction'?document.getElementById('auctionBid'):document.querySelector('#turnActions button:not(:disabled)');focusTarget?.focus();}}
+document.getElementById('showTurnOptions').hidden=!game;
+document.getElementById('showTurnOptions').onclick=()=>openTurnDialog(true);
+document.getElementById('closeTurnDialog').onclick=()=>turnDialog.close();
+document.getElementById('manageProperties').onclick=()=>{turnDialog.close();if(game.phase==='debt'){const manager=game.debts[0].payer,index=game.properties.findIndex(p=>p?.owner===manager);if(index>=0){select(index);details.scrollIntoView({block:'start'});}}};
 document.getElementById('zoom').onclick=event=>{const enabled=document.querySelector('.board-viewport').classList.toggle('enlarged');event.currentTarget.setAttribute('aria-pressed',String(enabled));event.currentTarget.textContent=enabled?'Fit the whole board ↙':'Enlarge board ↗';};
