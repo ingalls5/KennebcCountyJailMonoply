@@ -21,21 +21,26 @@ async function glide(piece,space,index){const before=piece.getBoundingClientRect
  ],{duration:STEP_MS,easing:'linear'}).finished;}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);
-function showFace(die,value){die.replaceChildren();const positions={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};for(let cell=1;cell<=9;cell++){const pip=document.createElement('i');if(positions[value].includes(cell))pip.className='pip';die.append(pip);}die.dataset.value=value;die.setAttribute('aria-label','Die showing '+value);}
+function makeCube(value){
+ const cube=document.createElement('span');cube.className='dice-cube';
+ const pipPositions={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]},remaining=[1,2,3,4,5,6].filter(n=>n!==value&&n!==7-value),side=remaining[0],top=remaining.find(n=>n!==side&&n!==7-side);
+ const faces={front:value,back:7-value,right:side,left:7-side,top,bottom:7-top};
+ for(const [orientation,number] of Object.entries(faces)){const face=document.createElement('span');face.className='dice-face dice-'+orientation;face.dataset.value=number;for(let cell=1;cell<=9;cell++){const pip=document.createElement('i');if(pipPositions[number].includes(cell))pip.className='pip';face.append(pip);}cube.append(face);}return cube;
+}
 async function rollAcrossBoard(values){
  board.querySelectorAll('.board-die').forEach(die=>die.remove());
  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
- const dice=values.map((value,index)=>{const die=document.createElement('span');die.className='board-die';die.setAttribute('role','img');die.style.left=(48+index*9)+'%';die.style.top=(43+index*8)+'%';showFace(die,reduced?value:1);board.append(die);return die;});
+ const dice=values.map((value,index)=>{const die=document.createElement('span');die.className='board-die';die.setAttribute('role','img');die.dataset.value=value;die.setAttribute('aria-label','Die showing '+value);die.style.left=(48+index*10)+'%';die.style.top=(43+index*8)+'%';const shadow=document.createElement('span');shadow.className='dice-shadow';die.append(shadow,makeCube(value));board.append(die);return die;});
  if(reduced)return;
  const viewport=document.querySelector('.board-viewport');if(viewport.scrollWidth>viewport.clientWidth)viewport.scrollTo({left:Math.max(0,(viewport.scrollWidth-viewport.clientWidth)/2)});
- let beat=0;const tumble=setInterval(()=>{beat++;dice.forEach((die,index)=>showFace(die,1+(beat+index*2)%6));},STEP_MS);
- try{await Promise.all(dice.map((die,index)=>{const distance=board.clientWidth*.34,height=board.clientWidth*.17,spin=index? -1:1;return die.animate([
- {transform:`translate(${-distance}px,${height}px) rotate(${spin*-300}deg) scale(.9)`,offset:0},
- {transform:`translate(${-distance*.66}px,${height*.4-12}px) rotate(${spin*-200}deg) scale(1.08)`,offset:1/3},
- {transform:`translate(${-distance*.33}px,${height*.2-7}px) rotate(${spin*-100}deg) scale(1.04)`,offset:2/3},
- {transform:'translate(0,0) rotate(0deg) scale(1)',offset:1}
- ],{duration:STEP_MS*3,easing:'ease-out'}).finished;}));}
- finally{clearInterval(tumble);dice.forEach((die,index)=>showFace(die,values[index]));}
+ await Promise.all(dice.map(async(die,index)=>{
+  const distance=board.clientWidth*.34,height=board.clientWidth*.17,spin=index?-1:1,lift=Math.max(16,board.clientWidth*.035),frames=[];
+  for(let beat=0;beat<=6;beat++){const airborne=beat%2===1;frames.push({transform:`translateY(${airborne?-lift:0}px) rotateX(${-18+spin*(6-beat)*150}deg) rotateY(${24+(6-beat)*90}deg) rotateZ(${spin*(6-beat)*15}deg)`,offset:beat/6});}
+  const travel=die.animate([{transform:`translate(${-distance}px,${height}px)`},{transform:'translate(0,0)'}],{duration:STEP_MS*3,easing:'linear'});
+  const tumble=die.querySelector('.dice-cube').animate(frames,{duration:STEP_MS*3,easing:'linear'});
+  const shadow=die.querySelector('.dice-shadow').animate([{transform:'scale(1)',opacity:.35},{transform:'scale(.65)',opacity:.12},{transform:'scale(1)',opacity:.35}],{duration:STEP_MS,iterations:3,easing:'ease-in-out'});
+  await Promise.all([travel.finished,tumble.finished,shadow.finished]);
+ }));
 }
 document.getElementById('roll').onclick=async()=>{
  if(moving)return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;
