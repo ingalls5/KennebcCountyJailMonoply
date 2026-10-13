@@ -17,7 +17,7 @@ async function glide(piece,space,index){const before=piece.getBoundingClientRect
  {transform:`translate(${dx*.5}px,${dy*.5-lift}px) scale(1.06)`,offset:.45},
  {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
  {transform:'translate(0,0) scale(1)',offset:1}
- ],{duration:280,easing:'linear'}).finished;}
+ ],{duration:500,easing:'linear'}).finished;}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);
 document.getElementById('roll').onclick=async()=>{
