@@ -20,6 +20,5 @@ Cameras replace houses and Special Checks replace hotels in the interface and bo
 
 Landing and turn decisions open in a modal dialog, including purchases, auctions, rent/payment summaries, debt resolution, doubles, and ending the turn. The dialog can be closed to manage property without advancing play, and reopened with Turn options. Rent remains automatic and is reported as paid; closing a popup cannot bypass an unresolved debt or purchase.
 
-Use Test cards on the board or Test all cards in the turn popup to browse cards 1–32. Cards 1–16 are Chance; 17–32 are Supervisors Office. Previewing does not draw cards or alter cash, positions, saved turns, or deck order. Previous/Next and a direct numbered selector are available. Run `npm run test:cards-browser` to verify this flow locally.
 
-Cards use 16 original themed illustrations, shared between the 32-card tester and real draw popups. Draw metadata records which cards were drawn, including chained draws, while payment and movement rules stay unchanged.
+Cards use 16 original themed illustrations, shown in real draw popups. Draw metadata records which cards were drawn, including chained draws, while payment and movement rules stay unchanged.

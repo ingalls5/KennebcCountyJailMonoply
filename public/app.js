@@ -56,7 +56,7 @@ async function rollAcrossBoard(values){
  }));
 }
 document.getElementById('roll').onclick=async()=>{
- if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('testCards').disabled=true;
+ if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;
  const actor=turn,player=players[actor],start=player?player.position:token,values=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)],total=values[0]+values[1],piece=pieces[player?actor:0];
  document.getElementById('moveStatus').textContent='Rolling the dice…';document.getElementById('gameError').textContent='';
  try{
@@ -70,14 +70,14 @@ document.getElementById('roll').onclick=async()=>{
   else{token=result.position;select(token);}
   document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Landed on '+spaces[token].name+'.';
  }catch(error){document.getElementById('gameError').textContent=error.message;}
- finally{moving=false;roll.disabled=false;reset.disabled=false;document.getElementById('testCards').disabled=false;place();if(game){renderEconomy();openTurnDialog();}}
+ finally{moving=false;roll.disabled=false;reset.disabled=false;place();if(game){renderEconomy();openTurnDialog();}}
 };
 document.getElementById('reset').onclick=()=>{
  if(game&&!confirm('Start a new game? This resets all balances, property ownership, and upgrades on this device.'))return;
  board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;if(game){game=newGame(rosterChoice);players=game.players;saveGame();}place();roster();select(0);document.getElementById('moveStatus').textContent='Everyone is back at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');if(game)renderEconomy();
 };
 function saveGame(){try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
-async function execute(action){if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';try{const next=perform(game,action);if(next.route.length){turnDialog.close();moving=true;document.getElementById('testCards').disabled=true;document.getElementById('roll').disabled=true;const actor=game.turn;for(const step of next.route)await glide(pieces[actor],step.position,actor);moving=false;document.getElementById('testCards').disabled=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog();}else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){moving=false;document.getElementById('testCards').disabled=false;document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;renderEconomy();}}
+async function execute(action){if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';try{const next=perform(game,action);if(next.route.length){turnDialog.close();moving=true;document.getElementById('roll').disabled=true;const actor=game.turn;for(const step of next.route)await glide(pieces[actor],step.position,actor);moving=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog();}else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){moving=false;document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;renderEconomy();}}
 function button(container,label,action,disabled=false){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=label;b.disabled=disabled||moving;b.onclick=()=>execute(action);container.append(b);return b;}
 function paragraph(container,text){const p=document.createElement('p');p.textContent=text;container.append(p);}
 function upgradeIcon(special){const img=document.createElement('img');img.src=special?'upgrades/special-checks.svg':'upgrades/camera.svg';img.alt='';return img;}

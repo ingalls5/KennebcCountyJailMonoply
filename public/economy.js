@@ -18,7 +18,7 @@ export const chance=[
  {text:"County missed a shift in your pay check, receive $50.",cash:50},{text:"Dostie sets PR Bail, no need to go to Two Bridges.",free:true},
  {text:'Go back three spaces.',back:3},{text:"Did some sketchy shit in the jail, go directly to Two Bridges.",jail:true},
  {text:"Missed Checks, now admin is watching you. Pay $25 per Camera and $100 per Special Check.",repairs:[25,100]},
- {text:'Pay a $15 fine.',cash:-15},{text:"Go on an extradition with Sgt. Christanson.",to:5},{text:'Advance to A-Unit.',to:39},
+ {text:'Pay a $15 fine.',cash:-15},{text:"Go on an extradition with Sgt. Christiansen.",to:5},{text:'Advance to A-Unit.',to:39},
  {text:'Pay each other player $50.',each:-50},{text:"Your security equipment passes DOC. Collect $150.",cash:150}
 ];
 export const chest=[

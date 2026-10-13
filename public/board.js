@@ -3,7 +3,7 @@ const special=(name,type,icon,detail,price)=>({name,type,icon,detail,price});
 export const spaces=[
  special('Briefing','go','↗','Collect $200 each time you pass Briefing.'),
  property('HD8','brown',60),special('Supervisors Office','chest','▣','Draw a card from the Supervisors Office.'),property('HD10','brown',60),special('Mainely Vending','tax','vending','Pay $200.',200),
- special('Sgt. Christanson','railroad','🚓','One of four Transport Deputies.',200),property('OB1','lightblue',100),special('Chance','chance','?','Draw a Chance card.'),property('OB2','lightblue',100),property('OB3','lightblue',120),
+ special('Sgt. Christiansen','railroad','🚓','One of four Transport Deputies.',200),property('OB1','lightblue',100),special('Chance','chance','?','Draw a Chance card.'),property('OB2','lightblue',100),property('OB3','lightblue',120),
  special('Two Bridges','jail','▥','The jail and visiting space is now Two Bridges.'),property('Golf','pink',140),special('Taser Instructor','utility','☀','One of two utilities.',150),property('Michael','pink',140),property('Quebec','pink',160),
  special('Dept. Boag','railroad','🚓','One of four Transport Deputies.',200),property('Hotel','orange',180),special('Supervisors Office','chest','▣','Draw a card from the Supervisors Office.'),property('November','orange',180),property('Kilo','orange',200),
  special('Hospital Coverage','parking','🏥','Take a break on Hospital Coverage.'),property('Lima','red',220),special('Chance','chance','?','Draw a Chance card.'),property('CL201','red',220),property('Juliet','red',240),
