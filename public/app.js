@@ -66,6 +66,8 @@ document.getElementById('roll').onclick=async()=>{
  try{
   const next=game?perform(game,{type:'roll',dice:values}):null,result=game?null:move(start,total);
   await rollAcrossBoard(values);document.querySelectorAll('#dice span').forEach((die,i)=>die.textContent=String.fromCodePoint(0x2680+values[i]-1));document.getElementById('dice').setAttribute('aria-label','Rolled '+values.join(' and '));
+  document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'.';
+  await camera.overview();
   document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Moving…';
   const route=next?.route||Array.from({length:total},(_,i)=>({position:(start+i+1)%40}));
   if(route.length)await camera.focus([piece],'pawn');for(const step of route)await travelStep(piece,step,player?actor:0);
