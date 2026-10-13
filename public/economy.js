@@ -10,24 +10,24 @@ export function rent(game,index,diceTotal=0,modifier=null){const property=game.p
  return rents[index][property.buildings]*(property.buildings===0&&ownsGroup(game,index,property.owner)?2:1);
 }
 function shuffle(items){for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}return items;}
-const chance=[
+export const chance=[
  {text:'Advance to Briefing. Collect $200.',to:0},{text:'Advance to Juliet.',to:24},{text:'Advance to Golf.',to:11},
  {text:'Advance to the nearest instructor. If owned, pay ten times a fresh dice roll.',nearest:'utility',modifier:'ten-utility'},
- {text:'Advance to the nearest officer. If owned, pay double the usual railroad rent.',nearest:'railroad',modifier:'double-railroad'},
- {text:'Advance to the nearest officer. If owned, pay double the usual railroad rent.',nearest:'railroad',modifier:'double-railroad'},
- {text:'Bank pays you a dividend of $50.',cash:50},{text:'Get out of Two Bridges free.',free:true},
- {text:'Go back three spaces.',back:3},{text:'Go directly to Two Bridges.',jail:true},
- {text:'General repairs: pay $25 per Camera and $100 per Special Checks.',repairs:[25,100]},
- {text:'Pay a $15 fine.',cash:-15},{text:'Take a trip to Sgt. Christanson.',to:5},{text:'Advance to A-Unit.',to:39},
- {text:'Pay each other player $50.',each:-50},{text:'Your building loan matures. Collect $150.',cash:150}
+ {text:"Advance to the nearest Transport Deputy. If owned, pay double the usual Transport Fee.",nearest:'railroad',modifier:'double-railroad'},
+ {text:"Advance to the nearest Transport Deputy. If owned, pay double the usual Transport Fee.",nearest:'railroad',modifier:'double-railroad'},
+ {text:"County missed a shift in your pay check, receive $50.",cash:50},{text:"Dostie sets PR Bail, no need to go to Two Bridges.",free:true},
+ {text:'Go back three spaces.',back:3},{text:"Did some sketchy shit in the jail, go directly to Two Bridges.",jail:true},
+ {text:"Missed Checks, now admin is watching you. Pay $25 per Camera and $100 per Special Check.",repairs:[25,100]},
+ {text:'Pay a $15 fine.',cash:-15},{text:"Go on an extradition with Sgt. Christanson.",to:5},{text:'Advance to A-Unit.',to:39},
+ {text:'Pay each other player $50.',each:-50},{text:"Your security equipment passes DOC. Collect $150.",cash:150}
 ];
-const chest=[
- {text:'Advance to Briefing. Collect $200.',to:0},{text:'Bank error in your favor. Collect $200.',cash:200},{text:'Doctor’s fee. Pay $50.',cash:-50},
- {text:'From sale of stock, collect $50.',cash:50},{text:'Get out of Two Bridges free.',free:true},{text:'Go directly to Two Bridges.',jail:true},
- {text:'Holiday fund matures. Collect $100.',cash:100},{text:'Income tax refund. Collect $20.',cash:20},{text:'It is your birthday. Collect $10 from each other player.',each:10},
- {text:'Life insurance matures. Collect $100.',cash:100},{text:'Pay hospital fees of $100.',cash:-100},{text:'Pay school fees of $50.',cash:-50},
- {text:'Receive a consultancy fee of $25.',cash:25},{text:'Street repairs: pay $40 per Camera and $115 per Special Checks.',repairs:[40,115]},
- {text:'You won second prize in a beauty contest. Collect $10.',cash:10},{text:'You inherit $100.',cash:100}
+export const chest=[
+ {text:'Advance to Briefing. Collect $200.',to:0},{text:"Inmates sues you and you win, collect $200.",cash:200},{text:"Get hurt in Use of Force, county hands you the bill. Pay $50.",cash:-50},
+ {text:"Took someone else shift, they paid you $50.",cash:50},{text:'Dostie sets PR Bail, no need to go to Two Bridges.',free:true},{text:'Did some sketchy shit in the jail, go directly to Two Bridges.',jail:true},
+ {text:"Work extra shift on a holiday. Collect $100.",cash:100},{text:'Income tax refund. Collect $20.',cash:20},{text:"You won a bet that you couldn't sleep with a nurse. Collect $10 from each other player.",each:10},
+ {text:'Life insurance matures. Collect $100.',cash:100},{text:'Pay hospital fees of $100.',cash:-100},{text:"You pay someone to take your over time shift. Pay $50.",cash:-50},
+ {text:'Receive a consultancy fee of $25.',cash:25},{text:"New security equipment and standards: pay $40 per Camera and $115 per Special Check.",repairs:[40,115]},
+ {text:'You won second prize in a beauty contest. Collect $10.',cash:10},{text:"You found a $100 bill in a committal’s pants pocket. Collect $100.",cash:100}
 ];
 export function newGame(roster){return {version:1,players:roster.map(p=>({...p,position:0,cash:1500,bankrupt:false,inJail:false,jailTurns:0,freeCards:[]})),turn:0,phase:'roll',extraRoll:false,doubles:0,properties:spaces.map((s,i)=>deed(i)?{owner:null,buildings:0,mortgaged:false}:null),bank:{houses:32,hotels:12},debts:[],offer:null,auction:null,cards:{chance:shuffle(chance.map((_,i)=>i)),chest:shuffle(chest.map((_,i)=>i))},log:['Each player starts with $1,500. Passing Briefing pays $200.'],route:[],lastDice:[],winner:null,liquidations:[],resumeJail:null};}
 export function loadGame(roster){try{const raw=JSON.parse(localStorage.getItem(gameKey));if(raw?.version===1&&raw.players.length===roster.length&&roster.every((p,i)=>p.name===raw.players[i].name&&p.pawn===raw.players[i].pawn)&&raw.properties.length===40&&Number.isInteger(raw.turn)&&raw.players[raw.turn])return raw;}catch{}return newGame(roster);}
