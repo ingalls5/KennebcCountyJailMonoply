@@ -1,3 +1,4 @@
+import {loadGame as loadClue} from './clue/rules.js';
 import {loadPlayers} from './players.js';
 import {gameKey} from './economy.js';
 
@@ -16,4 +17,12 @@ try {
   }
 } catch {
   // Missing or unreadable storage leaves the normal play option available.
+}
+
+const clue=loadClue();
+if(clue){
+  const finished=clue.phase==='over';
+  document.getElementById('continueClue').firstChild.textContent=finished?'View last case ':'Continue case ';
+  document.getElementById('savedClueSummary').textContent=`${clue.players.length} detectives · ${finished?'Case closed':clue.players[clue.turn].name+"’s turn"}`;
+  document.getElementById('savedClue').hidden=false;
 }

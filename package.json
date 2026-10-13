@@ -15,7 +15,8 @@
     "test:sound-browser": "node tests/sound-browser.mjs",
     "test:cards-browser": "node tests/cards-browser.mjs",
     "test:game-browser": "node tests/four-player-game.mjs",
-    "test:home-browser": "node tests/home-browser.mjs"
+    "test:home-browser": "node tests/home-browser.mjs",
+    "test:clue-browser": "node tests/clue-browser.mjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",

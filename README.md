@@ -1,6 +1,6 @@
 # KennebcCountyJailMonoply
 
-A custom Monopoly-style game on Cloudflare, with renamed county-jail spaces, equipment pawns, and animated dice and movement. The homepage at `/` offers game selection, with Monoply ready to play and Clue marked coming soon. `/setup` supports one to six named players with unique pawns, and `/board` opens the game. The homepage offers continuation for a matching saved game without altering it. Everyone plays on the same device.
+A custom Monopoly-style game on Cloudflare, with renamed county-jail spaces, equipment pawns, and animated dice and movement. The homepage at `/` offers game selection, with Monoply ready to play and a playable Kennebec County Jail Clue draft. `/setup` supports one to six named players with unique pawns, and `/board` opens the game. The homepage offers continuation for a matching saved game without altering it. Everyone plays on the same device.
 
 ## Economy
 
@@ -24,3 +24,11 @@ Landing and turn decisions open in a modal dialog, including purchases, auctions
 Cards use 16 original themed illustrations, shown in real draw popups. Draw metadata records which cards were drawn, including chained draws, while payment and movement rules stay unchanged.
 
 The follow camera frames both dice during their random rolls, then transitions to a 3× closeup of the moving pawn. Card moves across the board are framed before returning to the pawn closeup. The full board and previous viewing position return when motion finishes. Follow camera can be switched off; reduced-motion settings keep the board stationary. Run `npm run test:camera-browser` to verify desktop/phone tracking, framing, restoration, and the toggle.
+
+## Kennebec County Jail Clue
+
+Open `/clue-setup` to choose three to six detectives and rename any of the nine rooms, six suspects, or six equipment items under Customize the case. `/clue` restores that case. A new case randomly hides one card in each category and deals the remaining 18. Dice movement follows corridor squares, room doors, occupied squares, and four corner staff passages. Room suggestions summon the suspect and equipment; the first clockwise player holding a matching card privately chooses one to show. Incorrect accusers stop investigating but still disprove suggestions. A correct accusation wins, or the case is revealed if all detectives make wrong accusations.
+
+Hands, shown cards, and notebooks are covered at device handoffs and after reloading. This is local pass-and-play privacy; browser local storage holds the complete case. Clue uses its own `kennebec-clue-v1`, roster, and configuration keys and does not modify Monoply saves. New-case setup confirms before replacing an existing case.
+
+Run `npm test`, `npm run test:clue-browser`, and `npm run test:home-browser` for the deduction rules, a complete four-player investigation using private cards obtained through the UI, private handoff restoration, notebook persistence, restart, animations, phone/tablet fit, and separate game saves. `CLUE_SEED` selects the repeatable browser-test shuffle. Browser artifacts are saved under ignored `.runtime/clue`.

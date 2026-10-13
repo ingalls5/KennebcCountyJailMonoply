@@ -12,7 +12,10 @@ try {
  await page.getByRole('heading',{name:'What are we playing tonight?'}).waitFor();
  assert.equal(await page.locator('#savedGame').isVisible(),false);
  assert.equal(await page.getByRole('heading',{name:'Clue',exact:true}).count(),1);
- assert.equal(await page.locator('.next-game a,.next-game button').count(),0);
+ assert(await page.getByRole('link',{name:'Play Clue'}).isVisible());
+ await page.getByRole('link',{name:'Play Clue'}).click();
+ await page.getByRole('heading',{name:'Gather your detectives.'}).waitFor();
+ await page.getByRole('link',{name:'All games',exact:true}).click();
  assert(await page.locator('.cover-badge').evaluate(img=>img.complete&&img.naturalWidth>0));
  await page.screenshot({path:'.runtime/home-desktop.png',fullPage:true});
  await page.getByRole('link',{name:'Play Monoply'}).click();
