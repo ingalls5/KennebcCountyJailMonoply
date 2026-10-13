@@ -32,7 +32,7 @@ export async function animateTransfers(transfers,players){
    // Measure each step so returning deeds use the same lane, even after resizing.
    const rect=row.getBoundingClientRect(),a=left.getBoundingClientRect(),b=right.getBoundingClientRect(),leftX=a.left+a.width/2-rect.left,rightX=b.left+b.width/2-rect.left,start=forward?leftX:rightX,end=forward?rightX:leftX;
    const token=packet(transfer);token.setAttribute('aria-hidden','true');row.append(token);const y=50-token.offsetHeight/2;
-   const stopSound=sound.transfer(transfer.kind,3200);
+   const stopSound=sound.transfer(transfer.kind,3200,forward?1:-1);
    try{await token.animate([
     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(.5)`,opacity:0,offset:0},
     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(1)`,opacity:1,offset:.12},

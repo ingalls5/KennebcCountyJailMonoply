@@ -4,6 +4,8 @@ class GameSound {
  constructor(){
   this.enabled=true;try{this.enabled=localStorage.getItem(preferenceKey)!=='off';}catch{}
   this.context=null;this.master=null;this.buffer=null;this.diceBuffers=[];this.diceLoading=null;this.generation=0;
+  this.transferBuffers={};this.transferLoading=null;
+  this.transferFiles=Promise.all(['paper-fan-1','paper-fan-2','paper-slide','paper-place','money-count','money-stack'].map(async name=>{const response=await fetch('audio/'+name+'.wav');if(!response.ok)throw Error('Recording unavailable');return[name,await response.arrayBuffer()];})).catch(()=>[]);
   this.diceFiles=Promise.all([1,2,3].map(number=>fetch('audio/dice-roll-'+number+'.wav').then(response=>{if(!response.ok)throw Error('Recording unavailable');return response.arrayBuffer();}))).catch(()=>[]);this.sources=new Set();this.controls=[];this.seed=0x6d2b79f5;this.lastPawn=-Infinity;
  }
  random(){let x=this.seed;x^=x<<13;x^=x>>>17;x^=x<<5;this.seed=x>>>0;return this.seed/4294967296;}
@@ -61,10 +63,25 @@ class GameSound {
   const now=this.context?.currentTime??0;if(now-this.lastPawn<.14)return;this.lastPawn=now;
   this.play(start=>{this.tone(start,.11,310,540,.055);const landing=start+Math.max(.08,durationMs/1000*.82);this.tone(landing,.085,220,105,.07);this.noise(landing,.035,1500,.035);});
  }
- transfer(kind,durationMs){return this.play(start=>{
-  const duration=durationMs/1000;
-  if(kind==='money'){for(const fraction of [.06,.3,.56,.76])this.noise(start+duration*fraction,.12,3300,.07);[1568,2093,2637].forEach((frequency,i)=>this.tone(start+duration*.87+i*.045,.15,frequency,frequency*.99,.045,'triangle'));}
-  else{for(const fraction of [.06,.28,.53,.74])this.noise(start+duration*fraction,.2,1800,.085);const arrival=start+duration*.9;this.tone(arrival,.09,180,75,.065);this.noise(arrival,.05,1000,.04);}
- });}
+ async loadTransfers(){
+  if(Object.keys(this.transferBuffers).length||!this.context)return this.transferBuffers;
+  if(!this.transferLoading){const context=this.context;this.transferLoading=this.transferFiles.then(files=>Promise.all(files.map(async([name,file])=>[name,await context.decodeAudioData(file.slice(0))]))).then(buffers=>this.transferBuffers=Object.fromEntries(buffers)).catch(()=>({}));}
+  return this.transferLoading;
+ }
+ transfer(kind,durationMs,direction=1){
+  let cancelled=false,stop=()=>{};const began=performance.now(),generation=this.generation;
+  const play=()=>{if(cancelled||generation!==this.generation)return;const duration=Math.max(0,(durationMs-(performance.now()-began))/1000);if(duration<.05)return;
+   stop=this.play(start=>{
+    // Every transfer voice is recorded foley; no oscillator or generated noise.
+    const recording=(name,fraction,maxDuration,level)=>{const buffer=this.transferBuffers[name];if(!buffer)return;const source=this.context.createBufferSource();source.buffer=buffer;const nodes=[];if(this.context.createStereoPanner){const pan=this.context.createStereoPanner();pan.pan.value=(fraction*2-1)*.65*direction;nodes.push(pan);}this.voice(source,nodes,start+duration*fraction,Math.min(buffer.duration,maxDuration,duration*(1-fraction)),level,true);};
+    if(duration<.65){recording(kind==='money'?'money-stack':'paper-place',.02,duration*.9,.7);return;}
+    const fan=this.random()<.5?'paper-fan-1':'paper-fan-2';
+    if(kind==='money'){recording(fan,.04,.65,.55);recording('money-count',.28,Math.min(.85,duration*.3),.65);recording('money-stack',.84,Math.min(.8,duration*.14),.75);}
+    else{recording(fan,.04,.65,.75);recording('paper-slide',.4,.6,.8);recording('paper-place',.78,.7,.9);}
+   });
+  };
+  if(Object.keys(this.transferBuffers).length)play();else this.loadTransfers().then(play);
+  return()=>{cancelled=true;stop();};
+ }
 }
 export const sound=new GameSound();
