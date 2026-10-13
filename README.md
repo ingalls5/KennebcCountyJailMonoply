@@ -19,3 +19,5 @@ Run `npm ci`, `npm run dev`, `npm test`, `npm run test:browser`, `npm run test:e
 Cameras replace houses and Special Checks replace hotels in the interface and board tokens. Up to four Cameras upgrade to one Special Checks token. Prices, rent schedules, repair charges, bank inventory, and saved game compatibility stay the same. The space named Hotel is a separate property name.
 
 Landing and turn decisions open in a modal dialog, including purchases, auctions, rent/payment summaries, debt resolution, doubles, and ending the turn. The dialog can be closed to manage property without advancing play, and reopened with Turn options. Rent remains automatic and is reported as paid; closing a popup cannot bypass an unresolved debt or purchase.
+
+Use Test cards on the board or Test all cards in the turn popup to browse cards 1–32. Cards 1–16 are Chance; 17–32 are Supervisors Office. Previewing does not draw cards or alter cash, positions, saved turns, or deck order. Previous/Next and a direct numbered selector are available. Run `npm run test:cards-browser` to verify this flow locally.
