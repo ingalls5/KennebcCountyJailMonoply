@@ -1,5 +1,6 @@
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
+const STEP_MS=500;
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');let token=0,turn=0;const players=loadPlayers().map(player=>({...player,position:0}));
 
 function select(index){const space=spaces[index];board.querySelectorAll('.space').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));details.replaceChildren();const eyebrow=document.createElement('p');eyebrow.className='eyebrow';eyebrow.textContent='SPACE '+(index+1)+' · '+space.type.replace('gotojail','corner').toUpperCase();const title=document.createElement('h2');title.textContent=space.name;const text=document.createElement('p');text.textContent=space.detail||'A property in the '+space.group.replace('lightblue','light blue')+' color group.';details.append(eyebrow,title,text);details.className='detail-card '+(space.group||'neutral');if(space.price){const price=document.createElement('p');price.className='detail-price';price.textContent=(space.type==='tax'?'Tax · ':'Price · ')+'$'+space.price;details.append(price);}}
@@ -17,16 +18,32 @@ async function glide(piece,space,index){const before=piece.getBoundingClientRect
  {transform:`translate(${dx*.5}px,${dy*.5-lift}px) scale(1.06)`,offset:.45},
  {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
  {transform:'translate(0,0) scale(1)',offset:1}
- ],{duration:500,easing:'linear'}).finished;}
+ ],{duration:STEP_MS,easing:'linear'}).finished;}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);
+function showFace(die,value){die.replaceChildren();const positions={1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};for(let cell=1;cell<=9;cell++){const pip=document.createElement('i');if(positions[value].includes(cell))pip.className='pip';die.append(pip);}die.dataset.value=value;die.setAttribute('aria-label','Die showing '+value);}
+async function rollAcrossBoard(values){
+ board.querySelectorAll('.board-die').forEach(die=>die.remove());
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const dice=values.map((value,index)=>{const die=document.createElement('span');die.className='board-die';die.setAttribute('role','img');die.style.left=(48+index*9)+'%';die.style.top=(43+index*8)+'%';showFace(die,reduced?value:1);board.append(die);return die;});
+ if(reduced)return;
+ const viewport=document.querySelector('.board-viewport');if(viewport.scrollWidth>viewport.clientWidth)viewport.scrollTo({left:Math.max(0,(viewport.scrollWidth-viewport.clientWidth)/2)});
+ let beat=0;const tumble=setInterval(()=>{beat++;dice.forEach((die,index)=>showFace(die,1+(beat+index*2)%6));},STEP_MS);
+ try{await Promise.all(dice.map((die,index)=>{const distance=board.clientWidth*.34,height=board.clientWidth*.17,spin=index? -1:1;return die.animate([
+ {transform:`translate(${-distance}px,${height}px) rotate(${spin*-300}deg) scale(.9)`,offset:0},
+ {transform:`translate(${-distance*.66}px,${height*.4-12}px) rotate(${spin*-200}deg) scale(1.08)`,offset:1/3},
+ {transform:`translate(${-distance*.33}px,${height*.2-7}px) rotate(${spin*-100}deg) scale(1.04)`,offset:2/3},
+ {transform:'translate(0,0) rotate(0deg) scale(1)',offset:1}
+ ],{duration:STEP_MS*3,easing:'ease-out'}).finished;}));}
+ finally{clearInterval(tumble);dice.forEach((die,index)=>showFace(die,values[index]));}
+}
 document.getElementById('roll').onclick=async()=>{
  if(moving)return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;
  const player=players[turn],start=player?player.position:token,values=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)],total=values[0]+values[1],result=move(start,total),piece=pieces[players.length?turn:0];
- document.querySelectorAll('#dice span').forEach((die,i)=>die.textContent=String.fromCodePoint(0x2680+values[i]-1));document.getElementById('dice').setAttribute('aria-label','Rolled '+values.join(' and '));document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Moving…';
- try{for(let step=1;step<=total;step++)await glide(piece,(start+step)%40,players.length?turn:0);if(result.sentToJail)await glide(piece,10,players.length?turn:0);
+ document.getElementById('moveStatus').textContent='Rolling the dice…';
+ try{await rollAcrossBoard(values);document.querySelectorAll('#dice span').forEach((die,i)=>die.textContent=String.fromCodePoint(0x2680+values[i]-1));document.getElementById('dice').setAttribute('aria-label','Rolled '+values.join(' and '));document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Moving…';for(let step=1;step<=total;step++)await glide(piece,(start+step)%40,players.length?turn:0);if(result.sentToJail)await glide(piece,10,players.length?turn:0);
  token=result.position;if(player)player.position=token;select(token);document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. '+(result.sentToJail?'Go directly to Two Bridges.':(result.passedGo?'Passed Briefing! ':'')+'Landed on '+spaces[token].name+'.');if(players.length){turn=(turn+1)%players.length;roster();}
  }finally{moving=false;roll.disabled=false;reset.disabled=false;place();}
 };
-document.getElementById('reset').onclick=()=>{token=0;turn=0;players.forEach(player=>player.position=0);place();roster();select(0);document.getElementById('moveStatus').textContent=players.length?'Everyone is back at Briefing.':'Your token is waiting at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');};
+document.getElementById('reset').onclick=()=>{board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;players.forEach(player=>player.position=0);place();roster();select(0);document.getElementById('moveStatus').textContent=players.length?'Everyone is back at Briefing.':'Your token is waiting at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');};
 document.getElementById('zoom').onclick=event=>{const enabled=document.querySelector('.board-viewport').classList.toggle('enlarged');event.currentTarget.setAttribute('aria-pressed',String(enabled));event.currentTarget.textContent=enabled?'Fit the whole board ↙':'Enlarge board ↗';};
