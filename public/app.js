@@ -1,9 +1,12 @@
+import {BoardCamera} from './camera.js';
 import {cardFace} from './card-art.js';
 import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=loadPlayers();let game=rosterChoice.length?loadGame(rosterChoice):null,players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
+
+const camera=new BoardCamera(board,document.querySelector('.board-viewport'));
 
 const turnDialog=document.getElementById('turnDialog');
 
@@ -17,12 +20,13 @@ let moving=false;const pieces=(players.length?players:[{name:'Preview',pawn:'key
 function roster(){const container=document.getElementById('playerRoster');container.replaceChildren();players.forEach((player,index)=>{const label=document.createElement('span');label.className='roster-player'+(index===turn?' active':'');const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt=pawns.find(p=>p.id===player.pawn).name;label.append(image,document.createTextNode(player.name+' · $'+player.cash.toLocaleString()+(player.bankrupt?' · Out':player.inJail?' · Two Bridges':'')));container.append(label);});document.getElementById('turnTitle').textContent=players.length?players[turn].name+'’s turn':'Your move.';}
 function locate(piece,space,index){const tile=board.querySelector(`[data-index="${space}"]`),size=board.clientWidth*.028;piece.style.left=((tile.offsetLeft+tile.offsetWidth*(.2+(index%3)*.3)-size/2)/board.clientWidth*100)+'%';piece.style.top=((tile.offsetTop+tile.offsetHeight*(.58+Math.floor(index/3)*.26)-size/2)/board.clientHeight*100)+'%';piece.dataset.space=space;}
 function place(){pieces.forEach((piece,index)=>{piece.hidden=!!players[index]?.bankrupt;locate(piece,players.length?players[index].position:token,index);});}
-async function glide(piece,space,index){const before=piece.getBoundingClientRect();locate(piece,space,index);const after=piece.getBoundingClientRect();if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const dx=before.x-after.x,dy=before.y-after.y,lift=Math.max(7,Math.min(20,board.clientWidth*.018));await piece.animate([
+async function glide(piece,space,index){const before={x:piece.offsetLeft,y:piece.offsetTop};locate(piece,space,index);const after={x:piece.offsetLeft,y:piece.offsetTop};if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const dx=before.x-after.x,dy=before.y-after.y,lift=Math.max(7,Math.min(20,board.clientWidth*.018));await piece.animate([
  {transform:`translate(${dx}px,${dy}px) scale(1)`,offset:0},
  {transform:`translate(${dx*.5}px,${dy*.5-lift}px) scale(1.06)`,offset:.45},
  {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
  {transform:'translate(0,0) scale(1)',offset:1}
  ],{duration:STEP_MS,easing:'linear'}).finished;}
+async function travelStep(piece,step,index){if(step.jump)await camera.focus([piece,board.querySelector(`[data-index="${step.position}"]`)],'travel');await glide(piece,step.position,index);if(step.jump)await camera.focus([piece],'pawn');}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);document.querySelector('.economy-card').hidden=!game;if(game){document.getElementById('moveStatus').textContent=players[turn].name+' is at '+spaces[players[turn].position].name+'.';renderEconomy();openTurnDialog();}
 function makeCube(value){
@@ -36,8 +40,7 @@ async function rollAcrossBoard(values){
  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  const dice=values.map((value,index)=>{const die=document.createElement('span');die.className='board-die';die.setAttribute('role','img');die.dataset.value=value;die.setAttribute('aria-label','Die showing '+value);die.style.left=(48+index*10+(Math.random()-.5)*4)+'%';die.style.top=(43+index*8+(Math.random()-.5)*4)+'%';const shadow=document.createElement('span');shadow.className='dice-shadow';die.append(shadow,makeCube(value));board.append(die);return die;});
  if(reduced)return;
- const viewport=document.querySelector('.board-viewport');if(viewport.scrollWidth>viewport.clientWidth)viewport.scrollTo({left:Math.max(0,(viewport.scrollWidth-viewport.clientWidth)/2)});
- await Promise.all(dice.map(async(die,index)=>{
+ const animations=dice.map(async(die,index)=>{
   const random=(min,max)=>min+Math.random()*(max-min),direction=()=>Math.random()<.5?-1:1;
   const hops=6,diceBeat=STEP_MS*2,duration=diceBeat*hops,lift=Math.max(20,board.clientWidth*random(.04,.065)),frames=[];
   const spinX=direction()*360*(4+Math.floor(Math.random()*4)),spinY=direction()*360*(3+Math.floor(Math.random()*4)),spinZ=direction()*random(360,720);
@@ -53,10 +56,11 @@ async function rollAcrossBoard(values){
   const tumble=cube.animate(frames,{duration,easing:'linear'});
   const shadow=die.querySelector('.dice-shadow').animate([{transform:'scale(1)',opacity:.35},{transform:`scale(${random(.4,.65)})`,opacity:.1},{transform:'scale(1)',opacity:.35}],{duration:diceBeat,iterations:hops,easing:'ease-in-out'});
   await Promise.all([travel.finished,tumble.finished,shadow.finished]);
- }));
+ });
+ camera.follow(dice,'dice');await Promise.all(animations);
 }
 document.getElementById('roll').onclick=async()=>{
- if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;
+ if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('zoom').disabled=true;
  const actor=turn,player=players[actor],start=player?player.position:token,values=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)],total=values[0]+values[1],piece=pieces[player?actor:0];
  document.getElementById('moveStatus').textContent='Rolling the dice…';document.getElementById('gameError').textContent='';
  try{
@@ -64,20 +68,20 @@ document.getElementById('roll').onclick=async()=>{
   await rollAcrossBoard(values);document.querySelectorAll('#dice span').forEach((die,i)=>die.textContent=String.fromCodePoint(0x2680+values[i]-1));document.getElementById('dice').setAttribute('aria-label','Rolled '+values.join(' and '));
   document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Moving…';
   const route=next?.route||Array.from({length:total},(_,i)=>({position:(start+i+1)%40}));
-  for(const step of route)await glide(piece,step.position,player?actor:0);
+  if(route.length)await camera.focus([piece],'pawn');for(const step of route)await travelStep(piece,step,player?actor:0);
   if(!game&&result.sentToJail)await glide(piece,10,0);
   if(next){game=next;players=game.players;turn=game.turn;token=players[actor].position;saveGame();roster();select(token);}
   else{token=result.position;select(token);}
   document.getElementById('moveStatus').textContent=(player?player.name:'You')+' rolled '+total+'. Landed on '+spaces[token].name+'.';
  }catch(error){document.getElementById('gameError').textContent=error.message;}
- finally{moving=false;roll.disabled=false;reset.disabled=false;place();if(game){renderEconomy();openTurnDialog();}}
+ finally{camera.stop();document.getElementById('zoom').disabled=false;moving=false;roll.disabled=false;reset.disabled=false;place();if(game){renderEconomy();openTurnDialog();}}
 };
 document.getElementById('reset').onclick=()=>{
  if(game&&!confirm('Start a new game? This resets all balances, property ownership, and upgrades on this device.'))return;
  board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;if(game){game=newGame(rosterChoice);players=game.players;saveGame();}place();roster();select(0);document.getElementById('moveStatus').textContent='Everyone is back at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');if(game)renderEconomy();
 };
 function saveGame(){try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
-async function execute(action){if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';try{const next=perform(game,action);if(next.route.length){turnDialog.close();moving=true;document.getElementById('roll').disabled=true;const actor=game.turn;for(const step of next.route)await glide(pieces[actor],step.position,actor);moving=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog();}else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){moving=false;document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;renderEconomy();}}
+async function execute(action){if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';try{const next=perform(game,action);if(next.route.length){turnDialog.close();moving=true;document.getElementById('roll').disabled=true;const actor=game.turn;document.getElementById('zoom').disabled=true;await camera.focus([pieces[actor]],'pawn');for(const step of next.route)await travelStep(pieces[actor],step,actor);camera.stop();document.getElementById('zoom').disabled=false;moving=false;}game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog();}else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog();document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];}catch(error){camera.stop();document.getElementById('zoom').disabled=false;moving=false;document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;renderEconomy();}}
 function button(container,label,action,disabled=false){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=label;b.disabled=disabled||moving;b.onclick=()=>execute(action);container.append(b);return b;}
 function paragraph(container,text){const p=document.createElement('p');p.textContent=text;container.append(p);}
 function upgradeIcon(special){const img=document.createElement('img');img.src=special?'upgrades/special-checks.svg':'upgrades/camera.svg';img.alt='';return img;}
@@ -122,4 +126,5 @@ document.getElementById('showTurnOptions').hidden=!game;
 document.getElementById('showTurnOptions').onclick=()=>openTurnDialog(true);
 document.getElementById('closeTurnDialog').onclick=()=>turnDialog.close();
 document.getElementById('manageProperties').onclick=()=>{turnDialog.close();if(game.phase==='debt'){const manager=game.debts[0].payer,index=game.properties.findIndex(p=>p?.owner===manager);if(index>=0){select(index);details.scrollIntoView({block:'start'});}}};
-document.getElementById('zoom').onclick=event=>{const enabled=document.querySelector('.board-viewport').classList.toggle('enlarged');event.currentTarget.setAttribute('aria-pressed',String(enabled));event.currentTarget.textContent=enabled?'Fit the whole board ↙':'Enlarge board ↗';};
+document.getElementById('followCamera').onclick=event=>{camera.setEnabled(!camera.enabled);event.currentTarget.setAttribute('aria-pressed',String(camera.enabled));event.currentTarget.textContent='Follow camera: '+(camera.enabled?'on':'off');};
+document.getElementById('zoom').onclick=event=>{if(moving)return;const enabled=document.querySelector('.board-viewport').classList.toggle('enlarged');event.currentTarget.setAttribute('aria-pressed',String(enabled));event.currentTarget.textContent=enabled?'Fit the whole board ↙':'Enlarge board ↗';};
