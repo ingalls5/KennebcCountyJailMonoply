@@ -41,7 +41,7 @@ function pay(g,payer,payee,amount,label){if(amount>0)g.debts.push({payer,payee,a
 function settle(g){while(g.debts.length){const d=g.debts[0],p=g.players[d.payer];if(p.bankrupt){g.debts.shift();continue;}if(p.cash<d.amount){g.phase='debt';return;}money(g,d.payer,d.payee,d.amount);note(g,`${p.name} paid $${d.amount}${d.payee!==null?' to '+g.players[d.payee].name:''}: ${d.label}.`);g.debts.shift();}if(g.phase==='debt'){if(g.resumeJail){const total=g.resumeJail.total;g.resumeJail=null;const p=current(g);p.inJail=false;p.jailTurns=0;moveAndLand(g,total);settle(g);}else actionDone(g);}}
 function sendJail(g){const p=current(g);p.position=10;p.inJail=true;p.jailTurns=0;g.extraRoll=false;g.doubles=0;g.route.push({position:10,jump:true});note(g,`${p.name} goes to Two Bridges.`);}
 function advance(g,target,collect=true){const p=current(g);if(collect&&target<=p.position){money(g,null,g.turn,200);note(g,`${p.name} collected $200 at Briefing.`);}p.position=target;g.route.push({position:target,jump:true});}
-function draw(g,deck,depth){const ids=g.cards[deck],id=ids.shift(),card=(deck==='chance'?chance:chest)[id];(g.drawnCards??=[]).push({deck,id});if(!card.free)ids.push(id);note(g,`${deck==='chance'?'Chance':'Supervisors Office'}: ${card.text}`);const p=current(g);
+function draw(g,deck,depth){const ids=g.cards[deck],id=ids.shift(),card=(deck==='chance'?chance:chest)[id];(g.drawnCards??=[]).push({deck,id});g.route.push({position:current(g).position,card:{deck,id}});if(!card.free)ids.push(id);note(g,`${deck==='chance'?'Chance':'Supervisors Office'}: ${card.text}`);const p=current(g);
  if(card.free){p.freeCards.push({deck,id});return;}
  if(card.jail){sendJail(g);return;}
  if(card.to!==undefined){advance(g,card.to);land(g,depth+1);return;}

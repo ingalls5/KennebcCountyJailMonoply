@@ -6,12 +6,24 @@ import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
-sound.bind([document.getElementById('soundToggle'),document.getElementById('turnSoundToggle')]);
+sound.bind([document.getElementById('soundToggle'),document.getElementById('turnSoundToggle'),document.getElementById('drawSoundToggle')]);
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=loadPlayers();let game=rosterChoice.length?loadGame(rosterChoice):null,players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
 
 const camera=new BoardCamera(board,document.querySelector('.board-viewport'));
 
 const turnDialog=document.getElementById('turnDialog');
+const drawDialog=document.getElementById('drawDialog');
+drawDialog.addEventListener('cancel',event=>event.preventDefault());
+document.getElementById('continueCard').onclick=()=>drawDialog.close();
+async function revealCard({deck,id},index){
+ if(turnDialog.open)turnDialog.close();
+ document.getElementById('drawDialogTitle').textContent=deck==='chance'?'Chance':'Supervisors Office';
+ document.getElementById('drawPlayer').textContent=players[index].name+' drew a card. Read it, then continue.';
+ document.getElementById('drawCard').replaceChildren(cardFace((deck==='chance'?1:17)+id));
+ document.getElementById('moveStatus').textContent=players[index].name+' is reading a '+(deck==='chance'?'Chance':'Supervisors Office')+' card.';
+ await new Promise(resolve=>{drawDialog.addEventListener('close',resolve,{once:true});drawDialog.showModal();document.getElementById('continueCard').focus();});
+}
+
 
 function select(index){selected=index;const space=spaces[index];board.querySelectorAll('.space').forEach((button,i)=>button.setAttribute('aria-pressed',String(i===index)));details.replaceChildren();const eyebrow=document.createElement('p');eyebrow.className='eyebrow';eyebrow.textContent='SPACE '+(index+1)+' · '+space.type.replace('gotojail','corner').toUpperCase();const title=document.createElement('h2');title.textContent=space.name;const text=document.createElement('p');text.textContent=space.detail||'A property in the '+space.group.replace('lightblue','light blue')+' color group.';details.append(eyebrow,title,text);details.className='detail-card '+(space.group||'neutral');if(space.price){const price=document.createElement('p');price.className='detail-price';price.textContent=(space.type==='tax'?'Tax · ':'Price · ')+'$'+space.price;details.append(price);}if(game)propertyControls(index);}
 spaces.forEach((space,index)=>{const p=position(index),button=document.createElement('button');button.type='button';button.className=['space',p.side,space.type,index%10===0?'corner':'',space.group||''].join(' ');button.setAttribute('aria-label',space.name+(space.price?', $'+space.price:''));button.setAttribute('aria-pressed','false');button.dataset.index=index;button.style.gridRow=p.row;button.style.gridColumn=p.column;const inner=document.createElement('span');inner.className='space-inner';if(space.group){const strip=document.createElement('span');strip.className='color-strip';inner.append(strip);}const name=document.createElement('span');name.className='space-name';name.textContent=space.name;inner.append(name);if(space.icon){const icon=document.createElement('span');icon.className='space-icon';icon.setAttribute('aria-hidden','true');if(space.icon==='vending'){
@@ -29,7 +41,7 @@ async function glide(piece,space,index){const before={x:piece.offsetLeft,y:piece
  {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
  {transform:'translate(0,0) scale(1)',offset:1}
  ],{duration:STEP_MS,easing:'linear'}).finished;}
-async function travelStep(piece,step,index){if(step.jump)await camera.focus([piece,board.querySelector(`[data-index="${step.position}"]`)],'travel');await glide(piece,step.position,index);if(step.jump)await camera.focus([piece],'pawn');}
+async function travelStep(piece,step,index){if(step.card){await revealCard(step.card,index);return;}if(step.jump)await camera.focus([piece,board.querySelector(`[data-index="${step.position}"]`)],'travel');await glide(piece,step.position,index);if(step.jump)await camera.focus([piece],'pawn');}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);document.querySelector('.economy-card').hidden=!game;if(game){document.getElementById('moveStatus').textContent=players[turn].name+' is at '+spaces[players[turn].position].name+'.';renderEconomy();openTurnDialog();}
 function makeCube(value){

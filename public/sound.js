@@ -3,7 +3,8 @@ const preferenceKey='kennebc-sound-v1';
 class GameSound {
  constructor(){
   this.enabled=true;try{this.enabled=localStorage.getItem(preferenceKey)!=='off';}catch{}
-  this.context=null;this.master=null;this.buffer=null;this.sources=new Set();this.controls=[];this.seed=0x6d2b79f5;this.lastPawn=-Infinity;
+  this.context=null;this.master=null;this.buffer=null;this.diceBuffers=[];this.diceLoading=null;this.generation=0;
+  this.diceFiles=Promise.all([1,2,3].map(number=>fetch('audio/dice-roll-'+number+'.wav').then(response=>{if(!response.ok)throw Error('Recording unavailable');return response.arrayBuffer();}))).catch(()=>[]);this.sources=new Set();this.controls=[];this.seed=0x6d2b79f5;this.lastPawn=-Infinity;
  }
  random(){let x=this.seed;x^=x<<13;x^=x>>>17;x^=x<<5;this.seed=x>>>0;return this.seed/4294967296;}
  bind(controls){
@@ -27,9 +28,9 @@ class GameSound {
    if(this.context.state==='suspended')this.context.resume().catch(()=>{});
   }catch{this.stopAll();this.context=null;}
  }
- stopAll(){for(const source of this.sources){try{source.stop();}catch{}}this.sources.clear();}
- voice(source,nodes,start,duration,level){
-  const envelope=this.context.createGain();envelope.gain.setValueAtTime(.0001,start);envelope.gain.exponentialRampToValueAtTime(level,start+.008);envelope.gain.exponentialRampToValueAtTime(.0001,start+duration);
+ stopAll(){this.generation++;for(const source of this.sources){try{source.stop();}catch{}}this.sources.clear();}
+ voice(source,nodes,start,duration,level,recorded=false){
+  const envelope=this.context.createGain();envelope.gain.setValueAtTime(.0001,start);envelope.gain.exponentialRampToValueAtTime(level,start+.008);if(recorded){envelope.gain.setValueAtTime(level,start+Math.max(.01,duration-.018));envelope.gain.linearRampToValueAtTime(.0001,start+duration);}else envelope.gain.exponentialRampToValueAtTime(.0001,start+duration);
   let tail=source;for(const node of nodes){tail.connect(node);tail=node;}tail.connect(envelope);envelope.connect(this.master);this.sources.add(source);
   source.onended=()=>{this.sources.delete(source);source.disconnect();nodes.forEach(node=>node.disconnect());envelope.disconnect();};source.start(start);source.stop(start+duration+.02);
  }
@@ -43,10 +44,19 @@ class GameSound {
   try{build(this.context.currentTime+.015);}catch{/* Audio availability never blocks a game action. */}
   const sources=[...this.sources].filter(source=>!previous.has(source));return()=>{for(const source of sources){try{source.stop();}catch{}}};
  }
- dice(durationMs){return this.play(start=>{
-  const duration=durationMs/1000,beats=Math.max(1,Math.round(duration)),beat=duration/beats;
-  for(let hop=0;hop<beats;hop++)for(const fraction of [.04,.18,.42,.76,.98]){const time=start+(hop+fraction)*beat,level=.07+(1-hop/beats)*.045;this.noise(time,.045,2200+this.random()*1400,level);this.tone(time,.055,650+this.random()*250,290,.035,'triangle');}
- });}
+ async loadDice(){
+  if(this.diceBuffers.length||!this.context)return this.diceBuffers;
+  if(!this.diceLoading){const context=this.context;this.diceLoading=this.diceFiles.then(files=>Promise.all(files.map(file=>context.decodeAudioData(file.slice(0))))).then(buffers=>this.diceBuffers=buffers).catch(()=>[]);}
+  return this.diceLoading;
+ }
+ dice(durationMs){
+  let cancelled=false,stop=()=>{};const began=performance.now(),generation=this.generation;
+  const play=()=>{if(cancelled||generation!==this.generation||!this.diceBuffers.length)return;const duration=Math.max(0,(durationMs-(performance.now()-began))/1000);if(duration<.05)return;
+   stop=this.play(start=>{const beats=Math.max(1,Math.round(duration)),beat=duration/beats;for(let hop=0;hop<beats;hop++){const buffer=this.diceBuffers[Math.floor(this.random()*this.diceBuffers.length)],source=this.context.createBufferSource();source.buffer=buffer;this.voice(source,[],start+hop*beat,Math.min(buffer.duration,beat),.6,true);}});
+  };
+  if(this.diceBuffers.length)play();else this.loadDice().then(play);
+  return()=>{cancelled=true;stop();};
+ }
  pawn(durationMs){
   const now=this.context?.currentTime??0;if(now-this.lastPawn<.14)return;this.lastPawn=now;
   this.play(start=>{this.tone(start,.11,310,540,.055);const landing=start+Math.max(.08,durationMs/1000*.82);this.tone(landing,.085,220,105,.07);this.noise(landing,.035,1500,.035);});

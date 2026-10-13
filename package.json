@@ -12,7 +12,8 @@
     "test:economy-browser": "node tests/economy-browser.mjs",
     "test:camera-browser": "node tests/camera-browser.mjs",
     "test:transfers-browser": "node tests/transfers-browser.mjs",
-    "test:sound-browser": "node tests/sound-browser.mjs"
+    "test:sound-browser": "node tests/sound-browser.mjs",
+    "test:cards-browser": "node tests/cards-browser.mjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",

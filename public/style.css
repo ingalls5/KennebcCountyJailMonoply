@@ -40,3 +40,5 @@ header,main,footer{max-width:1680px}main{padding-left:32px;padding-right:32px}.g
 .transfer-description{position:absolute;bottom:6px;left:112px;right:112px;margin:0}@media(max-width:520px){.transfer-description,.transfer-row:before{left:73px;right:73px}}
 
 #turnDialog .dialog-sound{position:absolute;top:18px;right:60px;padding:0;font-size:12px}
+
+#drawDialog{width:min(460px,calc(100vw - 28px));max-height:calc(100dvh - 32px);overflow:auto;padding:30px;border:1px solid #c9cfbf;border-radius:20px;background:#fffcf5;color:var(--ink);box-shadow:0 24px 80px #132d3255}#drawDialog::backdrop{background:#172d2338}#drawDialog h2{font:32px/1.2 Georgia,serif;margin:12px 0 18px}#drawPlayer{font-size:14px}#drawDialog .dialog-sound{position:absolute;top:18px;right:26px;padding:0;font-size:12px}#drawDialog .card-copy{font:20px/1.4 Georgia,serif;margin:10px 0}#continueCard{min-height:46px}@media(max-width:520px){#drawDialog{padding:24px}#drawDialog h2{font-size:28px}}
