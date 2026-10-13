@@ -1,6 +1,6 @@
 # KennebcCountyJailMonoply
 
-A custom Monopoly-style game on Cloudflare, with renamed county-jail spaces, equipment pawns, and animated dice and movement. The welcome page supports one to six named players with unique pawns. Everyone plays on the same device.
+A custom Monopoly-style game on Cloudflare, with renamed county-jail spaces, equipment pawns, and animated dice and movement. The homepage at `/` offers game selection, with Monoply ready to play and Clue marked coming soon. `/setup` supports one to six named players with unique pawns, and `/board` opens the game. The homepage offers continuation for a matching saved game without altering it. Everyone plays on the same device.
 
 ## Economy
 
@@ -14,7 +14,7 @@ An unpaid debt blocks play until the debtor raises cash or declares bankruptcy. 
 
 ## Development
 
-Run `npm ci`, `npm run dev`, `npm test`, `npm run test:browser`, `npm run test:economy-browser`, and `npm run build`. Local development uses port 8791. `npm run deploy` publishes the Worker `kennebc-county-jail-monoply`. No database is required. Keep credentials out of the repository. In this cloud workspace, use `npm_config_cache=/tmp/kennebc-npm-cache` for installation and `XDG_CONFIG_HOME="$PWD/.runtime/xdg-config" WRANGLER_SEND_METRICS=false` for Wrangler commands.
+Run `npm ci`, `npm run dev`, `npm test`, `npm run test:browser`, `npm run test:economy-browser`, `npm run test:home-browser`, and `npm run build`. Local development uses port 8791. `npm run deploy` publishes the Worker `kennebc-county-jail-monoply`. No database is required. Keep credentials out of the repository. In this cloud workspace, use `npm_config_cache=/tmp/kennebc-npm-cache` for installation and `XDG_CONFIG_HOME="$PWD/.runtime/xdg-config" WRANGLER_SEND_METRICS=false` for Wrangler commands.
 
 Cameras replace houses and Special Checks replace hotels in the interface and board tokens. Up to four Cameras upgrade to one Special Checks token. Prices, rent schedules, repair charges, bank inventory, and saved game compatibility stay the same. The space named Hotel is a separate property name.
 

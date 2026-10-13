@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {chromium} from 'playwright-core';
+import {newGame,gameKey} from '../public/economy.js';
+import {storageKey} from '../public/players.js';
+fs.mkdirSync('.runtime',{recursive:true});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'});
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://127.0.0.1:8791/');
+ await page.getByRole('heading',{name:'What are we playing tonight?'}).waitFor();
+ assert.equal(await page.locator('#savedGame').isVisible(),false);
+ assert.equal(await page.getByRole('heading',{name:'Clue',exact:true}).count(),1);
+ assert.equal(await page.locator('.next-game a,.next-game button').count(),0);
+ assert(await page.locator('.cover-badge').evaluate(img=>img.complete&&img.naturalWidth>0));
+ await page.screenshot({path:'.runtime/home-desktop.png',fullPage:true});
+ await page.getByRole('link',{name:'Play Monoply'}).click();
+ await page.getByRole('heading',{name:'Welcome to game night.'}).waitFor();
+ await page.getByRole('link',{name:'All games',exact:true}).click();
+ const roster=[{name:'Joe',pawn:'keys'},{name:'Jacob',pawn:'badge'}],game=newGame(roster);
+ game.players[0].cash=1440;game.players[0].position=3;game.properties[3].owner=0;game.turn=1;
+ const raw=JSON.stringify(game);
+ await page.evaluate(({roster,raw,gameKey,storageKey})=>{localStorage.setItem(storageKey,JSON.stringify(roster));localStorage.setItem(gameKey,raw);localStorage.setItem('kennebc-sound-v1','off');},{roster,raw,gameKey,storageKey});
+ await page.reload();
+ assert.match(await page.locator('#savedGameSummary').innerText(),/2 players · Jacob’s turn/);
+ assert.equal(await page.evaluate(key=>localStorage.getItem(key),gameKey),raw);
+ await page.getByRole('link',{name:'Continue game'}).click();
+ await page.locator('.player-token').last().waitFor();
+ assert.equal(await page.locator('.player-token').count(),2);
+ assert.match(await page.locator('#playerRoster').innerText(),/Joe · \$1,440/);
+ assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).properties[3].owner,gameKey),0);
+ await page.getByRole('link',{name:'All games',exact:true}).click();
+ for(const viewport of [{width:390,height:844},{width:820,height:1180}]) {
+  await page.setViewportSize(viewport);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const size=await page.evaluate(()=>({width:innerWidth,content:document.documentElement.scrollWidth}));
+  assert(size.content<=size.width,`Homepage overflows at ${viewport.width}px: ${JSON.stringify(size)}`);
+  await page.screenshot({path:'.runtime/home-'+viewport.width+'.png',fullPage:true});
+ }
+ await page.evaluate(key=>{const game=JSON.parse(localStorage.getItem(key));game.phase='over';game.winner=0;localStorage.setItem(key,JSON.stringify(game));},gameKey);
+ await page.reload();assert(await page.getByRole('link',{name:'View last game'}).isVisible());
+ await page.evaluate(key=>localStorage.setItem(key,'broken save'),gameKey);
+ await page.reload();assert.equal(await page.locator('#savedGame').isVisible(),false);assert(await page.getByRole('link',{name:'Play Monoply'}).isVisible());
+ await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,players:[],properties:Array(40),turn:0})),gameKey);
+ await page.reload();assert.equal(await page.locator('#savedGame').isVisible(),false);
+ assert.deepEqual(errors,[]);
+ console.log('Homepage passed: game selection, setup and board navigation, saved-game continuation without data loss, finished/corrupt saves, and phone/tablet layouts.');
+} finally {await browser.close();}

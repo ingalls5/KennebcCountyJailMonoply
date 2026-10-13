@@ -1,1 +1,47 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Player setup · Kennebc County Jail Monoply</title><link rel="stylesheet" href="style.css"><script type="module" src="setup.js"></script></head><body><header><a href="/" class="brand"><span class="brand-icon">K</span><span>Kennebc County Jail<span class="brand-small">MONOPLY · PLAYER SETUP</span></span></a><a href="board.html" class="text-button">Preview the board</a></header><main class="setup-main"><p class="eyebrow">Choose your crew</p><h1>Welcome to game night.</h1><p>Add up to six players. Give everyone a name and their own pawn.</p><form id="playerForm"><div id="playerRows"></div><div class="setup-actions"><button id="addPlayer" class="secondary-button" type="button">+ Add player</button><button class="primary" type="submit">Enter the board →</button></div><p id="setupStatus" role="status" aria-live="polite"></p></form><p class="setup-note">Each player starts with $1,500. Your game is saved on this device. Everyone takes turns on the same board.</p></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Pick a board game, gather your players, and make it a game night.">
+  <title>Game Night · Pick a game</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="home.css">
+  <script type="module" src="home.js"></script>
+</head>
+<body class="home-page">
+  <header>
+    <a href="/" class="brand" aria-label="Game Night home"><span class="brand-icon" aria-hidden="true">⚄</span><span>Game Night<span class="brand-small">PICK A GAME. PULL UP A CHAIR.</span></span></a>
+    <span class="edition">Your game shelf</span>
+  </header>
+  <main class="home-main">
+    <section class="home-intro" aria-labelledby="home-title">
+      <div><p class="eyebrow">Good company. A little competition.</p><h1 id="home-title">What are we<br>playing tonight?</h1><p>Choose your board, gather your crew, and let the good times roll.</p></div>
+      <div class="home-dice" aria-hidden="true"><span>⚄</span><span>⚂</span></div>
+    </section>
+    <section class="game-shelf" aria-label="Choose a game">
+      <article class="shelf-game current-game" aria-labelledby="monoply-title">
+        <div class="game-cover">
+          <span class="cover-label">THE COUNTY EDITION</span>
+          <img class="cover-badge" src="board-art/corrections-badge.png" alt="Kennebec County Corrections Officer badge">
+          <span class="cover-sign" aria-hidden="true">MONOPLY</span>
+          <div class="cover-pawns" aria-hidden="true"><img src="pawns/keys.svg" alt=""><img src="pawns/badge.svg" alt=""><img src="pawns/energy-drink.svg" alt=""></div>
+        </div>
+        <div class="game-copy">
+          <div class="game-tags"><span class="available-tag">Ready to play</span><span>2–6 players · Same device</span></div>
+          <h2 id="monoply-title">Kennebc County Jail<br>Monoply</h2>
+          <p>Buy your favorite spots, collect rent, and build your way to the top. One board. Plenty of friendly competition.</p>
+          <a class="primary game-play" href="/setup">Play Monoply <span aria-hidden="true">→</span></a>
+          <div id="savedGame" class="saved-game" hidden><a id="continueGame" href="/board">Continue game <span aria-hidden="true">→</span></a><p id="savedGameSummary"></p></div>
+        </div>
+      </article>
+      <article class="shelf-game next-game" aria-labelledby="next-title">
+        <div class="next-cover" aria-hidden="true"><div class="next-board"><span>?</span></div><span class="next-piece"></span><span class="next-spark">✦</span></div>
+        <div class="game-copy"><div class="game-tags"><span class="coming-tag">Coming soon</span></div><h2 id="next-title">Clue</h2><p>A suspect. A weapon. A room. Gather the clues, outsmart the other detectives, and solve the mystery.</p><span class="coming-note">Your next game night mystery.</span></div>
+      </article>
+    </section>
+    <p class="home-note">Made for game nights together. Your current game stays saved on this device.</p>
+  </main>
+  <footer><span>Game Night</span><span>Pick a game. Make a memory.</span></footer>
+</body>
+</html>
