@@ -1,3 +1,4 @@
+import {sound} from './sound.js';
 import {pawns} from './players.js';
 import {spaces} from './board.js';
 
@@ -15,7 +16,8 @@ function packet(transfer){
 }
 export async function animateTransfers(transfers,players){
  // Show completed transfers in order, with a single lane for both directions.
- if(!transfers?.length||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+ if(!transfers?.length)return;
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches){transfers.forEach(transfer=>sound.transfer(transfer.kind,400));return;}
  const stage=element('div','transfer-stage');stage.id='transferStage';stage.setAttribute('role','status');stage.setAttribute('aria-live','polite');stage.setAttribute('popover','manual');
  const row=element('div','transfer-row'),lane=element('div','transfer-lane'),direction=element('span','transfer-direction'),description=element('p','transfer-description');lane.append(direction,description);stage.append(row);
  const supportsPopover=typeof stage.showPopover==='function';(supportsPopover?document.body:document.querySelector('dialog[open]')||document.body).append(stage);
@@ -30,13 +32,14 @@ export async function animateTransfers(transfers,players){
    // Measure each step so returning deeds use the same lane, even after resizing.
    const rect=row.getBoundingClientRect(),a=left.getBoundingClientRect(),b=right.getBoundingClientRect(),leftX=a.left+a.width/2-rect.left,rightX=b.left+b.width/2-rect.left,start=forward?leftX:rightX,end=forward?rightX:leftX;
    const token=packet(transfer);token.setAttribute('aria-hidden','true');row.append(token);const y=50-token.offsetHeight/2;
-   await token.animate([
+   const stopSound=sound.transfer(transfer.kind,3200);
+   try{await token.animate([
     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(.5)`,opacity:0,offset:0},
     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(1)`,opacity:1,offset:.12},
     {transform:`translate(${(start+end)/2}px,${y}px) translateX(-50%) scale(1.04)`,opacity:1,offset:.5},
     {transform:`translate(${end}px,${y}px) translateX(-50%) scale(1)`,opacity:1,offset:.88},
     {transform:`translate(${end}px,${y}px) translateX(-50%) scale(.55)`,opacity:0,offset:1}
-   ],{duration:3200,easing:'ease-in-out',fill:'both'}).finished;
+   ],{duration:3200,easing:'ease-in-out',fill:'both'}).finished;}finally{stopSound();}
    token.remove();if(index<transfers.length-1)await new Promise(resolve=>setTimeout(resolve,400));
   }
   await stage.animate([{opacity:1},{opacity:0}],{duration:400,delay:400,fill:'forwards'}).finished;

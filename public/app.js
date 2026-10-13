@@ -1,3 +1,4 @@
+import {sound} from './sound.js';
 import {animateTransfers} from './transfers.js';
 import {BoardCamera} from './camera.js';
 import {cardFace} from './card-art.js';
@@ -5,6 +6,7 @@ import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
+sound.bind([document.getElementById('soundToggle'),document.getElementById('turnSoundToggle')]);
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=loadPlayers();let game=rosterChoice.length?loadGame(rosterChoice):null,players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
 
 const camera=new BoardCamera(board,document.querySelector('.board-viewport'));
@@ -21,7 +23,7 @@ let moving=false;const pieces=(players.length?players:[{name:'Preview',pawn:'key
 function roster(){const container=document.getElementById('playerRoster');container.replaceChildren();players.forEach((player,index)=>{const label=document.createElement('span');label.dataset.player=index;label.className='roster-player'+(index===turn?' active':'');const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt=pawns.find(p=>p.id===player.pawn).name;label.append(image,document.createTextNode(player.name+' · $'+player.cash.toLocaleString()+(player.bankrupt?' · Out':player.inJail?' · Two Bridges':'')));container.append(label);});document.getElementById('turnTitle').textContent=players.length?players[turn].name+'’s turn':'Your move.';}
 function locate(piece,space,index){const tile=board.querySelector(`[data-index="${space}"]`),size=board.clientWidth*.028;piece.style.left=((tile.offsetLeft+tile.offsetWidth*(.2+(index%3)*.3)-size/2)/board.clientWidth*100)+'%';piece.style.top=((tile.offsetTop+tile.offsetHeight*(.58+Math.floor(index/3)*.26)-size/2)/board.clientHeight*100)+'%';piece.dataset.space=space;}
 function place(){pieces.forEach((piece,index)=>{piece.hidden=!!players[index]?.bankrupt;locate(piece,players.length?players[index].position:token,index);});}
-async function glide(piece,space,index){const before={x:piece.offsetLeft,y:piece.offsetTop};locate(piece,space,index);const after={x:piece.offsetLeft,y:piece.offsetTop};if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const dx=before.x-after.x,dy=before.y-after.y,lift=Math.max(7,Math.min(20,board.clientWidth*.018));await piece.animate([
+async function glide(piece,space,index){const before={x:piece.offsetLeft,y:piece.offsetTop};locate(piece,space,index);const after={x:piece.offsetLeft,y:piece.offsetTop};const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;sound.pawn(reduced?120:STEP_MS);if(reduced)return;const dx=before.x-after.x,dy=before.y-after.y,lift=Math.max(7,Math.min(20,board.clientWidth*.018));await piece.animate([
  {transform:`translate(${dx}px,${dy}px) scale(1)`,offset:0},
  {transform:`translate(${dx*.5}px,${dy*.5-lift}px) scale(1.06)`,offset:.45},
  {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
@@ -40,7 +42,8 @@ async function rollAcrossBoard(values){
  board.querySelectorAll('.board-die').forEach(die=>die.remove());
  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  const dice=values.map((value,index)=>{const die=document.createElement('span');die.className='board-die';die.setAttribute('role','img');die.dataset.value=value;die.setAttribute('aria-label','Die showing '+value);die.style.left=(48+index*10+(Math.random()-.5)*4)+'%';die.style.top=(43+index*8+(Math.random()-.5)*4)+'%';const shadow=document.createElement('span');shadow.className='dice-shadow';die.append(shadow,makeCube(value));board.append(die);return die;});
- if(reduced)return;
+ if(reduced){sound.dice(350);return;}
+ const stopDice=sound.dice(STEP_MS*2*6);
  const animations=dice.map(async(die,index)=>{
   const random=(min,max)=>min+Math.random()*(max-min),direction=()=>Math.random()<.5?-1:1;
   const hops=6,diceBeat=STEP_MS*2,duration=diceBeat*hops,lift=Math.max(20,board.clientWidth*random(.04,.065)),frames=[];
@@ -58,7 +61,7 @@ async function rollAcrossBoard(values){
   const shadow=die.querySelector('.dice-shadow').animate([{transform:'scale(1)',opacity:.35},{transform:`scale(${random(.4,.65)})`,opacity:.1},{transform:'scale(1)',opacity:.35}],{duration:diceBeat,iterations:hops,easing:'ease-in-out'});
   await Promise.all([travel.finished,tumble.finished,shadow.finished]);
  });
- camera.follow(dice,'dice');await Promise.all(animations);
+ camera.follow(dice,'dice');try{await Promise.all(animations);}finally{stopDice();}
 }
 document.getElementById('roll').onclick=async()=>{
  if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('zoom').disabled=true;

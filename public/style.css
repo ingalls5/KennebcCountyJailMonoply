@@ -38,3 +38,5 @@ header,main,footer{max-width:1680px}main{padding-left:32px;padding-right:32px}.g
 @media(max-width:520px){.transfer-stage{padding:12px;bottom:12px}.transfer-row{grid-template-columns:65px minmax(0,1fr) 65px;gap:8px}.transfer-person{font-size:11px}.transfer-person img,.transfer-bank{width:40px;height:40px}.transfer-bank{font-size:30px;line-height:40px}}
 @media(prefers-reduced-motion:reduce){#turnDialog[open]{animation:none}}
 .transfer-description{position:absolute;bottom:6px;left:112px;right:112px;margin:0}@media(max-width:520px){.transfer-description,.transfer-row:before{left:73px;right:73px}}
+
+#turnDialog .dialog-sound{position:absolute;top:18px;right:60px;padding:0;font-size:12px}
