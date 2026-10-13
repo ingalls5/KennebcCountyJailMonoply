@@ -12,7 +12,12 @@ let moving=false;const pieces=(players.length?players:[{name:'Preview',pawn:'key
 function roster(){const container=document.getElementById('playerRoster');container.replaceChildren();players.forEach((player,index)=>{const label=document.createElement('span');label.className='roster-player'+(index===turn?' active':'');const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt=pawns.find(p=>p.id===player.pawn).name;label.append(image,document.createTextNode(player.name));container.append(label);});document.getElementById('turnTitle').textContent=players.length?players[turn].name+'’s turn':'Your move.';}
 function locate(piece,space,index){const tile=board.querySelector(`[data-index="${space}"]`),size=board.clientWidth*.028;piece.style.left=((tile.offsetLeft+tile.offsetWidth*(.2+(index%3)*.3)-size/2)/board.clientWidth*100)+'%';piece.style.top=((tile.offsetTop+tile.offsetHeight*(.58+Math.floor(index/3)*.26)-size/2)/board.clientHeight*100)+'%';piece.dataset.space=space;}
 function place(){pieces.forEach((piece,index)=>locate(piece,players.length?players[index].position:token,index));}
-async function glide(piece,space,index){const before=piece.getBoundingClientRect();locate(piece,space,index);const after=piece.getBoundingClientRect();if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;await piece.animate([{transform:`translate(${before.x-after.x}px,${before.y-after.y}px)`},{transform:'translate(0,0)'}],{duration:190,easing:'linear'}).finished;}
+async function glide(piece,space,index){const before=piece.getBoundingClientRect();locate(piece,space,index);const after=piece.getBoundingClientRect();if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const dx=before.x-after.x,dy=before.y-after.y,lift=Math.max(7,Math.min(20,board.clientWidth*.018));await piece.animate([
+ {transform:`translate(${dx}px,${dy}px) scale(1)`,offset:0},
+ {transform:`translate(${dx*.5}px,${dy*.5-lift}px) scale(1.06)`,offset:.45},
+ {transform:'translate(0,0) scale(1.1,.9)',offset:.82},
+ {transform:'translate(0,0) scale(1)',offset:1}
+ ],{duration:280,easing:'linear'}).finished;}
 new ResizeObserver(()=>{if(!moving)place();}).observe(board);
 place();roster();select(0);
 document.getElementById('roll').onclick=async()=>{
