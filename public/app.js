@@ -1,3 +1,4 @@
+import {cardFace} from './card-art.js';
 import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
@@ -112,7 +113,8 @@ function updateTurnSummary(){
  const title=document.getElementById('turnDialogTitle'),summary=document.getElementById('turnSummary');summary.replaceChildren();const phase=game.phase;
  title.textContent=phase==='purchase'?'Buy '+spaces[game.offer].name+'?':phase==='auction'?'Auction: '+spaces[game.auction.index].name:phase==='debt'?game.players[game.debts[0].payer].name+' owes $'+game.debts[0].amount:phase==='over'?game.players[game.winner].name+' wins!':game.extraRoll?'Doubles!':phase==='roll'?'Ready to roll':game.events?.some(event=>event.includes('Rent for'))?'Rent paid':'Finish your turn';
  paragraph(summary,game.players[game.turn].name+' · Cash: $'+game.players[game.turn].cash.toLocaleString());
- const events=game.events?.length?game.events:[game.log[0]];events.forEach(event=>paragraph(summary,event));
+ const drawn=game.drawnCards||[];drawn.forEach(({deck,id})=>{const face=cardFace((deck==='chance'?1:17)+id);if(face)summary.append(face);});
+ const events=game.events?.length?game.events:[game.log[0]];events.filter(event=>!drawn.length||!event.startsWith('Chance: ')&&!event.startsWith('Supervisors Office: ')).forEach(event=>paragraph(summary,event));
  if(phase==='action')paragraph(summary,'Ready to end your turn? You can also view the board to manage your properties first.');
 }
 function openTurnDialog(force=false){if(!game||moving)return;document.getElementById('showTurnOptions').hidden=false;if(force||game.phase!=='roll'||game.extraRoll||game.players[game.turn].inJail){if(!turnDialog.open)turnDialog.showModal();const focusTarget=game.phase==='auction'?document.getElementById('auctionBid'):document.querySelector('#turnActions button:not(:disabled)');focusTarget?.focus();}}
