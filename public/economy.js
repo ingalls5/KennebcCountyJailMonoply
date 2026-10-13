@@ -17,7 +17,7 @@ const chance=[
  {text:'Advance to the nearest officer. If owned, pay double the usual railroad rent.',nearest:'railroad',modifier:'double-railroad'},
  {text:'Bank pays you a dividend of $50.',cash:50},{text:'Get out of Two Bridges free.',free:true},
  {text:'Go back three spaces.',back:3},{text:'Go directly to Two Bridges.',jail:true},
- {text:'General repairs: pay $25 per house and $100 per hotel.',repairs:[25,100]},
+ {text:'General repairs: pay $25 per Camera and $100 per Special Checks.',repairs:[25,100]},
  {text:'Pay a $15 fine.',cash:-15},{text:'Take a trip to Sgt. Christanson.',to:5},{text:'Advance to A-Unit.',to:39},
  {text:'Pay each other player $50.',each:-50},{text:'Your building loan matures. Collect $150.',cash:150}
 ];
@@ -26,7 +26,7 @@ const chest=[
  {text:'From sale of stock, collect $50.',cash:50},{text:'Get out of Two Bridges free.',free:true},{text:'Go directly to Two Bridges.',jail:true},
  {text:'Holiday fund matures. Collect $100.',cash:100},{text:'Income tax refund. Collect $20.',cash:20},{text:'It is your birthday. Collect $10 from each other player.',each:10},
  {text:'Life insurance matures. Collect $100.',cash:100},{text:'Pay hospital fees of $100.',cash:-100},{text:'Pay school fees of $50.',cash:-50},
- {text:'Receive a consultancy fee of $25.',cash:25},{text:'Street repairs: pay $40 per house and $115 per hotel.',repairs:[40,115]},
+ {text:'Receive a consultancy fee of $25.',cash:25},{text:'Street repairs: pay $40 per Camera and $115 per Special Checks.',repairs:[40,115]},
  {text:'You won second prize in a beauty contest. Collect $10.',cash:10},{text:'You inherit $100.',cash:100}
 ];
 export function newGame(roster){return {version:1,players:roster.map(p=>({...p,position:0,cash:1500,bankrupt:false,inJail:false,jailTurns:0,freeCards:[]})),turn:0,phase:'roll',extraRoll:false,doubles:0,properties:spaces.map((s,i)=>deed(i)?{owner:null,buildings:0,mortgaged:false}:null),bank:{houses:32,hotels:12},debts:[],offer:null,auction:null,cards:{chance:shuffle(chance.map((_,i)=>i)),chest:shuffle(chest.map((_,i)=>i))},log:['Each player starts with $1,500. Passing Briefing pays $200.'],route:[],lastDice:[],winner:null,liquidations:[],resumeJail:null};}
@@ -81,19 +81,19 @@ export function perform(original,action){const g=structuredClone(original);g.rou
  }else if(['build','sell','sell-group','mortgage','redeem'].includes(action.type)){
   requireRule(g.phase!=='auction','Finish the auction first.');const index=Number(action.index),property=owned(g,index,owner),d=deed(index),group=groupIndices(index),who=g.players[owner];
   if(action.type==='build'){
-   requireRule(g.phase!=='debt','Resolve the debt before building.');requireRule(ownsGroup(g,index,owner)&&group.every(i=>!g.properties[i].mortgaged),'Own the whole color group with no mortgages before building.');requireRule(property.buildings<5&&property.buildings===Math.min(...group.map(i=>g.properties[i].buildings)),'Build evenly across the color group.');requireRule(who.cash>=d.buildCost,'Not enough cash to build.');
-   if(property.buildings===4){requireRule(g.bank.hotels>0,'The bank has no hotels left.');g.bank.hotels--;g.bank.houses+=4;}else{requireRule(g.bank.houses>0,'The bank has no houses left.');g.bank.houses--;}property.buildings++;who.cash-=d.buildCost;note(g,`${who.name} built on ${spaces[index].name} for $${d.buildCost}.`);
+   requireRule(g.phase!=='debt','Resolve the debt before adding upgrades.');requireRule(ownsGroup(g,index,owner)&&group.every(i=>!g.properties[i].mortgaged),'Own the whole color group with no mortgages before adding upgrades.');requireRule(property.buildings<5&&property.buildings===Math.min(...group.map(i=>g.properties[i].buildings)),'Install upgrades evenly across the color group.');requireRule(who.cash>=d.buildCost,'Not enough cash to build.');
+   if(property.buildings===4){requireRule(g.bank.hotels>0,'The bank has no Special Checks tokens left.');g.bank.hotels--;g.bank.houses+=4;}else{requireRule(g.bank.houses>0,'The bank has no Camera tokens left.');g.bank.houses--;}property.buildings++;who.cash-=d.buildCost;note(g,`${who.name} added ${property.buildings===5?'Special Checks':'a Camera'} on ${spaces[index].name} for $${d.buildCost}.`);
   }else if(action.type==='sell'){
-   requireRule(property.buildings>0&&property.buildings===Math.max(...group.map(i=>g.properties[i].buildings)),'Sell buildings evenly across the color group.');if(property.buildings===5){requireRule(g.bank.houses>=4,'The bank needs four houses to replace the hotel.');g.bank.hotels++;g.bank.houses-=4;}else g.bank.houses++;property.buildings--;who.cash+=d.buildCost/2;note(g,`${who.name} sold a building on ${spaces[index].name} for $${d.buildCost/2}.`);
+   requireRule(property.buildings>0&&property.buildings===Math.max(...group.map(i=>g.properties[i].buildings)),'Remove upgrades evenly across the color group.');if(property.buildings===5){requireRule(g.bank.houses>=4,'The bank needs four Cameras to replace Special Checks.');g.bank.hotels++;g.bank.houses-=4;}else g.bank.houses++;property.buildings--;who.cash+=d.buildCost/2;note(g,`${who.name} removed ${property.buildings===4?'Special Checks':'a Camera'} on ${spaces[index].name} for $${d.buildCost/2}.`);
   }else if(action.type==='sell-group'){
-   requireRule(group.some(i=>g.properties[i].buildings>0),'This group has no buildings to sell.');let refund=0;for(const i of group){const item=g.properties[i];requireRule(item.owner===owner,'You must own the whole group.');refund+=item.buildings*deed(i).buildCost/2;if(item.buildings===5)g.bank.hotels++;else g.bank.houses+=item.buildings;item.buildings=0;}who.cash+=refund;note(g,`${who.name} sold all buildings in the group for $${refund}.`);
+   requireRule(group.some(i=>g.properties[i].buildings>0),'This group has no upgrades to sell.');let refund=0;for(const i of group){const item=g.properties[i];requireRule(item.owner===owner,'You must own the whole group.');refund+=item.buildings*deed(i).buildCost/2;if(item.buildings===5)g.bank.hotels++;else g.bank.houses+=item.buildings;item.buildings=0;}who.cash+=refund;note(g,`${who.name} sold all upgrades in the group for $${refund}.`);
   }else if(action.type==='mortgage'){
-   requireRule(!property.mortgaged&&group.every(i=>g.properties[i].buildings===0),'Sell all buildings in this color group before mortgaging.');property.mortgaged=true;who.cash+=d.mortgage;note(g,`${who.name} mortgaged ${spaces[index].name} for $${d.mortgage}.`);
+   requireRule(!property.mortgaged&&group.every(i=>g.properties[i].buildings===0),'Sell all upgrades in this color group before mortgaging.');property.mortgaged=true;who.cash+=d.mortgage;note(g,`${who.name} mortgaged ${spaces[index].name} for $${d.mortgage}.`);
   }else{requireRule(g.phase!=='debt','Resolve the debt before lifting a mortgage.');const cost=Math.ceil(d.mortgage*1.1);requireRule(property.mortgaged&&who.cash>=cost,'You need the mortgage amount plus 10% interest.');property.mortgaged=false;who.cash-=cost;note(g,`${who.name} lifted the mortgage on ${spaces[index].name} for $${cost}.`);}settle(g);
  }else if(action.type==='trade'){
   requireRule(g.phase!=='auction','Finish the auction before trading.');const index=Number(action.index),property=owned(g,index,owner),buyer=Number(action.player),cash=Number(action.cash),other=action.exchange===null||action.exchange===''?null:Number(action.exchange);
-  requireRule(Number.isInteger(buyer)&&buyer!==owner&&g.players[buyer]&&!g.players[buyer].bankrupt,'Choose another active player.');requireRule(Number.isInteger(cash)&&cash>=0,'Enter a whole dollar amount for the trade.');requireRule(groupIndices(index).every(i=>g.properties[i].buildings===0),'Sell every building in this group before trading.');
-  if(other!==null){owned(g,other,buyer);requireRule(groupIndices(other).every(i=>g.properties[i].buildings===0),'The other property’s group must have no buildings.');}
+  requireRule(Number.isInteger(buyer)&&buyer!==owner&&g.players[buyer]&&!g.players[buyer].bankrupt,'Choose another active player.');requireRule(Number.isInteger(cash)&&cash>=0,'Enter a whole dollar amount for the trade.');requireRule(groupIndices(index).every(i=>g.properties[i].buildings===0),'Sell every upgrade in this group before trading.');
+  if(other!==null){owned(g,other,buyer);requireRule(groupIndices(other).every(i=>g.properties[i].buildings===0),'The other property’s group must have no upgrades.');}
   const buyerInterest=property.mortgaged?Math.ceil(deed(index).mortgage*.1):0,sellerInterest=other!==null&&g.properties[other].mortgaged?Math.ceil(deed(other).mortgage*.1):0;
   requireRule(g.players[buyer].cash>=cash+buyerInterest&&g.players[owner].cash+cash>=sellerInterest,'Both players need enough cash for the trade and mortgage interest.');
   g.players[buyer].cash-=cash+buyerInterest;g.players[owner].cash+=cash-sellerInterest;property.owner=buyer;if(other!==null)g.properties[other].owner=owner;
@@ -103,7 +103,7 @@ export function perform(original,action){const g=structuredClone(original);g.rou
  }else if(action.type==='end'){
   requireRule(g.phase==='action','Finish the landing or roll your doubles before ending the turn.');nextTurn(g);
  }else if(action.type==='bankrupt'){
-  requireRule(g.phase==='debt','Bankruptcy is only available for an unpaid debt.');const d=g.debts[0],loser=g.players[d.payer];requireRule(assetsValue(g,d.payer)<d.amount,'You can raise enough money by selling buildings or mortgaging property.');
+  requireRule(g.phase==='debt','Bankruptcy is only available for an unpaid debt.');const d=g.debts[0],loser=g.players[d.payer];requireRule(assetsValue(g,d.payer)<d.amount,'You can raise enough money by selling upgrades or mortgaging property.');
   g.properties.forEach((property,index)=>{if(property?.owner!==d.payer)return;if(property.buildings===5)g.bank.hotels++;else g.bank.houses+=property.buildings;loser.cash+=property.buildings*(deed(index).buildCost||0)/2;property.buildings=0;property.owner=d.payee;if(d.payee===null){property.mortgaged=false;g.liquidations.push(index);}else if(property.mortgaged)pay(g,d.payee,null,Math.ceil(deed(index).mortgage*.1),'Interest on inherited mortgage');});
   if(d.payee!==null)g.players[d.payee].cash+=loser.cash;loser.cash=0;loser.bankrupt=true;if(d.payer===g.turn)g.resumeJail=null;if(d.payee!==null)g.players[d.payee].freeCards.push(...loser.freeCards);else loser.freeCards.forEach(card=>g.cards[card.deck].push(card.id));loser.freeCards=[];note(g,`${loser.name} is bankrupt.`);g.debts=g.debts.filter(debt=>debt.payer!==d.payer);if(d.payer===g.turn)g.extraRoll=false;settle(g);
  }else throw Error('Unknown game action.');
