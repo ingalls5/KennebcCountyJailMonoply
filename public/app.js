@@ -35,7 +35,7 @@ async function rollAcrossBoard(values){
  const viewport=document.querySelector('.board-viewport');if(viewport.scrollWidth>viewport.clientWidth)viewport.scrollTo({left:Math.max(0,(viewport.scrollWidth-viewport.clientWidth)/2)});
  await Promise.all(dice.map(async(die,index)=>{
   const random=(min,max)=>min+Math.random()*(max-min),direction=()=>Math.random()<.5?-1:1;
-  const hops=6,duration=STEP_MS*hops,lift=Math.max(20,board.clientWidth*random(.04,.065)),frames=[];
+  const hops=6,diceBeat=STEP_MS*2,duration=diceBeat*hops,lift=Math.max(20,board.clientWidth*random(.04,.065)),frames=[];
   const spinX=direction()*360*(4+Math.floor(Math.random()*4)),spinY=direction()*360*(3+Math.floor(Math.random()*4)),spinZ=direction()*random(360,720);
   const tiltX=random(-28,-14),tiltY=random(16,32),tiltZ=random(-12,12),cube=die.querySelector('.dice-cube');
   cube.style.transform=`rotateX(${tiltX}deg) rotateY(${tiltY}deg) rotateZ(${tiltZ}deg)`;
@@ -47,7 +47,7 @@ async function rollAcrossBoard(values){
   path.push({transform:'translate(0,0)',offset:1});
   const travel=die.animate(path,{duration,easing:'linear'});
   const tumble=cube.animate(frames,{duration,easing:'linear'});
-  const shadow=die.querySelector('.dice-shadow').animate([{transform:'scale(1)',opacity:.35},{transform:`scale(${random(.4,.65)})`,opacity:.1},{transform:'scale(1)',opacity:.35}],{duration:STEP_MS,iterations:hops,easing:'ease-in-out'});
+  const shadow=die.querySelector('.dice-shadow').animate([{transform:'scale(1)',opacity:.35},{transform:`scale(${random(.4,.65)})`,opacity:.1},{transform:'scale(1)',opacity:.35}],{duration:diceBeat,iterations:hops,easing:'ease-in-out'});
   await Promise.all([travel.finished,tumble.finished,shadow.finished]);
  }));
 }
