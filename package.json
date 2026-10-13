@@ -13,7 +13,8 @@
     "test:camera-browser": "node tests/camera-browser.mjs",
     "test:transfers-browser": "node tests/transfers-browser.mjs",
     "test:sound-browser": "node tests/sound-browser.mjs",
-    "test:cards-browser": "node tests/cards-browser.mjs"
+    "test:cards-browser": "node tests/cards-browser.mjs",
+    "test:game-browser": "node tests/four-player-game.mjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",

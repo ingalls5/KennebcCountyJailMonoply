@@ -112,7 +112,7 @@ async function execute(action){
   game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();
   if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog(false,true);}
   else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog(false,true);
-  document.getElementById('moveStatus').textContent=action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];
+  document.getElementById('moveStatus').textContent=game.phase==='over'?players[game.winner].name+' wins!':action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];
   await Promise.all([next.route.length?camera.finish():Promise.resolve(),animateTransfers(next.transfers,players)]);
  }catch(error){camera.stop();document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;}
  finally{moving=false;document.getElementById('zoom').disabled=false;document.getElementById('reset').disabled=false;select(selected);renderEconomy();}
