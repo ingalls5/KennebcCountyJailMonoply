@@ -10,7 +10,8 @@
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
     "test:economy-browser": "node tests/economy-browser.mjs",
-    "test:camera-browser": "node tests/camera-browser.mjs"
+    "test:camera-browser": "node tests/camera-browser.mjs",
+    "test:transfers-browser": "node tests/transfers-browser.mjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",
