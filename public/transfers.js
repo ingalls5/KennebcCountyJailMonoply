@@ -14,35 +14,31 @@ function packet(transfer){
  node.append(element('i','deed-strip'),element('small','','PROPERTY'),element('strong','',space.name));return node;
 }
 export async function animateTransfers(transfers,players){
- // Transfers come from completed payments, never unpaid debts or net balance guesses.
+ // Show completed transfers in order, with a single lane for both directions.
  if(!transfers?.length||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
- const groups=new Map();for(const transfer of transfers){const key=transfer.from+':'+transfer.to;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(transfer);}
  const stage=element('div','transfer-stage');stage.id='transferStage';stage.setAttribute('role','status');stage.setAttribute('aria-live','polite');stage.setAttribute('popover','manual');
- const rows=[];
- for(const items of groups.values()){
-  const mixed=items.some(t=>t.kind==='money')&&items.some(t=>t.kind==='property');
-  const {from,to}=items[0],row=element('div','transfer-row'+(mixed?' mixed-transfer':'')),sender=participant(from,players),receiver=participant(to,players),lane=element('div','transfer-lane');
-  const label=items.map(t=>t.kind==='money'?'$'+t.amount.toLocaleString():spaces[t.index].name).join(' + ');
-  lane.append(element('span','transfer-direction','→'),element('p','transfer-description',label));row.append(sender,lane,receiver);stage.append(row);rows.push({row,sender,receiver,items});
- }
+ const row=element('div','transfer-row'),lane=element('div','transfer-lane'),direction=element('span','transfer-direction'),description=element('p','transfer-description');lane.append(direction,description);stage.append(row);
  const supportsPopover=typeof stage.showPopover==='function';(supportsPopover?document.body:document.querySelector('dialog[open]')||document.body).append(stage);
  try{
-  if(supportsPopover)stage.showPopover();
-  const animations=[];
-  for(const {row,sender,receiver,items} of rows){
-   const rect=row.getBoundingClientRect(),a=sender.getBoundingClientRect(),b=receiver.getBoundingClientRect(),start=a.left+a.width/2-rect.left,end=b.left+b.width/2-rect.left;
-   // A deed exchange can send cards both ways; each row keeps its own direction.
-   const visible=items.slice(0,4);visible.forEach((transfer,index)=>{
-    const token=packet(transfer);token.setAttribute('aria-hidden','true');row.append(token);const mixed=row.classList.contains('mixed-transfer'),y=transfer.kind==='property'?(mixed?65:12):(mixed?10:30);
-    animations.push(token.animate([
-     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(.5) rotate(-10deg)`,opacity:0,offset:0},
-     {transform:`translate(${start}px,${y}px) translateX(-50%) scale(1) rotate(-6deg)`,opacity:1,offset:.12},
-     {transform:`translate(${(start+end)/2}px,${y-18-index*5}px) translateX(-50%) scale(1.08) rotate(6deg)`,opacity:1,offset:.5},
-     {transform:`translate(${end}px,${y}px) translateX(-50%) scale(1) rotate(0deg)`,opacity:1,offset:.88},
-     {transform:`translate(${end}px,${y}px) translateX(-50%) scale(.55) rotate(0deg)`,opacity:0,offset:1}
-    ],{duration:1800,delay:index*140,easing:'ease-in-out',fill:'both'}).finished);
-   });
+  let leftIndex,rightIndex,left,right;
+  for(const [index,transfer] of transfers.entries()){
+   const samePair=left&&(transfer.from===leftIndex&&transfer.to===rightIndex||transfer.from===rightIndex&&transfer.to===leftIndex);
+   if(!samePair){leftIndex=transfer.from;rightIndex=transfer.to;left=participant(leftIndex,players);right=participant(rightIndex,players);row.replaceChildren(left,lane,right);}
+   if(supportsPopover&&!stage.matches(':popover-open'))stage.showPopover();
+   const forward=transfer.from===leftIndex;direction.textContent=forward?'→':'←';description.textContent=transfer.kind==='money'?'Payment · $'+transfer.amount.toLocaleString():'Deed · '+spaces[transfer.index].name;
+   stage.dataset.step=index;row.dataset.from=transfer.from===null?'bank':transfer.from;row.dataset.to=transfer.to===null?'bank':transfer.to;row.dataset.kind=transfer.kind;
+   // Measure each step so returning deeds use the same lane, even after resizing.
+   const rect=row.getBoundingClientRect(),a=left.getBoundingClientRect(),b=right.getBoundingClientRect(),leftX=a.left+a.width/2-rect.left,rightX=b.left+b.width/2-rect.left,start=forward?leftX:rightX,end=forward?rightX:leftX;
+   const token=packet(transfer);token.setAttribute('aria-hidden','true');row.append(token);const y=50-token.offsetHeight/2;
+   await token.animate([
+    {transform:`translate(${start}px,${y}px) translateX(-50%) scale(.5)`,opacity:0,offset:0},
+    {transform:`translate(${start}px,${y}px) translateX(-50%) scale(1)`,opacity:1,offset:.12},
+    {transform:`translate(${(start+end)/2}px,${y}px) translateX(-50%) scale(1.04)`,opacity:1,offset:.5},
+    {transform:`translate(${end}px,${y}px) translateX(-50%) scale(1)`,opacity:1,offset:.88},
+    {transform:`translate(${end}px,${y}px) translateX(-50%) scale(.55)`,opacity:0,offset:1}
+   ],{duration:3200,easing:'ease-in-out',fill:'both'}).finished;
+   token.remove();if(index<transfers.length-1)await new Promise(resolve=>setTimeout(resolve,400));
   }
-  await Promise.all(animations);await stage.animate([{opacity:1},{opacity:0}],{duration:300,delay:250,fill:'forwards'}).finished;
+  await stage.animate([{opacity:1},{opacity:0}],{duration:400,delay:400,fill:'forwards'}).finished;
  }finally{if(supportsPopover&&stage.matches(':popover-open'))stage.hidePopover();stage.remove();}
 }
