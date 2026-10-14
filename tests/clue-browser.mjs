@@ -31,7 +31,7 @@ try {
  async function privacy(){assert.equal(await page.locator('#privateDialogBody [data-card]').count(),0);assert.equal(await page.locator('#clueActions [data-card],#clueActions [data-show-card]').count(),0);assert.equal(await page.locator('#privateTools').isVisible(),false);}
  async function ready(){if(await page.locator('#clueHandoff').evaluate(d=>d.open)){await privacy();await page.keyboard.press('Escape');assert(await page.locator('#clueHandoff').evaluate(d=>d.open));await page.locator('#readyDetective').click();stats.handoffs++;}}
  async function hand(index){if(knowledge[index].loaded)return;await page.locator('#viewHand').click();const ids=await page.locator('#privateDialogBody [data-card]').evaluateAll(es=>es.map(e=>e.dataset.card));for(const id of ids){knowledge[index].seen.add(id);knowledge[index].own.add(id);}knowledge[index].loaded=true;await page.locator('#closeCluePrivate').click();assert.equal(await page.locator('#privateDialogBody [data-card]').count(),0);}
- async function choice(type,ids){await page.getByRole('button',{name:type==='suggest'?'Make a suggestion':'Make an accusation',exact:true}).click();for(const [key,value] of Object.entries(ids))await page.locator(`#choiceFields select[name="${key}"]`).selectOption(value);await page.locator('#submitClueChoice').click();}
+ async function choice(type,ids){await page.getByRole('button',{name:type==='suggest'?'Spread a rumor':'Make an accusation',exact:true}).click();for(const [key,value] of Object.entries(ids))await page.locator(`#choiceFields select[name="${key}"]`).selectOption(value);await page.locator('#submitClueChoice').click();}
  async function nextTurn(){await page.getByRole('button',{name:'End turn →',exact:true}).click();stats.turns++;await privacy();}
  async function reloadCovered(){const before=await state();await page.reload();assert.deepEqual(await state(),before);assert(await page.locator('#clueHandoff').evaluate(d=>d.open));await privacy();stats.reloads++;await ready();}
  await privacy();await ready();await hand(0);
@@ -53,7 +53,7 @@ try {
   }else if(['turn','end'].includes(g.phase)){
    const candidates=Object.fromEntries(Object.entries(categories).map(([type,list])=>[type,list.filter(e=>!k.seen.has(type+':'+e.id)).map(e=>e.id)]));
    if(Object.values(candidates).every(list=>list.length===1)){await choice('accuse',Object.fromEntries(Object.entries(candidates).map(([type,list])=>[type,list[0]])));continue;}
-   if(g.phase==='end'&&lastSuggestion?.turn===g.turn&&g.log.at(-1)==='No other player could disprove the suggestion.'&&lastSuggestion.ids.every(id=>!k.own.has(id))){await choice('accuse',Object.fromEntries(lastSuggestion.ids.map(id=>id.split(':'))));continue;}
+   if(g.phase==='end'&&lastSuggestion?.turn===g.turn&&g.log.at(-1)==='No other player could disprove the rumor.'&&lastSuggestion.ids.every(id=>!k.own.has(id))){await choice('accuse',Object.fromEntries(lastSuggestion.ids.map(id=>id.split(':'))));continue;}
    if(canSuggest(g)){
     const room=currentRoom(g),tries=k.tried.get(room)||0;k.tried.set(room,tries+1);const sc=candidates.suspect,ic=candidates.item;const suspect=sc[tries%sc.length],item=ic[Math.floor(tries/sc.length)%ic.length];assert(suspect&&item);lastSuggestion={turn:g.turn,ids:['suspect:'+suspect,'item:'+item,'room:'+room]};await choice('suggest',{suspect,item});stats.suggestions++;
    }else if(g.phase==='end')await nextTurn();
