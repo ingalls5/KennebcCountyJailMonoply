@@ -11,7 +11,7 @@ export default {
      for(let attempt=0;attempt<4;attempt++){const code=roomCode(),stub=env.GAME_ROOMS.get(env.GAME_ROOMS.idFromName(code));const response=await stub.fetch(new Request('https://room/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,code})}));if(response.status!==409)return response;}
      return json({error:'Could not create a room. Please try again.'},503);
     }
-    const match=url.pathname.match(/^\/api\/rooms\/([A-Z2-9]{6})(?:\/(public|join|state|start|restart|leave|remove|action))?$/);
+    const match=url.pathname.match(/^\/api\/rooms\/([A-Z2-9]{6})(?:\/(public|join|state|start|restart|end|leave|remove|action))?$/);
     if(!match)return json({error:'Room not found. Check the six-character code.'},404);
     const stub=env.GAME_ROOMS.get(env.GAME_ROOMS.idFromName(match[1]));const forwarded=new Request('https://room/'+(match[2]||'public'),request);return await stub.fetch(forwarded);
    }catch(error){return json({error:error.message||'Could not reach the room.'},error.status||500);}

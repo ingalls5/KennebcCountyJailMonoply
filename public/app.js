@@ -1,9 +1,10 @@
+import {bindEndGame} from './end-game.js';
 import {OnlineRoom,roomBanner,setupPath,stateActor} from './online.js';
 import {sound} from './sound.js';
 import {animateTransfers} from './transfers.js';
 import {BoardCamera} from './camera.js';
 import {cardFace} from './card-art.js';
-import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
+import {newGame,loadGame,perform,endGame,deed,rent,gameKey} from './economy.js';
 import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
@@ -46,6 +47,24 @@ spaces.forEach((space,index)=>{const p=position(index),button=document.createEle
  for(const [tag,attributes] of parts){const part=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [name,value] of Object.entries(attributes))part.setAttribute(name,value);svg.append(part);}icon.append(svg);
  }else icon.textContent=space.icon;inner.append(icon);}if(space.price){const price=document.createElement('span');price.className='space-price';price.textContent='$'+space.price;inner.append(price);}button.append(inner);button.onclick=()=>select(index);board.append(button);});
 let moving=false;const pieces=(players.length?players:[{name:'Preview',pawn:'keys',position:0}]).map(player=>{const pawn=document.createElement('span');pawn.className='token player-token moving-token';const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt='';pawn.append(image);pawn.setAttribute('aria-label',player.name+'’s pawn');pawn.title=player.name;board.append(pawn);return pawn;});
+const gameResult=()=>game.endedEarly?'Game ended':players[game.winner].name+' wins!';
+const endControl=bindEndGame({
+ online:!!online,
+ available:()=>!!game&&game.phase!=='over'&&(!online||online.snapshot?.host),
+ ready:()=>!moving&&!online?.snapshot?.motion,
+ reportError:message=>{document.getElementById('gameError').textContent=message;document.getElementById('turnError').textContent=message;},
+ end:async()=>{
+  moving=true;renderEconomy();
+  try{
+   if(online)await online.send('end');else{game=endGame(game);players=game.players;turn=game.turn;saveGame();}
+   camera.stop();if(turnDialog.open)turnDialog.close();
+  }finally{
+   moving=false;
+   if(online)updateOnline();else{place();roster();select(selected);renderEconomy();document.getElementById('moveStatus').textContent=gameResult();openTurnDialog(true);}
+  }
+ }
+});
+endControl.update();
 function roster(){const container=document.getElementById('playerRoster');container.replaceChildren();players.forEach((player,index)=>{const label=document.createElement('span');label.dataset.player=index;label.className='roster-player'+(index===turn?' active':'');const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt=pawns.find(p=>p.id===player.pawn).name;label.append(image,document.createTextNode(player.name+' · $'+player.cash.toLocaleString()+(player.bankrupt?' · Out':player.inJail?' · Two Bridges':'')));container.append(label);});document.getElementById('turnTitle').textContent=players.length?players[turn].name+'’s turn':'Your move.';}
 function locate(piece,space,index){const tile=board.querySelector(`[data-index="${space}"]`),size=board.clientWidth*.028;piece.style.left=((tile.offsetLeft+tile.offsetWidth*(.2+(index%3)*.3)-size/2)/board.clientWidth*100)+'%';piece.style.top=((tile.offsetTop+tile.offsetHeight*(.58+Math.floor(index/3)*.26)-size/2)/board.clientHeight*100)+'%';piece.dataset.space=space;}
 function place(){pieces.forEach((piece,index)=>{piece.hidden=!!players[index]?.bankrupt;locate(piece,players.length?players[index].position:token,index);});}
@@ -91,7 +110,7 @@ async function rollAcrossBoard(values){
 }
 document.getElementById('roll').onclick=async()=>{
  if(online){await onlineExecute({type:'roll'});return;}
- if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('zoom').disabled=true;
+ if(moving||(game&&game.phase!=='roll'))return;moving=true;endControl.update();const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('zoom').disabled=true;
  let completed=false;
  const actor=turn,player=players[actor],start=player?player.position:token,values=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)],total=values[0]+values[1],piece=pieces[player?actor:0];
  document.getElementById('moveStatus').textContent='Rolling the dice…';document.getElementById('gameError').textContent='';
@@ -124,12 +143,12 @@ async function execute(action){
  if(online){await onlineExecute(action);return;}
  if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';
  try{
-  const next=perform(game,action);moving=true;document.getElementById('roll').disabled=true;document.getElementById('reset').disabled=true;document.getElementById('zoom').disabled=true;
+  const next=perform(game,action);moving=true;endControl.update();document.getElementById('roll').disabled=true;document.getElementById('reset').disabled=true;document.getElementById('zoom').disabled=true;
   if(next.route.length){turnDialog.close();const actor=game.turn;await camera.focus([pieces[actor]],'pawn');for(const step of next.route)await travelStep(pieces[actor],step,actor);}
   game=next;players=game.players;turn=game.turn;saveGame();place();roster();select(selected);renderEconomy();
   if(action.type==='end'){turnDialog.close();if(game.phase==='over')openTurnDialog(false,true);}
   else if(['buy','auction','bid','pass','bankrupt','bail','free-card'].includes(action.type)||priorPhase==='debt')openTurnDialog(false,true);
-  document.getElementById('moveStatus').textContent=game.phase==='over'?players[game.winner].name+' wins!':action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];
+  document.getElementById('moveStatus').textContent=game.phase==='over'?gameResult():action.type==='end'?players[turn].name+'’s turn. At '+spaces[players[turn].position].name+'.':game.log[0];
   await Promise.all([next.route.length?camera.finish():Promise.resolve(),animateTransfers(next.transfers,players)]);
  }catch(error){camera.stop();document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;}
  finally{moving=false;document.getElementById('zoom').disabled=false;document.getElementById('reset').disabled=false;select(selected);renderEconomy();}
@@ -147,6 +166,7 @@ function propertyControls(index){const property=game.properties[index],d=deed(in
  }
 }
 function renderEconomy(){
+ endControl.update();
  board.querySelectorAll('.space').forEach((tile,index)=>{const p=game.properties[index];tile.classList.toggle('owned',p?.owner!==null&&!!p);tile.querySelector('.building-badge')?.remove();if(p?.buildings){const badge=document.createElement('span');badge.className='building-badge'+(p.buildings===5?' special-checks':'');badge.setAttribute('role','img');badge.setAttribute('aria-label',p.buildings===5?'Special Checks':p.buildings+' Cameras');for(let count=0;count<(p.buildings===5?1:p.buildings);count++)badge.append(upgradeIcon(p.buildings===5));tile.querySelector('.color-strip').append(badge);}});
  const controls=document.getElementById('turnActions'),economic=document.getElementById('economicActions');controls.replaceChildren();economic.replaceChildren();
  document.getElementById('roll').disabled=moving||game.phase!=='roll'||!canOperate();
@@ -155,7 +175,7 @@ function renderEconomy(){
  document.getElementById('bankStock').textContent='Bank: '+game.bank.houses+' Cameras · '+game.bank.hotels+' Special Checks. Hospital Coverage has no jackpot.';
  const log=document.getElementById('gameLog');log.replaceChildren();game.log.slice(0,12).forEach(text=>{const li=document.createElement('li');li.textContent=text;log.append(li);});
  updateTurnSummary();
- if(game.phase==='over'){document.getElementById('turnTitle').textContent=game.players[game.winner].name+' wins!';paragraph(controls,'Start a new game to play again.');return;}if(game.phase==='auction')document.getElementById('turnTitle').textContent='Property auction';if(game.phase==='debt')document.getElementById('turnTitle').textContent=game.players[game.debts[0].payer].name+'’s payment';
+ if(game.phase==='over'){document.getElementById('turnTitle').textContent=gameResult();paragraph(controls,'Start a new game to play again.');return;}if(game.phase==='auction')document.getElementById('turnTitle').textContent='Property auction';if(game.phase==='debt')document.getElementById('turnTitle').textContent=game.players[game.debts[0].payer].name+'’s payment';
  if(game.phase==='action')button(controls,'End turn →',{type:'end'});
  if(game.phase==='roll'&&game.extraRoll)paragraph(controls,'Doubles! You get another roll.');
  if(game.players[game.turn].inJail&&game.phase==='roll'){paragraph(controls,'Two Bridges: roll doubles, pay $50, or use a get-out-free card.');button(controls,'Pay $50 bail',{type:'bail'});button(controls,'Use get-out-free card',{type:'free-card'},game.players[game.turn].freeCards.length===0);}
@@ -169,7 +189,7 @@ function renderEconomy(){
 }
 function updateTurnSummary(){
  const title=document.getElementById('turnDialogTitle'),summary=document.getElementById('turnSummary');summary.replaceChildren();const phase=game.phase;
- title.textContent=phase==='purchase'?'Buy '+spaces[game.offer].name+'?':phase==='auction'?'Auction: '+spaces[game.auction.index].name:phase==='debt'?game.players[game.debts[0].payer].name+' owes $'+game.debts[0].amount:phase==='over'?game.players[game.winner].name+' wins!':game.extraRoll?'Doubles!':phase==='roll'?'Ready to roll':game.events?.some(event=>event.includes('Rent for'))?'Rent paid':'Finish your turn';
+ title.textContent=phase==='purchase'?'Buy '+spaces[game.offer].name+'?':phase==='auction'?'Auction: '+spaces[game.auction.index].name:phase==='debt'?game.players[game.debts[0].payer].name+' owes $'+game.debts[0].amount:phase==='over'?gameResult():game.extraRoll?'Doubles!':phase==='roll'?'Ready to roll':game.events?.some(event=>event.includes('Rent for'))?'Rent paid':'Finish your turn';
  paragraph(summary,game.players[game.turn].name+' · Cash: $'+game.players[game.turn].cash.toLocaleString());
  const drawn=game.drawnCards||[];drawn.forEach(({deck,id})=>{const face=cardFace((deck==='chance'?1:17)+id);if(face)summary.append(face);});
  const events=game.events?.length?game.events:[game.log[0]];events.filter(event=>!drawn.length||!event.startsWith('Chance: ')&&!event.startsWith('Supervisors Office: ')).forEach(event=>paragraph(summary,event));
@@ -195,7 +215,7 @@ function updateOnline(){
  if(snapshot.round!==onlineRound){onlineRound=snapshot.round;camera.stop();board.querySelectorAll('.board-die').forEach(d=>d.remove());lastMotionId=null;lastOnlineEvent=null;}
  place();roster();select(selected);renderEconomy();showOnlineTrade();
  const values=game.lastDice||[];if(values.length)document.querySelectorAll('#dice span').forEach((d,i)=>d.textContent=String.fromCodePoint(0x2680+values[i]-1));
- document.getElementById('moveStatus').textContent=game.phase==='over'?players[game.winner].name+' wins!':snapshot.motion?players[snapshot.motion.actor].name+' is moving…':snapshot.trade?'Waiting for a trade decision.':online.canAct?'Your move, '+players[online.viewer].name+'.':players[stateActor(snapshot)].name+' is taking their turn.';
+ document.getElementById('moveStatus').textContent=game.phase==='over'?gameResult():snapshot.motion?players[snapshot.motion.actor].name+' is moving…':snapshot.trade?'Waiting for a trade decision.':online.canAct?'Your move, '+players[online.viewer].name+'.':players[stateActor(snapshot)].name+' is taking their turn.';
  openTurnDialog();
 }
 async function onlineExecute(action){

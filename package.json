@@ -19,6 +19,7 @@
     "test:clue-browser": "node tests/clue-browser.mjs",
     "test:clue-online-game": "node tests/clue-online-game.mjs",
     "test:clue-recovery-browser": "node tests/clue-recovery-browser.mjs",
+    "test:end-button-browser": "node tests/end-button-browser.mjs",
     "test:online-browser": "node tests/online-browser.mjs"
   },
   "devDependencies": {

@@ -96,6 +96,13 @@ export function actor(game){return game.phase==='refute'?game.pending.refuter:ga
 export function matchingCards(game,index,suggestion=game.pending?.suggestion){return suggestion?game.players[index].hand.filter(c=>suggestion.includes(c)):[];}
 function log(game,text){game.log.push(text);if(game.log.length>80)game.log.shift();}
 function turnEnd(game){game.phase='end';game.steps=0;}
+export function endGame(original){
+ check(original.phase!=='over','This case is already closed.');
+ const game=structuredClone(original);
+ game.phase='over';game.endedEarly=true;game.winner=null;game.pending=null;game.steps=0;game.suggested=false;
+ log(game,'The game was ended without a winner. The case file is revealed.');
+ return game;
+}
 export function perform(original,action,random=Math.random){
  const game=structuredClone(original),p=game.players[game.turn],activeDeck=new Set(game.deck||originalCardIds);check(game.phase!=='over','This case is already closed.');check(!p.eliminated||['end','note'].includes(action.type),'Your investigation is over. You can still show cards on other players’ turns.');
  switch(action.type){
@@ -120,7 +127,8 @@ export function validateGame(game){
  check(dealt.length===game.deck.length&&new Set(dealt).size===game.deck.length,'Cards are missing or repeated.');check(activeSuspects.every(id=>isNode(game.positions?.[id]))&&Object.keys(game.positions||{}).length===activeSuspects.length,'Invalid board positions.');const hall=Object.values(game.positions).filter(node=>!node.startsWith('room:'));check(new Set(hall).size===hall.length,'Two pawns occupy the same corridor square.');
  check(game.itemRooms&&Object.entries(game.itemRooms).every(([id,room])=>activeDeck.has('item:'+id)&&rooms.some(r=>r.id===room)),'Invalid equipment positions.');check(Array.isArray(game.dice)&&(game.dice.length===0||game.dice.length===2&&game.dice.every(d=>Number.isInteger(d)&&d>=1&&d<=6))&&Number.isInteger(game.steps)&&game.steps>=0&&game.steps<=12,'Invalid dice.');
  if(['refute','view'].includes(game.phase)){const pending=game.pending;check(pending&&Array.isArray(pending.suggestion)&&pending.suggestion.length===3&&Object.keys(categories).every(type=>pending.suggestion.filter(id=>id.startsWith(type+':')&&activeDeck.has(id)).length===1)&&Number.isInteger(pending.refuter)&&!!game.players[pending.refuter]&&pending.refuter!==game.turn,'Invalid card handoff.');check(matchingCards(game,pending.refuter).length>0,'No matching card to show.');check(game.phase==='refute'?pending.card===null:matchingCards(game,pending.refuter).includes(pending.card),'Invalid shown card.');}else check(game.pending===null,'Unexpected card handoff.');
- check(game.phase==='over'?game.winner===null&&game.players.every(p=>p.eliminated)||Number.isInteger(game.winner)&&!!game.players[game.winner]&&!game.players[game.winner].eliminated:game.winner===null,'Invalid winner.');check(game.phase==='over'||!game.players[game.turn].eliminated||game.phase==='end','An eliminated player cannot take a turn.');
+ check(!Object.hasOwn(game,'endedEarly')||typeof game.endedEarly==='boolean','Invalid game ending.');check(!game.endedEarly||game.phase==='over'&&game.winner===null,'Invalid game ending.');
+ check(game.phase==='over'?game.winner===null&&(game.endedEarly||game.players.every(p=>p.eliminated))||Number.isInteger(game.winner)&&!!game.players[game.winner]&&!game.players[game.winner].eliminated:game.winner===null,'Invalid winner.');check(game.phase==='over'||!game.players[game.turn].eliminated||game.phase==='end','An eliminated player cannot take a turn.');
  return game;
 }
 export function loadGame(storage){try{storage??=globalThis.localStorage;const raw=storage.getItem(gameKey);return raw?validateGame(JSON.parse(raw)):null;}catch{return null;}}

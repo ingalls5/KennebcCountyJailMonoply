@@ -1,5 +1,5 @@
-import {createGame,defaultConfig,validateConfig,boardRevision,migrateConfig,validateGame,suspects,perform as clueAction,actor as clueActor,reachable as clueReachable} from '../public/clue/rules.js';
-import {newGame,perform as monopolyAction} from '../public/economy.js';
+import {createGame,defaultConfig,validateConfig,boardRevision,migrateConfig,validateGame,suspects,perform as clueAction,endGame as endClue,actor as clueActor,reachable as clueReachable} from '../public/clue/rules.js';
+import {newGame,perform as monopolyAction,endGame as endMonopoly} from '../public/economy.js';
 import {pawns} from '../public/players.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
@@ -48,6 +48,12 @@ export class GameRoom {
    if(member.id!==this.room.host)fail(403,'Only the room host can start a game.');if(this.room.motion)fail(409,'Finish the current move first.');if(path==='/start'&&this.room.state)fail(409,'This game has already started.');
    const minimum=this.room.kind==='clue'?3:2;if(this.room.members.length<minimum)fail(400,`You need at least ${minimum} players to start.`);
    const roster=this.room.members.map(p=>this.room.kind==='clue'?{name:p.name,suspect:p.choice}:{name:p.name,pawn:p.choice});this.room.state=this.room.kind==='clue'?createGame(roster,this.room.config,random):newGame(roster);this.room.trade=null;this.room.round++;this.room.event=null;
+  }else if(path==='/end'){
+   if(member.id!==this.room.host)fail(403,'Only the room host can end the game.');
+   if(!this.room.state||this.room.state.phase==='over')fail(409,'There is no active game to end.');
+   if(this.room.motion)fail(409,'Finish the current move before ending the game.');
+   this.room.state=this.room.kind==='clue'?endClue(this.room.state):endMonopoly(this.room.state);
+   this.room.trade=null;event={id:crypto.randomUUID(),type:'end-game',actor:index,transfers:[]};
   }else if(path==='/leave'){
    if(this.room.state)fail(409,'The game has started. Your seat is kept so you can reconnect.');this.room.members.splice(index,1);if(this.room.host===member.id)this.room.host=this.room.members[0]?.id||null;
   }else if(path==='/remove'){
