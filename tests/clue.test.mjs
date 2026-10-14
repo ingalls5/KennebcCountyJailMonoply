@@ -72,3 +72,11 @@ test('Existing six-suspect cases retain their names and hidden answer after play
  const before=structuredClone(old);delete before.boardRevision;const loaded=loadGame({getItem:()=>JSON.stringify(old)});assert(loaded);assert.equal(caseCategories(loaded).suspect.length,6);assert.equal(loaded.deck.length,22);
  const after=structuredClone(loaded);delete after.boardRevision;assert.deepEqual(after,before);
 });
+
+test('Saved personality choices become the requested jail roles without changing the case',()=>{
+ let old=fresh();old.positions.red='room:booking';old=perform(old,{type:'suggest',suspect:'gold',item:'key'});old.boardRevision=5;
+ const previous={red:'The Veteran',gold:'The Hothead',silver:'The Quiet One',green:'The Joker'};old.players.forEach(player=>player.personality=previous[player.suspect]);
+ const loaded=loadGame({getItem:()=>JSON.stringify(old)});assert(loaded);assert.deepEqual(loaded.players.map(player=>player.personality),['FTO','Supervisor','Intake Officer','Booking Officer']);
+ for(const state of [old,loaded]){delete state.boardRevision;state.players.forEach(player=>delete player.personality);}assert.deepEqual(loaded,old);
+ assert.deepEqual(suspects.map(suspect=>suspect.personality),['FTO','Supervisor','Intake Officer','Booking Officer','Utility Officer','Floor Officer']);
+});
