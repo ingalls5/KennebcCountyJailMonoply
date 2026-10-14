@@ -21,12 +21,16 @@
     </section>
     <section class="game-shelf" aria-label="Choose a game">
       <article class="shelf-game current-game" aria-labelledby="monoply-title">
-        <div class="game-cover">
-          <span class="cover-label">THE COUNTY EDITION</span>
-          <img class="cover-badge" src="board-art/corrections-badge.png" alt="Kennebec County Corrections Officer badge">
-          <span class="cover-sign" aria-hidden="true">MONOPLY</span>
-          <div class="cover-pawns" aria-hidden="true"><img src="pawns/keys.svg" alt=""><img src="pawns/badge.svg" alt=""><img src="pawns/energy-drink.svg" alt=""></div>
-        </div>
+        <a class="game-cover monopoly-cover" href="/setup" aria-label="Set up Monoply">
+          <div class="game-box" aria-hidden="true">
+            <div class="box-spine"><span>MONOPLY</span></div><div class="box-bottom"></div>
+            <div class="box-front">
+              <span class="box-edition">KENNEBEC COUNTY JAIL</span>
+              <div class="box-art monopoly-art"><img class="cover-badge" src="board-art/corrections-badge.png" alt=""><span class="cover-sign">MONOPLY</span></div>
+              <div class="box-footer"><span>THE COUNTY EDITION<br><small>2–6 PLAYERS</small></span><div class="cover-pawns"><img src="pawns/keys.svg" alt=""><img src="pawns/badge.svg" alt=""><img src="pawns/energy-drink.svg" alt=""></div></div>
+            </div>
+          </div>
+        </a>
         <div class="game-copy">
           <div class="game-tags"><span class="available-tag">Ready to play</span><span>2–6 players · Local or room code</span></div>
           <h2 id="monoply-title">Kennebc County Jail<br>Monoply</h2>
@@ -35,9 +39,18 @@
           <div id="savedGame" class="saved-game" hidden><a id="continueGame" href="/board">Continue game <span aria-hidden="true">→</span></a><p id="savedGameSummary"></p></div>
         </div>
       </article>
-      <article class="shelf-game next-game" aria-labelledby="next-title">
-        <div class="next-cover" aria-hidden="true"><div class="next-board"><span>?</span></div><span class="next-piece"></span><span class="next-spark">✦</span></div>
-        <div class="game-copy"><div class="game-tags"><span class="available-tag">Playable draft</span><span>3–6 players · Room code or local</span></div><h2 id="next-title">Clue</h2><p>The rookie was found dead. Rumors are spreading through Kennebec County Jail. Uncover the killer, the weapon, and the room.</p><a class="primary game-play" href="/clue-setup">Play Clue <span aria-hidden="true">→</span></a><a class="text-button shelf-preview" href="/clue-preview">Preview the board</a><div id="savedClue" class="saved-game" hidden><a id="continueClue" href="/clue">Continue case <span aria-hidden="true">→</span></a><p id="savedClueSummary"></p></div></div>
+      <article class="shelf-game current-game" aria-labelledby="next-title">
+        <a class="game-cover clue-cover" href="/clue-setup" aria-label="Set up Clue">
+          <div class="game-box" aria-hidden="true">
+            <div class="box-spine"><span>CLUE</span></div><div class="box-bottom"></div>
+            <div class="box-front">
+              <span class="box-edition">KENNEBEC COUNTY JAIL</span>
+              <div class="box-art clue-art"><img class="clue-cover-badge" src="board-art/corrections-badge.png" alt=""><span class="clue-box-title">CLUE</span><span class="clue-box-subtitle">RUMORS BEHIND THE WALLS</span><div class="box-case-cards"><span>WHO?</span><span>WITH WHAT?</span><span>WHERE?</span></div></div>
+              <div class="box-footer"><span>THE ROOKIE’S CASE<br><small>3–6 DETECTIVES</small></span><div class="box-evidence"><img src="pawns/flashlight.svg" alt=""><img src="clue/weapons/911-knife.svg" alt=""><img src="pawns/walkie-talkie.svg" alt=""></div></div>
+            </div>
+          </div>
+        </a>
+        <div class="game-copy"><div class="game-tags"><span class="available-tag">Ready to play</span><span>3–6 players · Room code or local</span></div><h2 id="next-title">Clue</h2><p>The rookie was found dead. Rumors are spreading through Kennebec County Jail. Uncover the killer, the weapon, and the room.</p><a class="primary game-play" href="/clue-setup">Play Clue <span aria-hidden="true">→</span></a><div id="savedClue" class="saved-game" hidden><a id="continueClue" href="/clue">Continue case <span aria-hidden="true">→</span></a><p id="savedClueSummary"></p></div></div>
       </article>
     </section>
     <p class="home-note">Play together on one device, or join with a room code from your own.</p>
