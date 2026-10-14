@@ -21,7 +21,7 @@ export function project(room,member){
  return {code:room.code,kind:room.kind,status:state?'playing':'lobby',revision:room.revision,round:room.round||0,viewer:playerIndex,host:room.host===member.id,members:room.members.map(p=>({id:p.id,name:p.name,choice:p.choice,host:p.id===room.host})),config:room.config,state,motion,trade:room.trade||null,event:room.event||null};
 }
 export class GameRoom {
- constructor(ctx,env){this.ctx=ctx;this.env=env;this.room=null;ctx.blockConcurrencyWhile(async()=>{this.room=await ctx.storage.get('room')||null;if(this.room?.kind==='clue'&&(this.room.layoutRevision||1)<boardRevision){this.room.config=migrateConfig(this.room.config);if(this.room.state){this.room.state.config=migrateConfig(this.room.state.config);this.room.state.boardRevision=boardRevision;}this.room.layoutRevision=boardRevision;}});}
+ constructor(ctx,env){this.ctx=ctx;this.env=env;this.room=null;ctx.blockConcurrencyWhile(async()=>{this.room=await ctx.storage.get('room')||null;if(this.room?.kind==='clue'&&(this.room.layoutRevision||1)<boardRevision){this.room.config=migrateConfig(this.room.config,this.room.layoutRevision||1);if(this.room.state){this.room.state.config=migrateConfig(this.room.state.config,this.room.state.boardRevision||this.room.layoutRevision||1);this.room.state.boardRevision=boardRevision;}this.room.layoutRevision=boardRevision;}});}
  async persist(){await this.ctx.storage.put('room',this.room);await this.ctx.storage.setAlarm(Date.now()+7*24*60*60*1000);}
  async alarm(){await this.ctx.storage.deleteAll();this.room=null;}
  async fetch(request){return this.ctx.blockConcurrencyWhile(async()=>{try{return await this.handle(request);}catch(error){return json({error:error.message},error.status||400);}});}

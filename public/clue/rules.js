@@ -1,7 +1,7 @@
 export const gameKey='kennebec-clue-v1';
 export const rosterKey='kennebec-clue-roster-v1';
 export const configKey='kennebec-clue-config-v1';
-export const boardRevision=2;
+export const boardRevision=3;
 export const suspects=[
  {id:'red',name:'Officer Red',color:'#b94f46',start:'8,0'},
  {id:'gold',name:'Officer Gold',color:'#c09232',start:'16,0'},
@@ -12,11 +12,11 @@ export const suspects=[
 ];
 export const items=[
  {id:'key',name:'Key',icon:'/pawns/keys.svg'},
- {id:'cuffs',name:'Handcuffs',icon:'/pawns/handcuffs.svg'},
+ {id:'cuffs',name:'911 Knife',icon:'/clue/weapons/911-knife.svg'},
  {id:'radio',name:'Radio',icon:'/pawns/walkie-talkie.svg'},
  {id:'light',name:'Flashlight',icon:'/pawns/flashlight.svg'},
- {id:'spray',name:'OC Spray',icon:'/pawns/oc-spray.svg'},
- {id:'belt',name:'Duty Belt',icon:'/pawns/duty-belt.svg'}
+ {id:'spray',name:'Taser',icon:'/pawns/taser.svg'},
+ {id:'belt',name:'Inmate-made shank',icon:'/clue/weapons/shank.svg'}
 ];
 export const rooms=[
  {id:'booking',name:'Intake',rect:[0,0,7,7],doors:[[6,3],[3,6]],passage:'sally',symbol:'booking',color:'#d9c9ac'},
@@ -37,13 +37,15 @@ const noteValues=new Set(['unknown','no','maybe','yes']);
 const check=(condition,message)=>{if(!condition)throw Error(message);};
 export function defaultConfig(){return Object.fromEntries(cards.map(card=>[card.id,categories[card.type].find(x=>x.id===card.key).name]));}
 export function validateConfig(input){const clean=defaultConfig();for(const key of Object.keys(clean)){const name=input?.[key];check(typeof name==='string'&&name.trim().length>0&&name.trim().length<=32,'Give every room, suspect, and item a name of up to 32 characters.');clean[key]=name.trim();}for(const type of Object.keys(categories)){const names=Object.keys(clean).filter(k=>k.startsWith(type+':')).map(k=>clean[k].toLowerCase());check(new Set(names).size===names.length,'Use different names within each category.');}return clean;}
-// Upgrade only untouched labels from the original draft. Keep custom room names.
-export function migrateConfig(input){
+// Upgrade untouched defaults from their own revision; preserve customized names.
+export function migrateConfig(input,fromRevision=1){
  const clean=validateConfig(input);
- for(const [id,oldName] of Object.entries({'booking':'Booking','control':'Control Room','visitation':'Visitation','property':'Property Room'})){
-  const key='room:'+id,name=rooms.find(room=>room.id===id).name;
-  if(clean[key]===oldName&&!Object.entries(clean).some(([other,value])=>other!==key&&other.startsWith('room:')&&value.toLowerCase()===name.toLowerCase()))clean[key]=name;
+ function upgrade(type,id,oldName){
+  const key=type+':'+id,name=categories[type].find(entry=>entry.id===id).name;
+  if(clean[key]===oldName&&!Object.entries(clean).some(([other,value])=>other!==key&&other.startsWith(type+':')&&value.toLowerCase()===name.toLowerCase()))clean[key]=name;
  }
+ if(fromRevision<2)for(const [id,oldName] of Object.entries({'booking':'Booking','control':'Control Room','visitation':'Visitation','property':'Property Room'}))upgrade('room',id,oldName);
+ if(fromRevision<3)for(const [id,oldName] of Object.entries({'cuffs':'Handcuffs','spray':'OC Spray','belt':'Duty Belt'}))upgrade('item',id,oldName);
  return clean;
 }
 export function validateRoster(input){check(Array.isArray(input)&&input.length>=3&&input.length<=6,'Choose three to six players.');const names=new Set(),chosen=new Set();return input.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';check(name.length>0&&name.length<=30,'Give every player a name of up to 30 characters.');check(!names.has(name.toLowerCase()),'Every player needs a different name.');check(suspects.some(s=>s.id===p.suspect)&&!chosen.has(p.suspect),'Choose a different suspect for each player.');names.add(name.toLowerCase());chosen.add(p.suspect);return {name,suspect:p.suspect};});}
@@ -95,7 +97,7 @@ export function perform(original,action,random=Math.random){
  return game;
 }
 export function validateGame(game){
- check(game?.version===1,'Unknown saved game.');if((game.boardRevision||1)<boardRevision){game.config=migrateConfig(game.config);game.boardRevision=boardRevision;}else validateConfig(game.config);validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
+ check(game?.version===1,'Unknown saved game.');if((game.boardRevision||1)<boardRevision){game.config=migrateConfig(game.config,game.boardRevision||1);game.boardRevision=boardRevision;}else validateConfig(game.config);validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
  check(Number.isInteger(game.turns)&&game.turns>0&&Array.isArray(game.log)&&game.log.every(t=>typeof t==='string'),'Invalid saved history.');
  check(Array.isArray(game.solution)&&game.solution.length===3&&Object.keys(categories).every(type=>game.solution.filter(id=>id.startsWith(type+':')&&cardIds.has(id)).length===1),'Invalid case file.');
  const dealt=[...game.solution];for(const p of game.players){check(Array.isArray(p.hand)&&p.hand.every(id=>cardIds.has(id))&&typeof p.eliminated==='boolean'&&typeof p.summoned==='boolean','Invalid saved cards.');check(p.notes&&Object.entries(p.notes).every(([id,value])=>cardIds.has(id)&&noteValues.has(value)),'Invalid notebook.');check(p.lastSuggestedRoom===null||rooms.some(r=>r.id===p.lastSuggestedRoom),'Invalid saved suggestion.');dealt.push(...p.hand);}

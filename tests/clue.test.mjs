@@ -25,3 +25,14 @@ test('Older cases update untouched room labels without redealing cards, losing n
  const custom=fresh();custom.config['room:booking']='Booking';assert.equal(loadGame({getItem:()=>JSON.stringify(custom)}).config['room:booking'],'Booking');
  old.config['room:visitation']='Custom Unit';assert.equal(loadGame({getItem:()=>JSON.stringify(old)}).config['room:visitation'],'Custom Unit');
 });
+
+test('Revision-two weapon updates preserve an active case and customized room or weapon names',()=>{
+ let old=fresh();old.positions.red='room:booking';old=perform(old,{type:'suggest',suspect:'gold',item:'key'});
+ old.boardRevision=2;Object.assign(old.config,{'item:cuffs':'Handcuffs','item:spray':'OC Spray','item:belt':'Duty Belt','room:booking':'Booking'});old.players[0].notes['item:belt']='maybe';
+ const before=structuredClone(old);delete before.config;delete before.boardRevision;
+ const loaded=loadGame({getItem:()=>JSON.stringify(old)});assert(loaded);
+ assert.equal(loaded.config['item:cuffs'],'911 Knife');assert.equal(loaded.config['item:spray'],'Taser');assert.equal(loaded.config['item:belt'],'Inmate-made shank');assert.equal(loaded.config['room:booking'],'Booking');
+ const after=structuredClone(loaded);delete after.config;delete after.boardRevision;assert.deepEqual(after,before);
+ old.config['item:belt']='Custom Shiv';assert.equal(loadGame({getItem:()=>JSON.stringify(old)}).config['item:belt'],'Custom Shiv');
+ const current=fresh();current.config['item:cuffs']='Handcuffs';assert.equal(loadGame({getItem:()=>JSON.stringify(current)}).config['item:cuffs'],'Handcuffs');
+});

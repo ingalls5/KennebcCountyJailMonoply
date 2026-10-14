@@ -21,3 +21,14 @@ test('Restored online Clue rooms update original draft labels without changing s
  const hands=structuredClone(room.room.state.players.map(p=>p.hand)),solution=[...room.room.state.solution],memberIds=room.room.members.map(p=>p.id);await ctx.storage.put('room',room.room);
  const restored=new GameRoom(ctx,{});await Promise.resolve();const response=await call(restored,'/state',null,host.token);assert.equal(response.status,200);const mine=await response.json();assert.equal(mine.config['room:booking'],'Intake');assert.equal(mine.state.config['room:visitation'],'T-Unit');assert.deepEqual(mine.members.map(p=>p.id),memberIds);assert.deepEqual(restored.room.state.players.map(p=>p.hand),hands);assert.deepEqual(restored.room.state.solution,solution);assert.deepEqual(mine.state.players[1].hand,[]);assert.equal(mine.state.solution,undefined);
 });
+
+test('Online weapon updates preserve revision-two custom rooms, seats, private cards and game progress',async()=>{
+ const {room,ctx,host}=await init();await call(room,'/join',{name:'Jacob',choice:'gold'});await call(room,'/join',{name:'Owen',choice:'silver'});await call(room,'/start',{revision:3,id:crypto.randomUUID()},host.token);
+ room.room.layoutRevision=2;room.room.state.boardRevision=2;
+ for(const config of [room.room.config,room.room.state.config])Object.assign(config,{'room:booking':'Booking','item:cuffs':'Handcuffs','item:spray':'OC Spray','item:belt':'Duty Belt'});
+ const before=structuredClone(room.room.state);delete before.config;delete before.boardRevision;
+ const seats=structuredClone(room.room.members);await ctx.storage.put('room',room.room);
+ const restored=new GameRoom(ctx,{});await Promise.resolve();const response=await call(restored,'/state',null,host.token);assert.equal(response.status,200);const mine=await response.json();
+ for(const config of [mine.config,mine.state.config]){assert.equal(config['room:booking'],'Booking');assert.equal(config['item:cuffs'],'911 Knife');assert.equal(config['item:spray'],'Taser');assert.equal(config['item:belt'],'Inmate-made shank');}
+ const after=structuredClone(restored.room.state);delete after.config;delete after.boardRevision;assert.deepEqual(after,before);assert.deepEqual(restored.room.members,seats);assert.equal(mine.state.solution,undefined);assert.deepEqual(mine.state.players[1].hand,[]);
+});

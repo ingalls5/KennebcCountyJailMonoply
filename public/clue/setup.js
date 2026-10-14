@@ -1,7 +1,7 @@
 import {onlineSetup} from '../online-setup.js';
 import {suspects,categories,boardRevision,migrateConfig,defaultConfig,validateConfig,validateRoster,createGame,loadGame,gameKey,rosterKey,configKey} from './rules.js';
 let config=defaultConfig(),players=suspects.slice(0,3).map(s=>({name:'',suspect:s.id}));
-try{const saved=JSON.parse(localStorage.getItem(configKey));config=saved?.__boardRevision===boardRevision?validateConfig(saved):migrateConfig(saved);}catch{}
+try{const saved=JSON.parse(localStorage.getItem(configKey));config=saved?.__boardRevision===boardRevision?validateConfig(saved):migrateConfig(saved,saved?.__boardRevision||1);}catch{}
 try{players=validateRoster(JSON.parse(localStorage.getItem(rosterKey)));}catch{}
 const rows=document.getElementById('cluePlayerRows'),status=document.getElementById('clueSetupStatus');
 const node=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text)e.textContent=text;return e;};
