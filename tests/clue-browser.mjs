@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {chromium} from 'playwright-core';
-import {suspects,rooms,categories,gameKey,validateGame,reachable,neighbors,canSuggest,currentRoom} from '../public/clue/rules.js';
+import {suspects,rooms,caseCategories,gameKey,validateGame,reachable,neighbors,canSuggest,currentRoom} from '../public/clue/rules.js';
 import {newGame,gameKey as monopolyKey} from '../public/economy.js';
 const seed=Number(process.env.CLUE_SEED||10313);
 const folder='.runtime/clue/'+seed;fs.mkdirSync(folder,{recursive:true});
@@ -16,14 +16,14 @@ try {
  await page.evaluate(({key,raw})=>localStorage.setItem(key,raw),{key:monopolyKey,raw:monopoly});
  await page.getByRole('link',{name:'Play Clue',exact:false}).click();await page.getByRole('button',{name:'One device',exact:true}).click();
  await page.locator('#clueAddPlayer').click();
- for(let i=0;i<4;i++)await page.locator('#cluePlayerRows input').nth(i).fill('Detective '+(i+1));
+ for(let i=0;i<4;i++){await page.locator('#cluePlayerRows input').nth(i).fill('Detective '+(i+1));await page.locator('#cluePlayerRows select').nth(i).selectOption(suspects[i].id);}
  await page.locator('.case-customize summary').click();
  await page.locator('[data-card="room:booking"]').fill('HD8');
- await page.locator('[data-card="suspect:red"]').fill('Sergeant Red');
+ assert.equal(await page.locator('[data-card^="suspect:"]').count(),0);
  await page.locator('[data-card="item:key"]').fill('Master Key');
  await page.screenshot({path:folder+'/setup.png',fullPage:true});
  await page.getByRole('button',{name:'Open a new case'}).click();await page.waitForURL('**/clue');await page.locator('#clueHandoff[open]').waitFor();
- assert.equal(await page.locator('.clue-room').count(),9);assert.equal(await page.locator('.clue-pawn').count(),6);
+ assert.equal(await page.locator('.clue-room').count(),9);assert.equal(await page.locator('.clue-pawn').count(),4);
  assert.match(await page.locator('[data-room="booking"]').innerText(),/HD8/);
  const state=async()=>{const g=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),gameKey);validateGame(g);return g;};
  const publicState=async()=>{const g=await state();return {...g,solution:undefined,players:g.players.map(p=>({...p,hand:undefined,notes:undefined})),pending:g.pending?{...g.pending,card:undefined}:null};};
@@ -51,7 +51,7 @@ try {
   }else if(g.phase==='view'){
    const id=await page.locator('.evidence-card.shown').getAttribute('data-card');assert(id);k.seen.add(id);stats.privateCards++;await page.getByRole('button',{name:'Hide card and finish',exact:true}).click();assert.equal(await page.locator('.evidence-card.shown').count(),0);
   }else if(['turn','end'].includes(g.phase)){
-   const candidates=Object.fromEntries(Object.entries(categories).map(([type,list])=>[type,list.filter(e=>!k.seen.has(type+':'+e.id)).map(e=>e.id)]));
+   const candidates=Object.fromEntries(Object.entries(caseCategories(g)).map(([type,list])=>[type,list.filter(e=>!k.seen.has(type+':'+e.id)).map(e=>e.id)]));
    if(Object.values(candidates).every(list=>list.length===1)){await choice('accuse',Object.fromEntries(Object.entries(candidates).map(([type,list])=>[type,list[0]])));continue;}
    if(g.phase==='end'&&lastSuggestion?.turn===g.turn&&g.log.at(-1)==='No other player could disprove the rumor.'&&lastSuggestion.ids.every(id=>!k.own.has(id))){await choice('accuse',Object.fromEntries(lastSuggestion.ids.map(id=>id.split(':'))));continue;}
    if(canSuggest(g)){

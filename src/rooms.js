@@ -79,6 +79,6 @@ export class GameRoom {
  }
  newMember(data,members){
   const name=typeof data.name==='string'?data.name.trim():'';if(!name||name.length>30)fail(400,'Enter your name (up to 30 characters).');if(members.some(p=>p.name.toLowerCase()===name.toLowerCase()))fail(409,'Choose a different player name.');
-  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:pawns;if(!list.some(p=>p.id===data.choice))fail(400,'Choose a valid pawn or suspect.');if(members.some(p=>p.choice===data.choice))fail(409,'Choose an available pawn or suspect.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice};
+  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:pawns;if(!list.some(p=>p.id===data.choice))fail(400,kind==='clue'?'Choose a personality.':'Choose a valid pawn.');if(members.some(p=>p.choice===data.choice))fail(409,kind==='clue'?'That personality is already taken. Choose another.':'Choose an available pawn.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice};
  }
 }

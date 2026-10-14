@@ -36,11 +36,20 @@ test('Online weapon updates preserve revision-two custom rooms, seats, private c
 test('A six-weapon online case reconnects without redealing and a restart adds the seventh weapon',async()=>{
  const {room,ctx,host}=await init();await call(room,'/join',{name:'Jacob',choice:'gold'});await call(room,'/join',{name:'Owen',choice:'silver'});await call(room,'/start',{revision:3,id:crypto.randomUUID()},host.token);
  room.room.state=createGame(room.room.members.map(member=>({name:member.name,suspect:member.choice})),defaultConfig(),()=>.999);
- room.room.layoutRevision=3;room.room.state.boardRevision=3;delete room.room.state.deck;
+ room.room.layoutRevision=3;room.room.state.boardRevision=3;delete room.room.state.deck;delete room.room.state.playerSuspects;room.room.state.config=defaultConfig();room.room.state.positions=Object.fromEntries(suspects.map(s=>[s.id,s.start]));room.room.state.solution=['suspect:red','item:key','room:booking'];room.room.state.players.forEach(p=>{p.hand=[];delete p.personality;});Object.keys(defaultConfig()).filter(id=>id!=='item:drugs'&&!room.room.state.solution.includes(id)).forEach((id,i)=>room.room.state.players[i%room.room.state.players.length].hand.push(id));
  delete room.room.config['item:drugs'];delete room.room.state.config['item:drugs'];for(const player of room.room.state.players)player.hand=player.hand.filter(card=>card!=='item:drugs');
  const hands=structuredClone(room.room.state.players.map(player=>player.hand)),answer=[...room.room.state.solution];await ctx.storage.put('room',room.room);
  const restored=new GameRoom(ctx,{});await Promise.resolve();const mine=await(await call(restored,'/state',null,host.token)).json();
  assert.equal(mine.state.deck.length,21);assert(!mine.state.deck.includes('item:drugs'));assert.deepEqual(restored.room.state.players.map(player=>player.hand),hands);assert.deepEqual(restored.room.state.solution,answer);assert.equal(mine.state.solution,undefined);
  const note=await call(restored,'/action',act(mine.revision,{type:'note',card:'item:drugs',value:'maybe'}),host.token);assert.equal(note.status,400);
- const restarted=await call(restored,'/restart',{revision:mine.revision,id:crypto.randomUUID()},host.token);assert.equal(restarted.status,200);const next=await restarted.json();assert.equal(next.state.deck.length,22);assert(next.state.deck.includes('item:drugs'));assert.equal(next.config['item:drugs'],'Drugs');assert.equal(restored.room.state.players.reduce((count,player)=>count+player.hand.length,0),19);
+ const restarted=await call(restored,'/restart',{revision:mine.revision,id:crypto.randomUUID()},host.token);assert.equal(restarted.status,200);const next=await restarted.json();assert.equal(next.state.deck.length,19);assert(next.state.deck.includes('item:drugs'));assert.equal(next.config['item:drugs'],'Drugs');assert.equal(restored.room.state.players.reduce((count,player)=>count+player.hand.length,0),16);
+});
+
+test('Online Clue requires an available personality and uses joining names as suspects',async()=>{
+ const {room,host}=await init();
+ assert.equal((await call(room,'/join',{name:'Missing choice'})).status,400);
+ const taken=await call(room,'/join',{name:'Different Joe',choice:'red'});assert.equal(taken.status,409);assert.match((await taken.json()).error,/personality is already taken/);
+ await call(room,'/join',{name:'Jacob',choice:'purple'});await call(room,'/join',{name:'Owen',choice:'blue'});
+ const response=await call(room,'/start',{revision:3,id:crypto.randomUUID()},host.token);assert.equal(response.status,200);const mine=await response.json();
+ assert.equal(mine.state.config['suspect:red'],'Joe');assert.equal(mine.state.config['suspect:purple'],'Jacob');assert.equal(mine.state.config['suspect:blue'],'Owen');assert.equal(mine.state.players[1].personality,'The Know-It-All');assert.equal(mine.state.deck.length,19);assert(!mine.state.deck.includes('suspect:gold'));assert.equal(mine.state.solution,undefined);assert.deepEqual(mine.state.players[1].hand,[]);
 });
