@@ -1,4 +1,4 @@
-import {readSeat,setupPath} from './online.js';
+import {readSeat,setupPath,forgetSeat,request} from './online.js';
 import {loadGame as loadClue} from './clue/rules.js';
 import {loadPlayers} from './players.js';
 import {gameKey} from './economy.js';
@@ -28,4 +28,4 @@ if(clue){
   document.getElementById('savedClue').hidden=false;
 }
 
-for(const kind of ['monoply','clue']){const seat=readSeat(kind);if(!seat)continue;const target=document.getElementById(kind==='clue'?'savedClue':'savedGame');const link=document.createElement('a');link.textContent='Return to room '+seat.code+' →';link.href=setupPath(kind)+'?room='+seat.code;target.before(link);link.className='online-resume';}
+for(const kind of ['monoply','clue']){const seat=readSeat(kind);if(!seat)continue;const target=document.getElementById(kind==='clue'?'savedClue':'savedGame');const link=document.createElement('a');link.textContent='Return to room '+seat.code+' →';link.href=setupPath(kind)+'?room='+seat.code;target.before(link);link.className='online-resume';try{await request('/api/rooms/'+seat.code);}catch(error){if(error.status===404){forgetSeat(kind,seat.code);link.remove();}}}

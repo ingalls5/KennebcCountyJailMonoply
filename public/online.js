@@ -14,10 +14,21 @@ export class OnlineRoom {
  get viewer(){return this.snapshot?.viewer??null;}
  get canAct(){return !!this.snapshot?.state&&!this.snapshot.motion&&!this.snapshot.trade&&stateActor(this.snapshot)===this.viewer;}
  apply(snapshot){if(!this.snapshot||snapshot.revision>=this.snapshot.revision){const changed=!this.snapshot||snapshot.revision>this.snapshot.revision;this.snapshot=snapshot;const banner=typeof document!=='undefined'?document.querySelector('.online-banner'):null;if(banner)banner.dataset.revision=snapshot.revision;if(changed)this.onchange(snapshot);}this.onstatus('Connected · You’re '+(this.snapshot?.members[this.viewer]?.name||'joining'));return snapshot;}
- async connect(){if(!this.seat)throw Error('Join this room to take your player seat.');const snapshot=await request('/api/rooms/'+this.code+'/state',{token:this.seat.token});if(snapshot.kind!==this.kind)throw Error('This room is for the other game.');this.apply(snapshot);this.schedule();return snapshot;}
+ async connect(){if(!this.seat)throw Error('Join this room to take your player seat.');try{const snapshot=await request('/api/rooms/'+this.code+'/state',{token:this.seat.token});if(snapshot.kind!==this.kind)throw Error('This room is for the other game.');this.apply(snapshot);this.schedule();return snapshot;}catch(error){if([401,404].includes(error.status)){this.stop();this.oninvalid(error);}throw error;}}
  schedule(){clearTimeout(this.timer);if(!this.stopped)this.timer=setTimeout(()=>this.poll(),document.hidden?5000:1500);}
  async poll(){if(this.polling||this.stopped)return;this.polling=true;try{this.apply(await request('/api/rooms/'+this.code+'/state',{token:this.seat.token}));}catch(error){this.onstatus(error.message);if([401,404].includes(error.status)){this.stop();this.oninvalid(error);}}finally{this.polling=false;this.schedule();}}
- async send(path,action){const payload={revision:this.snapshot.revision,id:crypto.randomUUID(),...(path==='action'?{action}:action||{})};let result;try{result=await request('/api/rooms/'+this.code+'/'+path,{method:'POST',token:this.seat.token,body:payload});}catch(error){if(!error.status){result=await request('/api/rooms/'+this.code+'/'+path,{method:'POST',token:this.seat.token,body:payload});}else{if(error.snapshot)this.apply(error.snapshot);throw error;}}return result.left?result:this.apply(result);}
+ async send(path,action){const payload={revision:this.snapshot.revision,id:crypto.randomUUID(),...(path==='action'?{action}:action||{})};let result;
+  try{
+   try{result=await request('/api/rooms/'+this.code+'/'+path,{method:'POST',token:this.seat.token,body:payload});}
+   catch(error){if(!error.status)result=await request('/api/rooms/'+this.code+'/'+path,{method:'POST',token:this.seat.token,body:payload});else throw error;}
+  }catch(error){
+   // A lost end response can be retried after the room has already been deleted.
+   if(path==='end'&&error.status===404){this.stop();return {ended:true,code:this.code,kind:this.kind};}
+   if(error.snapshot)this.apply(error.snapshot);throw error;
+  }
+  if(result.ended){this.stop();return result;}
+  return result.left?result:this.apply(result);
+ }
  action(action){return this.send('action',action);}
  stop(){this.stopped=true;clearTimeout(this.timer);}
 }

@@ -1,28 +1,33 @@
-import {bindEndGame} from '../end-game.js';
+import {bindEndGame,clearEndedGame} from '../end-game.js';
 import {roomArt,roomDoor,staffPassage,passageLegend} from './map-art.js';
 import {suspectBadge as badge,pawnIcon,evidenceCard} from './pieces.js';
 import {OnlineRoom,roomBanner,setupPath} from '../online.js';
-import {suspects,items,rooms,caseCategories,gameKey,loadGame,perform,endGame,reachable,currentRoom,canSuggest,actor,matchingCards,label,rumorText,coordinates,isHall,createGame} from './rules.js';
+import {suspects,items,rooms,caseCategories,gameKey,rosterKey,configKey,loadGame,perform,reachable,currentRoom,canSuggest,actor,matchingCards,label,rumorText,coordinates,isHall,createGame} from './rules.js';
 const $=id=>document.getElementById(id);
 const el=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;};
 const roomCode=new URLSearchParams(location.search).get('room')?.toUpperCase();
 const online=roomCode?new OnlineRoom('clue',roomCode):null;
 let connectionError='';
-if(online){const status=roomBanner('clue',roomCode,document.querySelector('main'));online.onstatus=text=>status.textContent=text;try{await online.connect();}catch(error){connectionError=error.message;status.textContent=connectionError;}}
+if(online){const status=roomBanner('clue',roomCode,document.querySelector('main'));online.onstatus=text=>status.textContent=text;online.oninvalid=error=>{if(error.status===404)clearEndedGame('clue',roomCode);};try{await online.connect();}catch(error){connectionError=error.message;status.textContent=connectionError;}}
 let game=online?online.snapshot?.state:loadGame(),viewer=online?online.viewer:null,busy=false,choiceType=null;
+let gameCleared=false;
 let onlineRound=online?.snapshot?.round,lastOnlineEvent=online?.snapshot?.event?.id;
 const endControl=bindEndGame({
- clue:true,online:!!online,
- available:()=>!!game&&game.phase!=='over'&&(!online||online.snapshot?.host),
+ online:!!online,
+ available:()=>!!game&&(!online||online.snapshot?.host),
  ready:()=>!busy,
  reportError:message=>$('clueError').textContent=message,
  end:async()=>{
-  busy=true;render();
-  try{game=online?(await online.send('end')).state:endGame(game);save();}
-  finally{busy=false;if(online?.snapshot?.state)game=online.snapshot.state;render();}
+  let cleared=false;busy=true;render();
+  try{
+   if(online)await online.send('end');
+   gameCleared=true;clearEndedGame('clue',roomCode,[gameKey,rosterKey,configKey]);cleared=true;
+  }finally{busy=false;if(!cleared){if(online?.snapshot?.state)game=online.snapshot.state;render();}}
  }
+
 });
 endControl.update();
+window.addEventListener('storage',event=>{if(!online&&event.key===gameKey&&event.oldValue!==null&&event.newValue===null){gameCleared=true;location.replace('/');}});
 const controlsAllowed=()=>!online||online.canAct;
 
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,7 +39,7 @@ function pawn(suspect){const p=el('span','clue-pawn');p.dataset.suspect=suspect.
 function renderMap(){const paths=controlsAllowed()?reachable(game):new Map();hallButtons.forEach((b,node)=>{b.disabled=busy||!paths.has(node);b.classList.toggle('reachable',!busy&&paths.has(node));});roomButtons.forEach((b,id)=>{b.disabled=busy||!paths.has('room:'+id);b.classList.toggle('reachable',!busy&&paths.has('room:'+id));b.classList.toggle('occupied',currentRoom(game)===id);const room=rooms.find(room=>room.id===id);b.querySelector('.room-name').textContent=label(game,'room:'+id);if(room.passage){const marker=b.querySelector('.room-passage'),destination=label(game,'room:'+room.passage);marker.querySelector('strong').textContent='To '+destination;marker.title='Staff passage to '+destination;}b.setAttribute('aria-label',label(game,'room:'+id)+(room.passage?' · Staff passage to '+label(game,'room:'+room.passage):'')+(paths.has('room:'+id)?' · '+(paths.get('room:'+id).length-1)+' steps':''));});$('cluePawns').replaceChildren(...caseCategories(game).suspect.map(pawn));$('clueMap').querySelectorAll('.room-equipment').forEach(e=>e.remove());rooms.forEach(room=>{const equipment=items.filter(item=>game.itemRooms[item.id]===room.id),spacing=Math.min(.85,(room.rect[2]-1)/equipment.length),size=Math.min(.75,spacing*.88);equipment.forEach((item,index)=>{const img=el('img','room-equipment');img.src=item.icon;img.alt=label(game,'item:'+item.id);img.style.width=size/25*100+'%';img.style.height=size*7/6/25*100+'%';img.style.left=(room.rect[0]+room.rect[2]/2+(index-(equipment.length-1)/2)*spacing)/25*100+'%';img.style.top=(room.rect[1]+.55)/25*100+'%';$('clueMap').append(img);});});}
 function card(id,className=''){return evidenceCard(game,id,className);}
 function button(text,action,className='clue-primary'){const b=el('button',className,text);b.type='button';b.disabled=busy;b.onclick=action;return b;}
-function save(){if(online){$('clueSaveStatus').textContent='Your game is saved online in room '+roomCode+'.';return;}try{localStorage.setItem(gameKey,JSON.stringify(game));$('clueSaveStatus').textContent='This case is saved on this device.';}catch{$('clueSaveStatus').textContent='This device could not save the case. Keep this page open to continue.';}}
+function save(){if(gameCleared)return;if(online){$('clueSaveStatus').textContent='Your game is saved online in room '+roomCode+'.';return;}try{localStorage.setItem(gameKey,JSON.stringify(game));$('clueSaveStatus').textContent='This case is saved on this device.';}catch{$('clueSaveStatus').textContent='This device could not save the case. Keep this page open to continue.';}}
 function clearPrivate(){if($('cluePrivateDialog').open)$('cluePrivateDialog').close();$('privateDialogBody').replaceChildren();}
 function cover(){clearPrivate();if($('clueChoiceDialog').open)$('clueChoiceDialog').close();const player=game.players[actor(game)];$('handoffTitle').textContent='Pass the device to '+player.name+'.';$('handoffMessage').textContent=game.phase==='refute'?'You have evidence that can challenge the rumor. The next screen is for your eyes only.':game.phase==='view'?'A detective is showing you a card. Make sure only you can see the next screen.':'Your cards and notebook are private. Make sure the other detectives look away.';$('readyDetective').textContent='I’m '+player.name+' · Ready';if(!$('clueHandoff').open)$('clueHandoff').showModal();}
 function render(){

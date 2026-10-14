@@ -96,13 +96,7 @@ export function actor(game){return game.phase==='refute'?game.pending.refuter:ga
 export function matchingCards(game,index,suggestion=game.pending?.suggestion){return suggestion?game.players[index].hand.filter(c=>suggestion.includes(c)):[];}
 function log(game,text){game.log.push(text);if(game.log.length>80)game.log.shift();}
 function turnEnd(game){game.phase='end';game.steps=0;}
-export function endGame(original){
- check(original.phase!=='over','This case is already closed.');
- const game=structuredClone(original);
- game.phase='over';game.endedEarly=true;game.winner=null;game.pending=null;game.steps=0;game.suggested=false;
- log(game,'The game was ended without a winner. The case file is revealed.');
- return game;
-}
+
 export function perform(original,action,random=Math.random){
  const game=structuredClone(original),p=game.players[game.turn],activeDeck=new Set(game.deck||originalCardIds);check(game.phase!=='over','This case is already closed.');check(!p.eliminated||['end','note'].includes(action.type),'Your investigation is over. You can still show cards on other players’ turns.');
  switch(action.type){

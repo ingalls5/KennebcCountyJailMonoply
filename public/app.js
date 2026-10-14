@@ -1,19 +1,20 @@
-import {bindEndGame} from './end-game.js';
+import {bindEndGame,clearEndedGame} from './end-game.js';
 import {OnlineRoom,roomBanner,setupPath,stateActor} from './online.js';
 import {sound} from './sound.js';
 import {animateTransfers} from './transfers.js';
 import {BoardCamera} from './camera.js';
 import {cardFace} from './card-art.js';
-import {newGame,loadGame,perform,endGame,deed,rent,gameKey} from './economy.js';
-import {pawns,loadPlayers} from './players.js';
+import {newGame,loadGame,perform,deed,rent,gameKey} from './economy.js';
+import {pawns,loadPlayers,storageKey} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
 sound.bind([document.getElementById('soundToggle'),document.getElementById('turnSoundToggle'),document.getElementById('drawSoundToggle')]);
 const roomCode=new URLSearchParams(location.search).get('room')?.toUpperCase();
 const online=roomCode?new OnlineRoom('monoply',roomCode):null;
 let onlineError='';
-if(online){const status=roomBanner('monoply',roomCode,document.querySelector('main'));online.onstatus=text=>status.textContent=text;try{await online.connect();}catch(error){onlineError=error.message;status.textContent=onlineError;}}
+if(online){const status=roomBanner('monoply',roomCode,document.querySelector('main'));online.onstatus=text=>status.textContent=text;online.oninvalid=error=>{if(error.status===404)clearEndedGame('monoply',roomCode);};try{await online.connect();}catch(error){onlineError=error.message;status.textContent=onlineError;}}
 const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=online?(online.snapshot?.state?.players||[]).map(p=>({name:p.name,pawn:p.pawn})):loadPlayers();let game=online?online.snapshot?.state:(rosterChoice.length?loadGame(rosterChoice):null),players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
+let gameCleared=false;
 let currentMotion=null,currentCard=null,lastMotionId=null,lastOnlineEvent=online?.snapshot?.event?.id,onlineRound=online?.snapshot?.round;
 const canOperate=()=>!online||online.canAct;
 
@@ -50,21 +51,20 @@ let moving=false;const pieces=(players.length?players:[{name:'Preview',pawn:'key
 const gameResult=()=>game.endedEarly?'Game ended':players[game.winner].name+' wins!';
 const endControl=bindEndGame({
  online:!!online,
- available:()=>!!game&&game.phase!=='over'&&(!online||online.snapshot?.host),
+ available:()=>!!game&&(!online||online.snapshot?.host),
  ready:()=>!moving&&!online?.snapshot?.motion,
  reportError:message=>{document.getElementById('gameError').textContent=message;document.getElementById('turnError').textContent=message;},
  end:async()=>{
-  moving=true;renderEconomy();
+  let cleared=false;moving=true;renderEconomy();
   try{
-   if(online)await online.send('end');else{game=endGame(game);players=game.players;turn=game.turn;saveGame();}
-   camera.stop();if(turnDialog.open)turnDialog.close();
-  }finally{
-   moving=false;
-   if(online)updateOnline();else{place();roster();select(selected);renderEconomy();document.getElementById('moveStatus').textContent=gameResult();openTurnDialog(true);}
-  }
+   if(online)await online.send('end');
+   camera.stop();gameCleared=true;clearEndedGame('monoply',roomCode,[gameKey,storageKey]);cleared=true;
+  }finally{moving=false;if(!cleared){if(online)updateOnline();else renderEconomy();}}
  }
+
 });
 endControl.update();
+window.addEventListener('storage',event=>{if(!online&&event.key===gameKey&&event.oldValue!==null&&event.newValue===null){gameCleared=true;location.replace('/');}});
 function roster(){const container=document.getElementById('playerRoster');container.replaceChildren();players.forEach((player,index)=>{const label=document.createElement('span');label.dataset.player=index;label.className='roster-player'+(index===turn?' active':'');const image=document.createElement('img');image.src=pawns.find(p=>p.id===player.pawn).icon;image.alt=pawns.find(p=>p.id===player.pawn).name;label.append(image,document.createTextNode(player.name+' · $'+player.cash.toLocaleString()+(player.bankrupt?' · Out':player.inJail?' · Two Bridges':'')));container.append(label);});document.getElementById('turnTitle').textContent=players.length?players[turn].name+'’s turn':'Your move.';}
 function locate(piece,space,index){const tile=board.querySelector(`[data-index="${space}"]`),size=board.clientWidth*.028;piece.style.left=((tile.offsetLeft+tile.offsetWidth*(.2+(index%3)*.3)-size/2)/board.clientWidth*100)+'%';piece.style.top=((tile.offsetTop+tile.offsetHeight*(.58+Math.floor(index/3)*.26)-size/2)/board.clientHeight*100)+'%';piece.dataset.space=space;}
 function place(){pieces.forEach((piece,index)=>{piece.hidden=!!players[index]?.bankrupt;locate(piece,players.length?players[index].position:token,index);});}
@@ -138,7 +138,7 @@ document.getElementById('reset').onclick=async()=>{
  if(game&&!confirm('Start a new game? This resets all balances, property ownership, and upgrades on this device.'))return;
  camera.stop();board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;if(game){game=newGame(rosterChoice);players=game.players;saveGame();}place();roster();select(0);document.getElementById('moveStatus').textContent='Everyone is back at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');if(game)renderEconomy();
 };
-function saveGame(){if(online)return;try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
+function saveGame(){if(online||gameCleared)return;try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
 async function execute(action){
  if(online){await onlineExecute(action);return;}
  if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';

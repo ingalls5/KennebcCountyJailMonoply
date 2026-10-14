@@ -1,13 +1,7 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {newGame,perform,loadGame,endGame} from '../public/economy.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {newGame,perform,loadGame} from '../public/economy.js';
 const roster=[{name:'Alice',pawn:'keys'},{name:'Bob',pawn:'badge'},{name:'Casey',pawn:'oc-spray'},{name:'Drew',pawn:'energy-drink'}];
 function finalDebt(payee){const g=newGame(roster);g.players[0].bankrupt=true;g.players[3].bankrupt=true;g.turn=2;g.players[1].cash=0;g.players[2].cash=0;g.properties[1].owner=2;g.properties[1].mortgaged=true;g.phase='debt';g.debts=[{payer:2,payee,amount:50,label:'Rent'}];return g;}
-test('Ending Monoply manually keeps the final assets, clears pending decisions and declares no winner',()=>{
- const game=finalDebt(1),before=structuredClone(game),ended=endGame(game);
- assert.deepEqual(game,before);assert.equal(ended.phase,'over');assert.equal(ended.endedEarly,true);assert.equal(ended.winner,null);
- assert.deepEqual(ended.players,before.players);assert.deepEqual(ended.properties,before.properties);assert.deepEqual(ended.bank,before.bank);
- assert.deepEqual(ended.debts,[]);assert.equal(ended.auction,null);assert.equal(ended.offer,null);assert.deepEqual(ended.route,[]);
- assert.throws(()=>perform(ended,{type:'roll',dice:[1,2]}),/finished/);assert.throws(()=>endGame(ended),/finished/);
-});
+
 test('the last remaining player wins before inherited mortgage fees can block or bankrupt them',()=>{
  const next=perform(finalDebt(1),{type:'bankrupt'});assert.equal(next.phase,'over');assert.equal(next.winner,1);assert.equal(next.turn,1);assert.equal(next.players[1].cash,0);assert.equal(next.players[1].bankrupt,false);assert.equal(next.properties[1].owner,1);assert.equal(next.properties[1].mortgaged,true);assert.deepEqual(next.debts,[]);assert.equal(next.extraRoll,false);assert.match(next.log[0],/Bob wins/);assert.throws(()=>perform(next,{type:'roll',dice:[1,2]}),/finished/);
 });

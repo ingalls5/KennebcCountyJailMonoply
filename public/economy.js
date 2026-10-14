@@ -63,12 +63,7 @@ function land(g,depth=0,modifier=null){requireRule(depth<5,'Too many chained car
 function owned(g,index,owner){const p=g.properties[index];requireRule(p&&p.owner===owner,'You do not own this space.');return p;}
 function manager(g){return g.phase==='debt'?g.debts[0].payer:g.turn;}
 function finishIfWinner(g){const active=g.players.map((p,i)=>!p.bankrupt?i:null).filter(i=>i!==null);if(g.players.length<2||active.length!==1)return false;g.phase='over';g.winner=active[0];g.turn=g.winner;g.extraRoll=false;g.doubles=0;g.debts=[];g.offer=null;g.auction=null;g.liquidations=[];g.resumeJail=null;note(g,`${g.players[g.winner].name} wins!`);return true;}
-export function endGame(original){
- requireRule(original.phase!=='over','This game is finished.');
- const g=structuredClone(original);
- Object.assign(g,{phase:'over',endedEarly:true,winner:null,extraRoll:false,doubles:0,debts:[],offer:null,auction:null,liquidations:[],resumeJail:null,route:[],events:[],drawnCards:[],transfers:[]});
- note(g,'Game ended without a winner.');return g;
-}
+
 function nextTurn(g){requireRule(!g.debts.length&&g.offer===null&&!g.auction,'Resolve this landing first.');if(finishIfWinner(g))return;do{g.turn=(g.turn+1)%g.players.length;}while(g.players[g.turn].bankrupt);g.phase='roll';g.extraRoll=false;g.doubles=0;}
 function startAuction(g,index){g.offer=null;g.phase='auction';const actor=g.players[g.turn].bankrupt?g.players.findIndex(p=>!p.bankrupt):g.turn;g.auction={index,high:0,bidder:null,passed:[],actor};}
 function auctionNext(g){const a=g.auction,eligible=g.players.flatMap((p,i)=>!p.bankrupt&&!a.passed.includes(i)&&p.cash>a.high?[i]:[]);if(a.bidder!==null&&!eligible.some(i=>i!==a.bidder)){money(g,a.bidder,null,a.high);transferProperty(g,a.index,a.bidder);note(g,`${g.players[a.bidder].name} bought ${spaces[a.index].name} at auction for $${a.high}.`);actionDone(g);return;}if(!eligible.length&&a.bidder===null){note(g,`${spaces[a.index].name} received no auction bids.`);actionDone(g);return;}do{a.actor=(a.actor+1)%g.players.length;}while(!eligible.includes(a.actor)||a.actor===a.bidder);}

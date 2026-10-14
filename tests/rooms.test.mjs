@@ -3,31 +3,37 @@ import assert from 'node:assert/strict';
 import {GameRoom,project} from '../src/rooms.js';
 import {defaultConfig,createGame,suspects} from '../public/clue/rules.js';
 import {newGame,perform} from '../public/economy.js';
-const memory=()=>{const data=new Map();return {storage:{async get(k){return structuredClone(data.get(k));},async put(k,v){data.set(k,structuredClone(v));},async setAlarm(){},async deleteAll(){data.clear();}},blockConcurrencyWhile:async fn=>fn()};};
+const memory=()=>{const data=new Map();return {storage:{async get(k){return structuredClone(data.get(k));},async put(k,v){data.set(k,structuredClone(v));},async setAlarm(){},async deleteAlarm(){},async deleteAll(){data.clear();}},blockConcurrencyWhile:async fn=>fn()};};
 async function call(room,path,payload,token){return room.fetch(new Request('https://room'+path,{method:payload?'POST':'GET',headers:{...(payload?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:payload?JSON.stringify(payload):undefined}));}
 async function init(kind='clue'){const ctx=memory(),room=new GameRoom(ctx,{});await Promise.resolve();const response=await call(room,'/init',{kind,code:'ABC234',name:'Joe',choice:kind==='clue'?'red':'keys',config:defaultConfig()});assert.equal(response.status,201);return {room,ctx,host:await response.json()};}
 const act=(revision,action)=>({revision,id:crypto.randomUUID(),action});
-test('Only the host can end either online game, including outside their turn, and the ending is idempotent',async()=>{
+test('Only the host can delete either online game, including outside their turn, and deleted data cannot reconnect',async()=>{
  for(const kind of ['clue','monoply']){
   const {room,ctx,host}=await init(kind);
   const second=await(await call(room,'/join',{name:'Detective 2',choice:kind==='clue'?'gold':'badge'})).json();
   if(kind==='clue')await call(room,'/join',{name:'Detective 3',choice:'silver'});
   const started=await(await call(room,'/start',{revision:kind==='clue'?3:2,id:crypto.randomUUID()},host.token)).json();
-  room.room.state.turn=1;const before=structuredClone(room.room.state);
-  const payload={revision:started.revision,id:crypto.randomUUID()};
+  room.room.state.turn=1;const before=structuredClone(room.room.state),payload={revision:started.revision,id:crypto.randomUUID()};
   assert.equal((await call(room,'/end',payload,second.token)).status,403);assert.deepEqual(room.room.state,before);
   if(kind==='monoply'){
    room.room.motion={id:'in-flight',actor:1};assert.equal((await call(room,'/end',payload,host.token)).status,409);room.room.motion=null;
    room.room.trade={id:'pending-offer',from:0,to:1};
   }
-  const response=await call(room,'/end',payload,host.token);assert.equal(response.status,200);const ended=await response.json();
-  assert.equal(ended.state.phase,'over');assert.equal(ended.state.endedEarly,true);assert.equal(ended.state.winner,null);assert.equal(ended.trade,null);
-  assert.deepEqual(ended.state.players.map(player=>player.name),before.players.map(player=>player.name));
-  if(kind==='clue'){assert.deepEqual(ended.state.solution,before.solution);assert.deepEqual(ended.state.players[1].hand,[]);}
-  else assert.deepEqual(ended.state.properties,before.properties);
-  assert.deepEqual(await(await call(room,'/end',payload,host.token)).json(),ended);
-  assert.equal((await call(room,'/end',{revision:ended.revision,id:crypto.randomUUID()},host.token)).status,409);
-  const restored=new GameRoom(ctx,{});await Promise.resolve();assert.deepEqual(await(await call(restored,'/state',null,host.token)).json(),ended);
+  const response=await call(room,'/end',payload,host.token);assert.equal(response.status,200);
+  assert.deepEqual(await response.json(),{ended:true,code:'ABC234',kind});assert.equal(room.room,null);assert.equal(await ctx.storage.get('room'),undefined);
+  assert.equal((await call(room,'/end',payload,host.token)).status,404);
+  for(const seat of [host,second])assert.equal((await call(room,'/state',null,seat.token)).status,404);
+  assert.equal((await call(room,'/public')).status,404);assert.equal((await call(room,'/join',{name:'New player',choice:'green'})).status,404);
+  const restored=new GameRoom(ctx,{});await Promise.resolve();assert.equal((await call(restored,'/state',null,host.token)).status,404);
+ }
+});
+test('The host can clear a completed game and its saved room too',async()=>{
+ for(const kind of ['clue','monoply']){
+  const {room,ctx,host}=await init(kind);await call(room,'/join',{name:'Detective 2',choice:kind==='clue'?'gold':'badge'});
+  if(kind==='clue')await call(room,'/join',{name:'Detective 3',choice:'silver'});
+  const started=await(await call(room,'/start',{revision:kind==='clue'?3:2,id:crypto.randomUUID()},host.token)).json();
+  room.room.state.phase='over';room.room.state.winner=0;
+  const response=await call(room,'/end',{revision:started.revision,id:crypto.randomUUID()},host.token);assert.equal(response.status,200);assert.equal(await ctx.storage.get('room'),undefined);
  }
 });
 test('A six-player online case reveals its answer when everyone is out and restarts with six fresh hands',async()=>{
