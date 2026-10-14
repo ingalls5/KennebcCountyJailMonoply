@@ -29,6 +29,9 @@ atlas, left to right:
 3. Sally Port: a police patrol car beside an empty parking bay, wall lockers and
    vehicle gates; no computer or workstation
 
-These three rooms use the replacement atlas. The other six rooms retain their
-original artwork. The replacement was generated and edited using the original
-atlas as a visual reference, and depicts fictional game interiors.
+Rec Yard and 4th Floor use the replacement atlas. Sally Port now uses
+`sally-port.png`, a standalone edit with a single vertical row of lockers along
+the right wall, a police car in the left bay and an empty right parking bay.
+The other six rooms retain their original artwork. The replacements were
+generated and edited using the original atlas as a visual reference, and depict
+fictional game interiors.

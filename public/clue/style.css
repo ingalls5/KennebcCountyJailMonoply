@@ -23,6 +23,7 @@
 /* Transparent overhead furnishings share the photographed concrete floor. */
 .room-art{position:absolute;inset:8% 5% 6%;background-image:url('/clue/rooms/jail-interiors.png');background-size:300% 300%;background-repeat:no-repeat;clip-path:inset(0 0 3%);pointer-events:none}
 .room-art-updated{background-image:url('/clue/rooms/jail-interiors-updated.png');background-size:300% 100%}
+.room-art-sally{background-image:url('/clue/rooms/sally-port.png');background-size:100% 100%;background-position:center}
 .clue-room .room-name{position:absolute;bottom:7%;left:50%;transform:translateX(-50%);max-width:94%;width:max-content;z-index:1;box-shadow:0 1px 4px #172e3440}
 .clue-room:has(.room-passage) .room-name{bottom:13%}
 .clue-room .room-passage{position:absolute;bottom:4%;left:50%;transform:translateX(-50%);white-space:nowrap;z-index:1;margin:0}

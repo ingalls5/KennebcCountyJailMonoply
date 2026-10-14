@@ -16,7 +16,9 @@ export function roomArt(id){
  const art=document.createElement('span');
  art.className='room-art';
  art.setAttribute('aria-hidden','true');
- if(Object.hasOwn(updatedTiles,id)){
+ if(id==='sally'){
+  art.classList.add('room-art-sally');
+ }else if(Object.hasOwn(updatedTiles,id)){
   art.classList.add('room-art-updated');
   art.style.backgroundPosition=`${updatedTiles[id]*50}% 50%`;
  }else art.style.backgroundPosition=`${column*50}% ${row*50}%`;
