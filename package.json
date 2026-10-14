@@ -17,6 +17,8 @@
     "test:game-browser": "node tests/four-player-game.mjs",
     "test:home-browser": "node tests/home-browser.mjs",
     "test:clue-browser": "node tests/clue-browser.mjs",
+    "test:clue-online-game": "node tests/clue-online-game.mjs",
+    "test:clue-recovery-browser": "node tests/clue-recovery-browser.mjs",
     "test:online-browser": "node tests/online-browser.mjs"
   },
   "devDependencies": {

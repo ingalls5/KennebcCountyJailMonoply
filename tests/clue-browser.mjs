@@ -4,9 +4,11 @@ import {chromium} from 'playwright-core';
 import {suspects,rooms,caseCategories,gameKey,validateGame,reachable,neighbors,canSuggest,currentRoom} from '../public/clue/rules.js';
 import {newGame,gameKey as monopolyKey} from '../public/economy.js';
 const seed=Number(process.env.CLUE_SEED||10313);
-const folder='.runtime/clue/'+seed;fs.mkdirSync(folder,{recursive:true});
+const playerCount=Number(process.env.CLUE_PLAYERS||6);
+assert(Number.isInteger(playerCount)&&playerCount>=3&&playerCount<=6,'CLUE_PLAYERS must be 3–6');
+const folder='.runtime/clue/'+playerCount+'/'+seed;fs.mkdirSync(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});
-const errors=[],stats={turns:0,rolls:0,moves:0,passages:0,suggestions:0,privateCards:0,handoffs:0,reloads:0,wrongAccusations:0};
+const errors=[],stats={players:playerCount,turns:0,rolls:0,moves:0,passages:0,suggestions:0,privateCards:0,handoffs:0,reloads:0,wrongAccusations:0};
 let page;
 try {
  page=await browser.newPage({viewport:{width:1440,height:1100},reducedMotion:'reduce'});page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));
@@ -15,19 +17,19 @@ try {
  const monopoly=JSON.stringify(newGame([{name:'Old Joe',pawn:'keys'},{name:'Old Jacob',pawn:'badge'}]));
  await page.evaluate(({key,raw})=>localStorage.setItem(key,raw),{key:monopolyKey,raw:monopoly});
  await page.getByRole('link',{name:'Play Clue',exact:false}).click();await page.getByRole('button',{name:'One device',exact:true}).click();
- await page.locator('#clueAddPlayer').click();
- for(let i=0;i<4;i++){await page.locator('#cluePlayerRows input').nth(i).fill('Detective '+(i+1));await page.locator('#cluePlayerRows select').nth(i).selectOption(suspects[i].id);}
+ for(let i=3;i<playerCount;i++)await page.locator('#clueAddPlayer').click();
+ for(let i=0;i<playerCount;i++){await page.locator('#cluePlayerRows input').nth(i).fill('Detective '+(i+1));await page.locator('#cluePlayerRows select').nth(i).selectOption(suspects[i].id);}
  await page.locator('.case-customize summary').click();
  await page.locator('[data-card="room:booking"]').fill('HD8');
  assert.equal(await page.locator('[data-card^="suspect:"]').count(),0);
  await page.locator('[data-card="item:key"]').fill('Master Key');
  await page.screenshot({path:folder+'/setup.png',fullPage:true});
  await page.getByRole('button',{name:'Open a new case'}).click();await page.waitForURL('**/clue');await page.locator('#clueHandoff[open]').waitFor();
- assert.equal(await page.locator('.clue-room').count(),9);assert.equal(await page.locator('.clue-pawn').count(),4);
+ assert.equal(await page.locator('.clue-room').count(),9);assert.equal(await page.locator('.clue-pawn').count(),playerCount);
  assert.match(await page.locator('[data-room="booking"]').innerText(),/HD8/);
  const state=async()=>{const g=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),gameKey);validateGame(g);return g;};
  const publicState=async()=>{const g=await state();return {...g,solution:undefined,players:g.players.map(p=>({...p,hand:undefined,notes:undefined})),pending:g.pending?{...g.pending,card:undefined}:null};};
- const knowledge=Array.from({length:4},()=>({seen:new Set(),own:new Set(),loaded:false,tried:new Map()}));
+ const knowledge=Array.from({length:playerCount},()=>({seen:new Set(),own:new Set(),loaded:false,tried:new Map()}));
  async function privacy(){assert.equal(await page.locator('#privateDialogBody [data-card]').count(),0);assert.equal(await page.locator('#clueActions [data-card],#clueActions [data-show-card]').count(),0);assert.equal(await page.locator('#privateTools').isVisible(),false);}
  async function ready(){if(await page.locator('#clueHandoff').evaluate(d=>d.open)){await privacy();await page.keyboard.press('Escape');assert(await page.locator('#clueHandoff').evaluate(d=>d.open));await page.locator('#readyDetective').click();stats.handoffs++;}}
  async function hand(index){if(knowledge[index].loaded)return;await page.locator('#viewHand').click();const ids=await page.locator('#privateDialogBody [data-card]').evaluateAll(es=>es.map(e=>e.dataset.card));for(const id of ids){knowledge[index].seen.add(id);knowledge[index].own.add(id);}knowledge[index].loaded=true;await page.locator('#closeCluePrivate').click();assert.equal(await page.locator('#privateDialogBody [data-card]').count(),0);}
@@ -36,7 +38,7 @@ try {
  async function reloadCovered(){const before=await state();await page.reload();assert.deepEqual(await state(),before);assert(await page.locator('#clueHandoff').evaluate(d=>d.open));await privacy();stats.reloads++;await ready();}
  await privacy();await ready();await hand(0);
  const own=Array.from(knowledge[0].own)[0],[ownedType,ownedKey]=own.split(':');const wrong={suspect:'red',item:'key',room:'booking',[ownedType]:ownedKey};
- await choice('accuse',wrong);assert.equal((await publicState()).players[0].eliminated,true);assert.equal(await page.getByRole('button',{name:'Make an accusation',exact:true}).count(),0);stats.wrongAccusations++;await nextTurn();
+ // Let every detective investigate before checking that an incorrect accusation eliminates a player.
  let solved=false,lastSuggestion=null;
  function graphDistance(g,target){const blocked=new Set(Object.entries(g.positions).filter(([id,node])=>id!==g.players[g.turn].suspect&&!node.startsWith('room:')).map(([,node])=>node));const distance=new Map([[target,0]]),queue=[target];for(let i=0;i<queue.length;i++){const n=queue[i];for(const next of neighbors(n)){if(!distance.has(next)&&!blocked.has(next)){distance.set(next,distance.get(n)+1);queue.push(next);}}}return distance;}
  for(let step=0;step<900;step++){
@@ -51,6 +53,7 @@ try {
   }else if(g.phase==='view'){
    const id=await page.locator('.evidence-card.shown').getAttribute('data-card');assert(id);k.seen.add(id);stats.privateCards++;await page.getByRole('button',{name:'Hide card and finish',exact:true}).click();assert.equal(await page.locator('.evidence-card.shown').count(),0);
   }else if(['turn','end'].includes(g.phase)){
+   if(g.turn===0&&g.phase==='turn'&&stats.turns>=playerCount*2&&stats.wrongAccusations===0){await choice('accuse',wrong);assert.equal((await publicState()).players[0].eliminated,true);assert.equal(await page.getByRole('button',{name:'Make an accusation',exact:true}).count(),0);stats.wrongAccusations++;await nextTurn();continue;}
    const candidates=Object.fromEntries(Object.entries(caseCategories(g)).map(([type,list])=>[type,list.filter(e=>!k.seen.has(type+':'+e.id)).map(e=>e.id)]));
    if(Object.values(candidates).every(list=>list.length===1)){await choice('accuse',Object.fromEntries(Object.entries(candidates).map(([type,list])=>[type,list[0]])));continue;}
    if(g.phase==='end'&&lastSuggestion?.turn===g.turn&&g.log.at(-1)==='No other player could disprove the rumor.'&&lastSuggestion.ids.every(id=>!k.own.has(id))){await choice('accuse',Object.fromEntries(lastSuggestion.ids.map(id=>id.split(':'))));continue;}
@@ -71,13 +74,13 @@ try {
   }else throw Error('Unknown phase '+g.phase);
   if(stats.suggestions===3&&stats.reloads<2&&!['refute','view'].includes((await publicState()).phase))await reloadCovered();
   if(step===25){await page.screenshot({path:folder+'/board-desktop.png',fullPage:true});for(const size of [{width:390,height:844},{width:820,height:1180}]){await page.setViewportSize(size);await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:folder+'/board-'+size.width+'.png',fullPage:true});}await page.setViewportSize({width:1440,height:1100});}
-  if(step%100===0)console.log(JSON.stringify({progress:true,step,...stats}));
+  if(step%50===0)console.log(JSON.stringify({progress:true,step,...stats}));
  }
  assert(solved,'The investigation must reach a correct final accusation');const final=await state();assert.notEqual(final.winner,null);assert(final.players[0].eliminated);assert.equal(await page.locator('.case-solution [data-card]').count(),3);assert(final.lastAccusation.correct);stats.winner=final.players[final.winner].name;
  await page.screenshot({path:folder+'/winner.png',fullPage:true});const raw=JSON.stringify(final);await page.reload();assert.equal(JSON.stringify(await state()),raw);assert.equal(await page.locator('#clueHandoff').evaluate(d=>d.open),false);
  assert.equal(await page.evaluate(k=>localStorage.getItem(k),monopolyKey),monopoly,'Clue must not modify the Monoply save');
  await page.getByRole('link',{name:'All games',exact:true}).click();await page.getByRole('link',{name:'View last case'}).waitFor({state:'visible'});await page.getByRole('link',{name:'Play Clue',exact:false}).click();await page.getByRole('button',{name:'One device',exact:true}).click();
- await page.getByRole('button',{name:'Open a new case'}).click();assert(await page.locator('#replaceCase').evaluate(d=>d.open));await page.getByRole('button',{name:'Keep current case'}).click();assert.equal(JSON.stringify(await state()),raw);await page.getByRole('button',{name:'Open a new case'}).click();await page.getByRole('button',{name:'Start new case',exact:true}).click();await page.waitForURL('**/clue');await page.locator('#clueHandoff[open]').waitFor();assert.equal((await state()).phase,'turn');assert.equal((await state()).config['room:booking'],'HD8');assert.equal((await state()).players.length,4);await privacy();
+ await page.getByRole('button',{name:'Open a new case'}).click();assert(await page.locator('#replaceCase').evaluate(d=>d.open));await page.getByRole('button',{name:'Keep current case'}).click();assert.equal(JSON.stringify(await state()),raw);await page.getByRole('button',{name:'Open a new case'}).click();await page.getByRole('button',{name:'Start new case',exact:true}).click();await page.waitForURL('**/clue');await page.locator('#clueHandoff[open]').waitFor();assert.equal((await state()).phase,'turn');assert.equal((await state()).config['room:booking'],'HD8');assert.equal((await state()).players.length,playerCount);await privacy();
  await ready();await page.locator('#viewNotebook').click();const ownedSelect=await page.locator('.notebook-row.owned select').count();assert(ownedSelect>0);assert(await page.locator('.notebook-row.owned select').first().isDisabled());const mark=page.locator('.notebook-row:not(.owned) select').first();const markedId=await mark.getAttribute('data-note');await mark.selectOption('maybe');await page.locator('#closeCluePrivate').click();await reloadCovered();await page.locator('#viewNotebook').click();assert.equal(await page.locator(`[data-note="${markedId}"]`).inputValue(),'maybe');await page.locator('#closeCluePrivate').click();
  // A normal-motion roll and pawn move also finish and commit their state.
  await page.emulateMedia({reducedMotion:'no-preference'});await page.reload();await ready();await page.getByRole('button',{name:'Roll the dice',exact:true}).click();await page.locator('.clue-dice.rolling').waitFor();assert(await page.locator('.die').first().evaluate(e=>e.getAnimations().length>0));await page.waitForFunction(()=>JSON.parse(localStorage.getItem('kennebec-clue-v1')).phase==='move');const normal=await publicState(),path=[...reachable(normal)].find(([n])=>n.startsWith('room:'))||[...reachable(normal)][0];const target=path[0];if(target.startsWith('room:'))await page.locator(`[data-room="${target.slice(5)}"]`).click();else{const [x,y]=target.split(',').map(Number);await page.locator(`.hall-tile[aria-label="Corridor column ${x+1}, row ${y+1}"]`).click();}await page.waitForFunction(()=>[...document.querySelectorAll('.clue-pawn')].some(e=>e.getAnimations().length));await page.waitForFunction(()=>JSON.parse(localStorage.getItem('kennebec-clue-v1')).phase==='end');
