@@ -44,3 +44,7 @@ Monoply moves hold their economic result on the server while the moving player r
 Clue projections exclude the hidden solution and other players’ cards/notebooks, including from the host. Waiting players can use their own notebook. Wrong accusers still refute suggestions on their own devices.
 
 Run `npm run test:online-browser` against `npm run dev` for four independent browser contexts in each game: room creation/joining, private cards/notes, synchronized board state, card staging, recipient-approved trades, refresh/reconnect, and phone layouts. `npm test` includes server identity, state projection, persistence, duplicate-action, and stale-revision checks. Local regression tests choose One device explicitly; `npm run test:game-browser` plays Monoply from setup to a winner and a restart.
+
+## Clue board draft
+
+Open `/clue-preview` to inspect the board without creating players, starting a case, or joining a room. The draft uses the game’s room layout, doors, and shared room illustrations. Its nine numbered rooms can be selected on the board or from the room list, and the board can be enlarged on small screens. Previewing never reads or changes game saves or makes room-service requests. Links are available from the homepage and Clue setup.
