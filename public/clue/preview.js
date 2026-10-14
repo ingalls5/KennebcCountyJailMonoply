@@ -1,5 +1,5 @@
 import {rooms,suspects,isHall} from './rules.js';
-import {roomArt,roomDoor} from './map-art.js';
+import {roomArt,roomDoor,staffPassage,passageLegend} from './map-art.js';
 
 const map=document.getElementById('previewMap');
 const viewport=document.getElementById('previewViewport');
@@ -42,10 +42,10 @@ rooms.forEach((room,index)=>{
   button.type='button';button.dataset.room=room.id;
   button.style.gridArea=`${y+1}/${x+1}/${y+height+1}/${x+width+1}`;
   button.style.setProperty('--room-color',room.color);
-  button.setAttribute('aria-label',`Room ${index+1}: ${room.name}`);
+  button.setAttribute('aria-label',`Room ${index+1}: ${room.name}`+(room.passage?' · Staff passage to '+rooms.find(other=>other.id===room.passage).name:''));
   button.setAttribute('aria-pressed','false');
   button.append(node('span','preview-number',index+1),roomArt(room.id),node('span','room-name',room.name));
-  if(room.passage)button.append(node('span','room-passage','STAFF PASSAGE →'));
+  if(room.passage)button.append(staffPassage(room,rooms.find(other=>other.id===room.passage).name));
   button.onclick=()=>select(room);
   map.append(button);roomButtons.set(room.id,button);
 
@@ -57,6 +57,7 @@ rooms.forEach((room,index)=>{
   choice.onclick=()=>select(room);row.append(choice);list.append(row);listButtons.set(room.id,choice);
 });
 
+document.getElementById('previewPassages').append(passageLegend(rooms,id=>rooms.find(room=>room.id===id).name));
 document.getElementById('previewZoom').onclick=event=>{
   const enlarged=viewport.classList.toggle('enlarged');
   event.currentTarget.setAttribute('aria-pressed',String(enlarged));

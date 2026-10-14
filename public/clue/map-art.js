@@ -11,6 +11,20 @@ const icons={
 };
 const roomTiles={booking:[0,0],control:[1,0],medical:[2,0],visitation:[0,1],briefing:[1,1],yard:[2,1],kitchen:[0,2],property:[1,2],sally:[2,2]};
 const updatedTiles={yard:0,property:1,sally:2};
+export function staffPassage(room,destinationName){
+ const marker=document.createElement('span');marker.className='room-passage';marker.dataset.destination=room.passage;
+ marker.setAttribute('aria-hidden','true');marker.title='Staff passage to '+destinationName;
+ const symbol=document.createElement('span');symbol.className='passage-symbol';symbol.textContent='⇄';
+ const caption=document.createElement('span');caption.className='passage-caption';
+ const kind=document.createElement('span');kind.className='passage-kind';kind.textContent='STAFF PASSAGE';
+ const destination=document.createElement('strong');destination.textContent='To '+destinationName;
+ caption.append(kind,destination);marker.append(symbol,caption);return marker;
+}
+export function passageLegend(rooms,name){
+ const legend=document.createDocumentFragment(),seen=new Set();
+ for(const room of rooms){if(!room.passage)continue;const pair=[room.id,room.passage].sort().join(':');if(seen.has(pair))continue;seen.add(pair);const route=document.createElement('span');route.textContent=name(room.id)+' ↔ '+name(room.passage);legend.append(route);}
+ return legend;
+}
 export function roomDoor(room,dx,dy){
  const [x,y,width,height]=room.rect;
  let ex=dx,ey=dy,angle=0;
