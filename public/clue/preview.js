@@ -1,5 +1,5 @@
 import {rooms,suspects,isHall} from './rules.js';
-import {roomIcon} from './map-art.js';
+import {roomArt} from './map-art.js';
 
 const map=document.getElementById('previewMap');
 const viewport=document.getElementById('previewViewport');
@@ -44,7 +44,7 @@ rooms.forEach((room,index)=>{
   button.style.setProperty('--room-color',room.color);
   button.setAttribute('aria-label',`Room ${index+1}: ${room.name}`);
   button.setAttribute('aria-pressed','false');
-  button.append(node('span','preview-number',index+1),roomIcon(room.symbol),node('span','room-name',room.name));
+  button.append(node('span','preview-number',index+1),roomArt(room.id),node('span','room-name',room.name));
   if(room.passage)button.append(node('span','room-passage','STAFF PASSAGE →'));
   button.onclick=()=>select(room);
   map.append(button);roomButtons.set(room.id,button);
