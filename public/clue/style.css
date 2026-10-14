@@ -36,8 +36,9 @@
 .suspect-personality{font-size:11px;color:var(--muted);line-height:1.4}
 
 /* Keep the playable board fully visible; scrolling belongs to the page. */
-#mapViewport{width:min(100%,70dvh);margin-inline:auto;overflow:clip}
+#mapViewport{width:100%;overflow:clip}
 #mapViewport .clue-map{overflow:clip}
+@media(min-width:801px) and (max-width:1100px){.case-layout{grid-template-columns:minmax(0,1fr)}.case-sidebar{padding-top:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}.case-sidebar .turn-card{grid-row:span 3}.case-sidebar .investigators{margin:0}.case-sidebar>.quiet-link{justify-self:start}}
 .clue-room .room-passage{display:flex;align-items:center;gap:.55cqw;padding:.35cqw .55cqw;max-width:92%;white-space:normal;border:.1cqw dashed #667c79;background:#f6f3ebf2;box-shadow:0 .1cqw .2cqw #172e3433;font-size:.95cqw;line-height:1.15}
 .passage-symbol{display:grid;place-items:center;flex:none;width:1.8cqw;height:1.8cqw;border:.1cqw solid #728580;border-radius:.2cqw;background:#dce4dc;font-size:1.3cqw}
 .passage-caption{display:block;min-width:0;text-align:left}.passage-kind{display:block;font-size:.65cqw;letter-spacing:.04em;margin-bottom:.15cqw}.passage-caption strong{display:block;overflow-wrap:anywhere}
