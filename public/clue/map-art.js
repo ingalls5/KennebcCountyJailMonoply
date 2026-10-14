@@ -21,8 +21,12 @@ export function roomDoor(room,dx,dy){
  const door=document.createElement('span');
  door.className='room-door';
  door.setAttribute('aria-hidden','true');
- door.style.left=((dx+ex)/2+.5)/25*100-2+'%';
- door.style.top=((dy+ey)/2+.5)/25*100-2+'%';
+ // Keep the full door face outside the room so it cannot cover room labels.
+ // The corridor entrance and game movement coordinates stay at the same cell.
+ const cx=(dx+ex)/2+.5+(ex-dx)*.65;
+ const cy=(dy+ey)/2+.5+(ey-dy)*.65;
+ door.style.left=cx/25*100-2+'%';
+ door.style.top=cy/25*100-2+'%';
  door.style.setProperty('--door-angle',angle+'deg');
  return door;
 }
