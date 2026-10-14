@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>Cards &amp; pawns · Kennebec County Jail Clue</title>
+ <link rel="stylesheet" href="/clue/style.css">
+ <link rel="stylesheet" href="/clue/gallery.css">
+ <script type="module" src="/clue/gallery.js"></script>
+</head>
+<body>
+ <header class="clue-header">
+  <a class="clue-brand" href="/"><span class="clue-mark" aria-hidden="true">K</span><span>Kennebec County Jail<small>CLUE · CARDS &amp; PAWNS</small></span></a>
+  <nav aria-label="Preview navigation"><a class="quiet-link" href="/clue-preview">Board draft</a><a class="quiet-link" href="/clue-setup">Play Clue</a></nav>
+ </header>
+ <main class="clue-main gallery-main">
+  <section class="case-intro">
+   <div><p class="clue-eyebrow">The current pieces</p><h1>Cards &amp; pawns.</h1><p>Take a look at the pieces used in the game. The sample names become your players’ names when you start a case.</p></div>
+  </section>
+  <nav class="gallery-nav" aria-label="Gallery sections"><a href="#pawns">Pawns</a><a href="#suspects">Suspect cards</a><a href="#weapons">Weapon cards</a><a href="#rooms">Room cards</a></nav>
+  <section class="gallery-section" id="pawns" aria-labelledby="pawnHeading"><p class="clue-eyebrow">Six roles · Six colors</p><h2 id="pawnHeading">The pawns</h2><p>Each player has a colored officer token. These are enlarged so you can see their shape.</p><div id="pawnGallery" class="pawn-gallery"></div></section>
+  <section class="gallery-section" id="suspects" aria-labelledby="suspectHeading"><p class="clue-eyebrow">Who killed the rookie?</p><h2 id="suspectHeading">Suspect cards</h2><p>Each card shows the player’s name, their role, and their matching color.</p><div id="suspectGallery" class="piece-gallery"></div></section>
+  <section class="gallery-section" id="weapons" aria-labelledby="weaponHeading"><p class="clue-eyebrow">What did they use?</p><h2 id="weaponHeading">Weapon cards</h2><p>All seven weapon choices and their current icons.</p><div id="weaponGallery" class="piece-gallery"></div></section>
+  <section class="gallery-section" id="rooms" aria-labelledby="roomHeading"><p class="clue-eyebrow">Where did the rookie die?</p><h2 id="roomHeading">Room cards</h2><p>The nine rooms have their names and simple room symbols on the cards.</p><div id="roomGallery" class="piece-gallery"></div></section>
+  <a class="outline-button gallery-play" href="/clue-setup">Set up a game →</a>
+ </main>
+</body>
+</html>
