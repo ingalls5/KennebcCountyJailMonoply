@@ -10,12 +10,16 @@ const icons={
  sally:'M5 8h32v29H5z M12 8v29M20 8v29M28 8v29M4 16h34M17 3h8'
 };
 const roomTiles={booking:[0,0],control:[1,0],medical:[2,0],visitation:[0,1],briefing:[1,1],yard:[2,1],kitchen:[0,2],property:[1,2],sally:[2,2]};
+const updatedTiles={yard:0,property:1,sally:2};
 export function roomArt(id){
  const [column,row]=roomTiles[id];
  const art=document.createElement('span');
  art.className='room-art';
  art.setAttribute('aria-hidden','true');
- art.style.backgroundPosition=`${column*50}% ${row*50}%`;
+ if(Object.hasOwn(updatedTiles,id)){
+  art.classList.add('room-art-updated');
+  art.style.backgroundPosition=`${updatedTiles[id]*50}% 50%`;
+ }else art.style.backgroundPosition=`${column*50}% ${row*50}%`;
  return art;
 }
 export function roomIcon(symbol){const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 42 42');svg.setAttribute('aria-hidden','true');svg.classList.add('room-symbol');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',icons[symbol]);path.setAttribute('fill','none');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','2');path.setAttribute('stroke-linejoin','round');path.setAttribute('stroke-linecap','round');svg.append(path);return svg;}

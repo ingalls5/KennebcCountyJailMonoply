@@ -20,3 +20,15 @@ Tiles run left to right, top to bottom:
 stylesheet places the transparent furnishings over the separately credited
 photographed concrete floor. Room names, doors, game positions and movement
 rules remain independent of the artwork.
+
+`jail-interiors-updated.png` is a separate transparent three-panel replacement
+atlas, left to right:
+
+1. Rec Yard: basketball court, fence, bench and green steel workout station
+2. 4th Floor: galvanized air ducts, ventilation grilles, shelving, boxes and totes
+3. Sally Port: a police patrol car beside an empty parking bay, wall lockers and
+   vehicle gates; no computer or workstation
+
+These three rooms use the replacement atlas. The other six rooms retain their
+original artwork. The replacement was generated and edited using the original
+atlas as a visual reference, and depicts fictional game interiors.
