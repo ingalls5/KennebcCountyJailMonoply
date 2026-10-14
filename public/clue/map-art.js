@@ -11,6 +11,21 @@ const icons={
 };
 const roomTiles={booking:[0,0],control:[1,0],medical:[2,0],visitation:[0,1],briefing:[1,1],yard:[2,1],kitchen:[0,2],property:[1,2],sally:[2,2]};
 const updatedTiles={yard:0,property:1,sally:2};
+export function roomDoor(room,dx,dy){
+ const [x,y,width,height]=room.rect;
+ let ex=dx,ey=dy,angle=0;
+ if(dx===x+width-1){ex++;angle=90;}
+ else if(dx===x){ex--;angle=-90;}
+ else if(dy===y+height-1){ey++;angle=180;}
+ else ey--;
+ const door=document.createElement('span');
+ door.className='room-door';
+ door.setAttribute('aria-hidden','true');
+ door.style.left=((dx+ex)/2+.5)/25*100-2+'%';
+ door.style.top=((dy+ey)/2+.5)/25*100-2+'%';
+ door.style.setProperty('--door-angle',angle+'deg');
+ return door;
+}
 export function roomArt(id){
  const [column,row]=roomTiles[id];
  const art=document.createElement('span');

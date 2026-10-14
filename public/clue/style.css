@@ -28,3 +28,8 @@
 .clue-room:has(.room-passage) .room-name{bottom:13%}
 .clue-room .room-passage{position:absolute;bottom:4%;left:50%;transform:translateX(-50%);white-space:nowrap;z-index:1;margin:0}
 .preview-number{z-index:2;background:#f6f3ebde}
+
+/* Solid steel jail doors, turned to match the wall they connect through. */
+.room-door{background:none;box-shadow:none;transform:rotate(var(--door-angle,0deg))}
+.room-door:before{content:'';position:absolute;inset:-7% 10%;border:.16cqw solid #343e42;border-radius:.12cqw;background:linear-gradient(110deg,#b6babb,#969da0 45%,#727c81);box-shadow:inset .15cqw 0 0 #d8dcdd,inset -.15cqw 0 0 #515d62,inset 0 .12cqw 0 #d5d9da,0 .15cqw .25cqw #11252b66}
+.room-door:after{content:'';position:absolute;left:62%;top:50%;width:10%;height:23%;border-radius:.07cqw;background:#323e43;box-shadow:inset .07cqw 0 0 #d4d9db,0 0 0 .04cqw #5f6b70}

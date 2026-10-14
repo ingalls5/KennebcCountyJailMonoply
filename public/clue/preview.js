@@ -1,5 +1,5 @@
 import {rooms,suspects,isHall} from './rules.js';
-import {roomArt} from './map-art.js';
+import {roomArt,roomDoor} from './map-art.js';
 
 const map=document.getElementById('previewMap');
 const viewport=document.getElementById('previewViewport');
@@ -50,11 +50,7 @@ rooms.forEach((room,index)=>{
   map.append(button);roomButtons.set(room.id,button);
 
   for(const [dx,dy] of room.doors){
-    let ex=dx,ey=dy;
-    if(dx===x+width-1)ex++;else if(dx===x)ex--;else if(dy===y+height-1)ey++;else ey--;
-    const door=node('span','room-door');door.setAttribute('aria-hidden','true');
-    door.style.left=((dx+ex)/2+.5)/25*100-2+'%';
-    door.style.top=((dy+ey)/2+.5)/25*100-2+'%';map.append(door);
+    map.append(roomDoor(room,dx,dy));
   }
   const row=node('li'),choice=node('button','preview-room-choice');choice.type='button';
   choice.setAttribute('aria-pressed','false');choice.append(node('span','preview-list-number',index+1),node('span','',room.name));
