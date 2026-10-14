@@ -27,7 +27,9 @@ The follow camera frames both dice during their random rolls, then transitions t
 
 ## Kennebec County Jail Clue
 
-Open `/clue-setup` to choose three to six detectives and rename any of the nine rooms, six suspects, or six equipment items under Customize the case. `/clue` restores that case. A new case randomly hides one card in each category and deals the remaining 18. Dice movement follows corridor squares, room doors, occupied squares, and four corner staff passages. Room suggestions summon the suspect and equipment; the first clockwise player holding a matching card privately chooses one to show. Incorrect accusers stop investigating but still disprove suggestions. A correct accusation wins, or the case is revealed if all detectives make wrong accusations.
+Open `/clue-setup` to choose three to six detectives and rename any of the nine rooms, six suspects, or seven weapons under Customize the case. `/clue` restores that case. A new case randomly hides one card in each category and deals the remaining 19. Dice movement follows corridor squares, room doors, occupied squares, and four corner staff passages. Room rumors summon the suspect and weapon; the first clockwise player holding a matching card privately chooses one to show. Incorrect accusers stop investigating but still challenge rumors. A correct accusation wins, or the case is revealed if all detectives make wrong accusations.
+
+Each case stores its card deck. Older six-weapon cases retain their original 21 cards and hidden answer; Drugs joins the 22-card deck when a new case starts.
 
 Hands, shown cards, and notebooks are covered at device handoffs and after reloading. In local mode this is pass-and-play privacy, and browser local storage holds the complete case. In online mode, only the player’s own hand and notebook (plus a card privately shown to them) are delivered to their device. The hidden envelope stays on the server until the case closes. Clue uses its own `kennebec-clue-v1`, roster, and configuration keys and does not modify Monoply saves. New-case setup confirms before replacing an existing case.
 

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {suspects,rooms,cards,createGame,defaultConfig,validateConfig,validateRoster,validateGame,perform,reachable,neighbors,matchingCards,canSuggest,loadGame} from '../public/clue/rules.js';
+import {suspects,rooms,cards,createGame,defaultConfig,validateConfig,validateRoster,validateGame,perform,reachable,neighbors,matchingCards,canSuggest,loadGame,caseCategories} from '../public/clue/rules.js';
 const roster=suspects.slice(0,4).map((s,i)=>({name:'Detective '+(i+1),suspect:s.id}));
 const rng=seed=>()=>{seed^=seed<<13;seed^=seed>>>17;seed^=seed<<5;return (seed>>>0)/4294967296;};
 const fresh=()=>createGame(roster,defaultConfig(),rng(131026));
-test('Clue deals all 21 cards once, with one card of each category hidden and balanced hands for 3–6 players',()=>{for(let n=3;n<=6;n++){const g=createGame(suspects.slice(0,n).map((s,i)=>({name:'Player '+i,suspect:s.id})),defaultConfig(),rng(n));assert.equal(g.solution.length,3);for(const type of ['suspect','item','room'])assert.equal(g.solution.filter(c=>c.startsWith(type+':')).length,1);const all=[...g.solution,...g.players.flatMap(p=>p.hand)];assert.equal(all.length,21);assert.equal(new Set(all).size,21);const sizes=g.players.map(p=>p.hand.length);assert(Math.max(...sizes)-Math.min(...sizes)<=1);validateGame(g);}});
+test('Clue deals all 22 cards once, with one card of each category hidden and balanced hands for 3–6 players',()=>{for(let n=3;n<=6;n++){const g=createGame(suspects.slice(0,n).map((s,i)=>({name:'Player '+i,suspect:s.id})),defaultConfig(),rng(n));assert.equal(g.solution.length,3);for(const type of ['suspect','item','room'])assert.equal(g.solution.filter(c=>c.startsWith(type+':')).length,1);const all=[...g.solution,...g.players.flatMap(p=>p.hand)];assert.equal(all.length,22);assert.equal(new Set(all).size,22);const sizes=g.players.map(p=>p.hand.length);assert(Math.max(...sizes)-Math.min(...sizes)<=1);validateGame(g);}});
 test('Custom names retain stable card identities and reject blank, repeated, or excessive names',()=>{const config=defaultConfig();config['room:booking']='HD8';const g=createGame(roster,config);assert.equal(g.config['room:booking'],'HD8');assert.throws(()=>validateConfig({...config,'room:control':'HD8'}));assert.throws(()=>validateConfig({...config,'item:key':''}));assert.throws(()=>validateRoster(roster.slice(0,2)));assert.throws(()=>validateRoster([...roster.slice(0,3),roster[0]]));});
 test('Every room is reachable through reciprocal doors; no route walks through a room or another pawn',()=>{const g=fresh();for(const room of rooms){const node='room:'+room.id,exits=neighbors(node);assert(exits.length>0,room.id);for(const exit of exits)assert(neighbors(exit).includes(node));}g.phase='move';g.steps=12;const paths=reachable(g);assert(paths.size>0);for(const [end,path] of paths){assert(path.length<=13);assert.equal(path.at(-1),end);assert(!path.slice(1,-1).some(n=>n.startsWith('room:')));assert(!Object.entries(g.positions).some(([s,n])=>s!==g.players[0].suspect&&!n.startsWith('room:')&&path.includes(n)));}assert.throws(()=>perform(g,{type:'move',node:'0,0'}));for(const s of suspects){g.positions[g.players[0].suspect]=s.start;g.positions[s.id]=s.start;g.phase='move';g.steps=12;assert(reachable(g).size>0);}});
 test('Room entry consumes the roll; corner passages replace rolling and allow a new suggestion',()=>{let g=fresh();g.positions.red='7,3';g=perform(g,{type:'roll'},()=>0);assert.equal(g.steps,2);assert(reachable(g).has('room:booking'));g=perform(g,{type:'move',node:'room:booking'});assert.equal(g.phase,'end');assert.equal(g.steps,0);assert(canSuggest(g));assert.throws(()=>perform(g,{type:'roll'}));g.phase='turn';g=perform(g,{type:'passage'});assert.equal(g.positions.red,'room:sally');assert.equal(g.phase,'end');assert(canSuggest(g));});
@@ -35,4 +35,23 @@ test('Revision-two weapon updates preserve an active case and customized room or
  const after=structuredClone(loaded);delete after.config;delete after.boardRevision;assert.deepEqual(after,before);
  old.config['item:belt']='Custom Shiv';assert.equal(loadGame({getItem:()=>JSON.stringify(old)}).config['item:belt'],'Custom Shiv');
  const current=fresh();current.config['item:cuffs']='Handcuffs';assert.equal(loadGame({getItem:()=>JSON.stringify(current)}).config['item:cuffs'],'Handcuffs');
+});
+
+test('The Drugs card can be the hidden weapon, appear in rumors and identify the winning accusation',()=>{
+ let game;for(let seed=1;seed<=100;seed++){const candidate=createGame(roster,defaultConfig(),rng(seed));if(candidate.solution.includes('item:drugs')){game=candidate;break;}}
+ assert(game);assert.equal(caseCategories(game).item.length,7);assert.equal(game.deck.length,22);
+ const answer=Object.fromEntries(game.solution.map(card=>card.split(':')));game.positions.red='room:'+answer.room;
+ game=perform(game,{type:'suggest',suspect:answer.suspect,item:'drugs'});assert.equal(game.itemRooms.drugs,answer.room);assert.match(game.log.join(' '),/using Drugs/);assert.equal(game.pending,null);
+ game=perform(game,{type:'accuse',...answer});assert.equal(game.phase,'over');assert.equal(game.winner,0);validateGame(game);
+});
+
+test('A saved six-weapon case retains its original answer, hands and notes and excludes the new card',()=>{
+ const old=createGame(roster,defaultConfig(),()=>.999);old.boardRevision=3;delete old.deck;delete old.config['item:drugs'];
+ for(const player of old.players)player.hand=player.hand.filter(card=>card!=='item:drugs');old.positions.red='room:booking';old.players[0].notes['item:belt']='maybe';
+ const before=structuredClone(old);delete before.config;delete before.boardRevision;
+ const loaded=loadGame({getItem:()=>JSON.stringify(old)});assert(loaded);assert.equal(loaded.deck.length,21);assert.equal(caseCategories(loaded).item.length,6);assert(!loaded.deck.includes('item:drugs'));
+ const after=structuredClone(loaded);delete after.config;delete after.boardRevision;delete after.deck;assert.deepEqual(after,before);
+ assert.throws(()=>perform(loaded,{type:'suggest',suspect:'gold',item:'drugs'}));assert.throws(()=>perform(loaded,{type:'note',player:0,card:'item:drugs',value:'maybe'}));assert.throws(()=>perform(loaded,{type:'accuse',suspect:'gold',item:'drugs',room:'booking'}));
+ const current=fresh();delete current.deck;assert.equal(loadGame({getItem:()=>JSON.stringify(current)}),null);
+ const corrupt=structuredClone(loaded);corrupt.players[0].hand.pop();assert.equal(loadGame({getItem:()=>JSON.stringify(corrupt)}),null);
 });

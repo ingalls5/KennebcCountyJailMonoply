@@ -1,7 +1,7 @@
 export const gameKey='kennebec-clue-v1';
 export const rosterKey='kennebec-clue-roster-v1';
 export const configKey='kennebec-clue-config-v1';
-export const boardRevision=3;
+export const boardRevision=4;
 export const suspects=[
  {id:'red',name:'Officer Red',color:'#b94f46',start:'8,0'},
  {id:'gold',name:'Officer Gold',color:'#c09232',start:'16,0'},
@@ -16,7 +16,8 @@ export const items=[
  {id:'radio',name:'Radio',icon:'/pawns/walkie-talkie.svg'},
  {id:'light',name:'Flashlight',icon:'/pawns/flashlight.svg'},
  {id:'spray',name:'Taser',icon:'/pawns/taser.svg'},
- {id:'belt',name:'Inmate-made shank',icon:'/clue/weapons/shank.svg'}
+ {id:'belt',name:'Inmate-made shank',icon:'/clue/weapons/shank.svg'},
+ {id:'drugs',name:'Drugs',icon:'/clue/weapons/drugs.svg'}
 ];
 export const rooms=[
  {id:'booking',name:'Intake',rect:[0,0,7,7],doors:[[6,3],[3,6]],passage:'sally',symbol:'booking',color:'#d9c9ac'},
@@ -32,6 +33,8 @@ export const rooms=[
 export const categories={suspect:suspects,item:items,room:rooms};
 export const cards=Object.entries(categories).flatMap(([type,list])=>list.map(entry=>({id:type+':'+entry.id,type,key:entry.id})));
 const cardIds=new Set(cards.map(c=>c.id));
+const originalCardIds=cards.filter(c=>c.id!=='item:drugs').map(c=>c.id);
+export function caseCategories(game){const active=new Set(game.deck||originalCardIds);return Object.fromEntries(Object.entries(categories).map(([type,list])=>[type,list.filter(entry=>active.has(type+':'+entry.id))]));}
 const phases=new Set(['turn','move','refute','view','end','over']);
 const noteValues=new Set(['unknown','no','maybe','yes']);
 const check=(condition,message)=>{if(!condition)throw Error(message);};
@@ -39,6 +42,11 @@ export function defaultConfig(){return Object.fromEntries(cards.map(card=>[card.
 export function validateConfig(input){const clean=defaultConfig();for(const key of Object.keys(clean)){const name=input?.[key];check(typeof name==='string'&&name.trim().length>0&&name.trim().length<=32,'Give every room, suspect, and item a name of up to 32 characters.');clean[key]=name.trim();}for(const type of Object.keys(categories)){const names=Object.keys(clean).filter(k=>k.startsWith(type+':')).map(k=>clean[k].toLowerCase());check(new Set(names).size===names.length,'Use different names within each category.');}return clean;}
 // Upgrade untouched defaults from their own revision; preserve customized names.
 export function migrateConfig(input,fromRevision=1){
+ if(fromRevision<4&&!Object.hasOwn(input||{},'item:drugs')){
+  input={...input};let name='Drugs',suffix=2;
+  while(Object.entries(input).some(([key,value])=>key.startsWith('item:')&&typeof value==='string'&&value.toLowerCase()===name.toLowerCase())){name='Drugs ('+suffix+')';suffix++;}
+  input['item:drugs']=name;
+ }
  const clean=validateConfig(input);
  function upgrade(type,id,oldName){
   const key=type+':'+id,name=categories[type].find(entry=>entry.id===id).name;
@@ -56,7 +64,7 @@ export function createGame(roster,config=defaultConfig(),random=Math.random){
  const players=validateRoster(roster).map(p=>({...p,hand:[],notes:{},eliminated:false,lastSuggestedRoom:null,summoned:false}));
  const solution=Object.keys(categories).map(type=>shuffle(cards.filter(c=>c.type===type),random)[0].id);
  shuffle(cards.filter(c=>!solution.includes(c.id)).map(c=>c.id),random).forEach((id,index)=>players[index%players.length].hand.push(id));
- return {version:1,boardRevision,config:validateConfig(config),players,positions:Object.fromEntries(suspects.map(s=>[s.id,s.start])),itemRooms:{},solution,turn:0,phase:'turn',dice:[],steps:0,pending:null,winner:null,log:['The rookie was found dead. Rumors are spreading. Identify the killer, weapon, and room.'],turns:1};
+ return {version:1,boardRevision,deck:cards.map(card=>card.id),config:validateConfig(config),players,positions:Object.fromEntries(suspects.map(s=>[s.id,s.start])),itemRooms:{},solution,turn:0,phase:'turn',dice:[],steps:0,pending:null,winner:null,log:['The rookie was found dead. Rumors are spreading. Identify the killer, weapon, and room.'],turns:1};
 }
 const inside=(x,y,rect)=>x>=rect[0]&&y>=rect[1]&&x<rect[0]+rect[2]&&y<rect[1]+rect[3];
 export function roomAt(x,y){return rooms.find(r=>inside(x,y,r.rect));}
@@ -81,29 +89,29 @@ export function matchingCards(game,index,suggestion=game.pending?.suggestion){re
 function log(game,text){game.log.push(text);if(game.log.length>80)game.log.shift();}
 function turnEnd(game){game.phase='end';game.steps=0;}
 export function perform(original,action,random=Math.random){
- const game=structuredClone(original),p=game.players[game.turn];check(game.phase!=='over','This case is already closed.');check(!p.eliminated||['end','note'].includes(action.type),'Your investigation is over. You can still show cards on other players’ turns.');
+ const game=structuredClone(original),p=game.players[game.turn],activeDeck=new Set(game.deck||originalCardIds);check(game.phase!=='over','This case is already closed.');check(!p.eliminated||['end','note'].includes(action.type),'Your investigation is over. You can still show cards on other players’ turns.');
  switch(action.type){
  case 'roll':check(game.phase==='turn','Roll at the start of your turn.');game.dice=[1+Math.floor(random()*6),1+Math.floor(random()*6)];game.steps=game.dice[0]+game.dice[1];game.phase='move';p.summoned=false;if(!reachable(game).size){turnEnd(game);log(game,p.name+' cannot move.');}break;
  case 'move':{check(game.phase==='move','Roll before moving.');check(reachable(game).has(action.node),'Choose an outlined space within your roll.');game.positions[p.suspect]=action.node;turnEnd(game);p.summoned=false;log(game,p.name+' moved to '+(currentRoom(game)?label(game,'room:'+currentRoom(game)):'the corridor')+'.');break;}
  case 'passage':{check(game.phase==='turn','Use a passage instead of rolling.');const room=rooms.find(r=>r.id===currentRoom(game));check(room?.passage,'This room has no passage.');game.positions[p.suspect]='room:'+room.passage;p.summoned=false;turnEnd(game);log(game,p.name+' took the staff passage to '+label(game,'room:'+room.passage)+'.');break;}
- case 'suggest':{check(canSuggest(game),'Enter a different room before spreading another rumor there.');const room=currentRoom(game),suggestion=['suspect:'+action.suspect,'item:'+action.item,'room:'+room];check(suspects.some(s=>s.id===action.suspect)&&items.some(i=>i.id===action.item),'Choose a suspect and an item.');game.positions[action.suspect]='room:'+room;const summoned=game.players.find(p=>p.suspect===action.suspect);if(summoned&&summoned!==p)summoned.summoned=true;game.itemRooms[action.item]=room;p.lastSuggestedRoom=room;p.summoned=false;game.suggested=true;let refuter=null;for(let step=1;step<game.players.length;step++){const index=(game.turn+step)%game.players.length;if(matchingCards(game,index,suggestion).length){refuter=index;break;}}log(game,p.name+' spread a rumor: '+rumorText(game,suggestion));if(refuter===null){game.pending=null;turnEnd(game);log(game,'No other player could disprove the rumor.');}else{game.pending={suggestion,refuter,card:null};game.phase='refute';}break;}
+ case 'suggest':{check(canSuggest(game),'Enter a different room before spreading another rumor there.');const room=currentRoom(game),suggestion=['suspect:'+action.suspect,'item:'+action.item,'room:'+room];check(suspects.some(s=>s.id===action.suspect)&&activeDeck.has('item:'+action.item),'Choose a suspect and an item.');game.positions[action.suspect]='room:'+room;const summoned=game.players.find(p=>p.suspect===action.suspect);if(summoned&&summoned!==p)summoned.summoned=true;game.itemRooms[action.item]=room;p.lastSuggestedRoom=room;p.summoned=false;game.suggested=true;let refuter=null;for(let step=1;step<game.players.length;step++){const index=(game.turn+step)%game.players.length;if(matchingCards(game,index,suggestion).length){refuter=index;break;}}log(game,p.name+' spread a rumor: '+rumorText(game,suggestion));if(refuter===null){game.pending=null;turnEnd(game);log(game,'No other player could disprove the rumor.');}else{game.pending={suggestion,refuter,card:null};game.phase='refute';}break;}
  case 'show':check(game.phase==='refute','No player is showing a card right now.');check(matchingCards(game,game.pending.refuter).includes(action.card),'Show one of the matching cards in your hand.');game.pending.card=action.card;p.notes[action.card]='no';game.phase='view';break;
  case 'hide':check(game.phase==='view','There is no shown card to hide.');p.notes[game.pending.card]='no';game.pending=null;turnEnd(game);log(game,'A card challenging the rumor was shown privately to '+p.name+'.');break;
- case 'note':check(cardIds.has(action.card)&&noteValues.has(action.value),'Choose a valid notebook mark.');check(Number.isInteger(action.player)&&action.player===actor(game),'Use your own notebook.');game.players[action.player].notes[action.card]=action.value;break;
- case 'accuse':{check(['turn','end'].includes(game.phase),'Finish moving or viewing the card before making an accusation.');const accusation=['suspect:'+action.suspect,'item:'+action.item,'room:'+action.room];check(accusation.every(id=>cardIds.has(id)),'Choose a suspect, item, and room.');const correct=accusation.every(id=>game.solution.includes(id));game.lastAccusation={player:game.turn,cards:accusation,correct};if(correct){game.winner=game.turn;game.phase='over';log(game,p.name+' solved the case!');}else{p.eliminated=true;game.phase=game.players.every(p=>p.eliminated)?'over':'end';log(game,p.name+' made an incorrect accusation and is out of the investigation.');}break;}
+ case 'note':check(activeDeck.has(action.card)&&noteValues.has(action.value),'Choose a valid notebook mark.');check(Number.isInteger(action.player)&&action.player===actor(game),'Use your own notebook.');game.players[action.player].notes[action.card]=action.value;break;
+ case 'accuse':{check(['turn','end'].includes(game.phase),'Finish moving or viewing the card before making an accusation.');const accusation=['suspect:'+action.suspect,'item:'+action.item,'room:'+action.room];check(accusation.every(id=>activeDeck.has(id)),'Choose a suspect, item, and room.');const correct=accusation.every(id=>game.solution.includes(id));game.lastAccusation={player:game.turn,cards:accusation,correct};if(correct){game.winner=game.turn;game.phase='over';log(game,p.name+' solved the case!');}else{p.eliminated=true;game.phase=game.players.every(p=>p.eliminated)?'over':'end';log(game,p.name+' made an incorrect accusation and is out of the investigation.');}break;}
  case 'end':check(['turn','end','move'].includes(game.phase),'Finish the private card handoff first.');let next=game.turn;for(let count=0;count<game.players.length;count++){next=(next+1)%game.players.length;if(!game.players[next].eliminated)break;}check(!game.players[next].eliminated,'Every investigator is out.');game.turn=next;game.phase='turn';game.steps=0;game.dice=[];game.pending=null;game.suggested=false;game.turns++;break;
  default:throw Error('Unknown game action.');
  }
  return game;
 }
 export function validateGame(game){
- check(game?.version===1,'Unknown saved game.');if((game.boardRevision||1)<boardRevision){game.config=migrateConfig(game.config,game.boardRevision||1);game.boardRevision=boardRevision;}else validateConfig(game.config);validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
+ check(game?.version===1,'Unknown saved game.');if((game.boardRevision||1)<boardRevision){game.config=migrateConfig(game.config,game.boardRevision||1);if(!Object.hasOwn(game,'deck'))game.deck=[...originalCardIds];game.boardRevision=boardRevision;}else validateConfig(game.config);check(Array.isArray(game.deck),'Missing case deck.');const activeDeck=new Set(game.deck);check(activeDeck.size===game.deck.length&&(game.deck.length===originalCardIds.length||game.deck.length===cards.length)&&originalCardIds.every(id=>activeDeck.has(id))&&game.deck.every(id=>cardIds.has(id)),'Invalid case deck.');validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
  check(Number.isInteger(game.turns)&&game.turns>0&&Array.isArray(game.log)&&game.log.every(t=>typeof t==='string'),'Invalid saved history.');
- check(Array.isArray(game.solution)&&game.solution.length===3&&Object.keys(categories).every(type=>game.solution.filter(id=>id.startsWith(type+':')&&cardIds.has(id)).length===1),'Invalid case file.');
- const dealt=[...game.solution];for(const p of game.players){check(Array.isArray(p.hand)&&p.hand.every(id=>cardIds.has(id))&&typeof p.eliminated==='boolean'&&typeof p.summoned==='boolean','Invalid saved cards.');check(p.notes&&Object.entries(p.notes).every(([id,value])=>cardIds.has(id)&&noteValues.has(value)),'Invalid notebook.');check(p.lastSuggestedRoom===null||rooms.some(r=>r.id===p.lastSuggestedRoom),'Invalid saved suggestion.');dealt.push(...p.hand);}
- check(dealt.length===21&&new Set(dealt).size===21,'Cards are missing or repeated.');check(suspects.every(s=>isNode(game.positions?.[s.id])),'Invalid board positions.');const hall=Object.values(game.positions).filter(node=>!node.startsWith('room:'));check(new Set(hall).size===hall.length,'Two pawns occupy the same corridor square.');
- check(game.itemRooms&&Object.entries(game.itemRooms).every(([id,room])=>items.some(i=>i.id===id)&&rooms.some(r=>r.id===room)),'Invalid equipment positions.');check(Array.isArray(game.dice)&&(game.dice.length===0||game.dice.length===2&&game.dice.every(d=>Number.isInteger(d)&&d>=1&&d<=6))&&Number.isInteger(game.steps)&&game.steps>=0&&game.steps<=12,'Invalid dice.');
- if(['refute','view'].includes(game.phase)){const pending=game.pending;check(pending&&Array.isArray(pending.suggestion)&&pending.suggestion.length===3&&Object.keys(categories).every(type=>pending.suggestion.filter(id=>id.startsWith(type+':')&&cardIds.has(id)).length===1)&&Number.isInteger(pending.refuter)&&!!game.players[pending.refuter]&&pending.refuter!==game.turn,'Invalid card handoff.');check(matchingCards(game,pending.refuter).length>0,'No matching card to show.');check(game.phase==='refute'?pending.card===null:matchingCards(game,pending.refuter).includes(pending.card),'Invalid shown card.');}else check(game.pending===null,'Unexpected card handoff.');
+ check(Array.isArray(game.solution)&&game.solution.length===3&&Object.keys(categories).every(type=>game.solution.filter(id=>id.startsWith(type+':')&&activeDeck.has(id)).length===1),'Invalid case file.');
+ const dealt=[...game.solution];for(const p of game.players){check(Array.isArray(p.hand)&&p.hand.every(id=>activeDeck.has(id))&&typeof p.eliminated==='boolean'&&typeof p.summoned==='boolean','Invalid saved cards.');check(p.notes&&Object.entries(p.notes).every(([id,value])=>activeDeck.has(id)&&noteValues.has(value)),'Invalid notebook.');check(p.lastSuggestedRoom===null||rooms.some(r=>r.id===p.lastSuggestedRoom),'Invalid saved suggestion.');dealt.push(...p.hand);}
+ check(dealt.length===game.deck.length&&new Set(dealt).size===game.deck.length,'Cards are missing or repeated.');check(suspects.every(s=>isNode(game.positions?.[s.id])),'Invalid board positions.');const hall=Object.values(game.positions).filter(node=>!node.startsWith('room:'));check(new Set(hall).size===hall.length,'Two pawns occupy the same corridor square.');
+ check(game.itemRooms&&Object.entries(game.itemRooms).every(([id,room])=>activeDeck.has('item:'+id)&&rooms.some(r=>r.id===room)),'Invalid equipment positions.');check(Array.isArray(game.dice)&&(game.dice.length===0||game.dice.length===2&&game.dice.every(d=>Number.isInteger(d)&&d>=1&&d<=6))&&Number.isInteger(game.steps)&&game.steps>=0&&game.steps<=12,'Invalid dice.');
+ if(['refute','view'].includes(game.phase)){const pending=game.pending;check(pending&&Array.isArray(pending.suggestion)&&pending.suggestion.length===3&&Object.keys(categories).every(type=>pending.suggestion.filter(id=>id.startsWith(type+':')&&activeDeck.has(id)).length===1)&&Number.isInteger(pending.refuter)&&!!game.players[pending.refuter]&&pending.refuter!==game.turn,'Invalid card handoff.');check(matchingCards(game,pending.refuter).length>0,'No matching card to show.');check(game.phase==='refute'?pending.card===null:matchingCards(game,pending.refuter).includes(pending.card),'Invalid shown card.');}else check(game.pending===null,'Unexpected card handoff.');
  check(game.phase==='over'?game.winner===null&&game.players.every(p=>p.eliminated)||Number.isInteger(game.winner)&&!!game.players[game.winner]&&!game.players[game.winner].eliminated:game.winner===null,'Invalid winner.');check(game.phase==='over'||!game.players[game.turn].eliminated||game.phase==='end','An eliminated player cannot take a turn.');
  return game;
 }
