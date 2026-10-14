@@ -1,6 +1,7 @@
 export const gameKey='kennebec-clue-v1';
 export const rosterKey='kennebec-clue-roster-v1';
 export const configKey='kennebec-clue-config-v1';
+export const boardRevision=2;
 export const suspects=[
  {id:'red',name:'Officer Red',color:'#b94f46',start:'8,0'},
  {id:'gold',name:'Officer Gold',color:'#c09232',start:'16,0'},
@@ -18,14 +19,14 @@ export const items=[
  {id:'belt',name:'Duty Belt',icon:'/pawns/duty-belt.svg'}
 ];
 export const rooms=[
- {id:'booking',name:'Booking',rect:[0,0,7,7],doors:[[6,3],[3,6]],passage:'sally',symbol:'booking',color:'#d9c9ac'},
- {id:'control',name:'Control Room',rect:[10,0,5,7],doors:[[12,6]],symbol:'control',color:'#b9d2cf'},
- {id:'medical',name:'Medical',rect:[18,0,7,7],doors:[[18,3],[21,6]],passage:'kitchen',symbol:'medical',color:'#d3ddd0'},
- {id:'visitation',name:'Visitation',rect:[0,9,7,4],doors:[[6,10]],symbol:'visitation',color:'#d0c7d9'},
+ {id:'booking',name:'Intake',rect:[0,0,7,7],doors:[[6,3],[3,6]],passage:'sally',symbol:'booking',color:'#d9c9ac'},
+ {id:'control',name:'Control',rect:[10,0,5,7],doors:[[12,6]],symbol:'control',color:'#b9d2cf'},
+ {id:'medical',name:'Medical',rect:[0,9,7,4],doors:[[6,10]],symbol:'medical',color:'#d3ddd0'},
+ {id:'visitation',name:'T-Unit',rect:[18,0,7,7],doors:[[18,3],[21,6]],passage:'kitchen',symbol:'visitation',color:'#d0c7d9'},
  {id:'briefing',name:'Briefing Room',rect:[0,14,7,4],doors:[[6,15]],symbol:'briefing',color:'#cec9b3'},
  {id:'yard',name:'Rec Yard',rect:[18,9,7,9],doors:[[18,11],[18,15]],symbol:'yard',color:'#b9cbb0'},
- {id:'kitchen',name:'Kitchen',rect:[0,20,7,5],doors:[[6,22],[3,20]],passage:'medical',symbol:'kitchen',color:'#dcc1ae'},
- {id:'property',name:'Property Room',rect:[10,20,5,5],doors:[[12,20]],symbol:'property',color:'#baccda'},
+ {id:'kitchen',name:'Kitchen',rect:[0,20,7,5],doors:[[6,22],[3,20]],passage:'visitation',symbol:'kitchen',color:'#dcc1ae'},
+ {id:'property',name:'4th Floor',rect:[10,20,5,5],doors:[[12,20]],symbol:'property',color:'#baccda'},
  {id:'sally',name:'Sally Port',rect:[18,20,7,5],doors:[[18,22],[21,20]],passage:'booking',symbol:'sally',color:'#d8c89c'}
 ];
 export const categories={suspect:suspects,item:items,room:rooms};
@@ -36,6 +37,15 @@ const noteValues=new Set(['unknown','no','maybe','yes']);
 const check=(condition,message)=>{if(!condition)throw Error(message);};
 export function defaultConfig(){return Object.fromEntries(cards.map(card=>[card.id,categories[card.type].find(x=>x.id===card.key).name]));}
 export function validateConfig(input){const clean=defaultConfig();for(const key of Object.keys(clean)){const name=input?.[key];check(typeof name==='string'&&name.trim().length>0&&name.trim().length<=32,'Give every room, suspect, and item a name of up to 32 characters.');clean[key]=name.trim();}for(const type of Object.keys(categories)){const names=Object.keys(clean).filter(k=>k.startsWith(type+':')).map(k=>clean[k].toLowerCase());check(new Set(names).size===names.length,'Use different names within each category.');}return clean;}
+// Upgrade only untouched labels from the original draft. Keep custom room names.
+export function migrateConfig(input){
+ const clean=validateConfig(input);
+ for(const [id,oldName] of Object.entries({'booking':'Booking','control':'Control Room','visitation':'Visitation','property':'Property Room'})){
+  const key='room:'+id,name=rooms.find(room=>room.id===id).name;
+  if(clean[key]===oldName&&!Object.entries(clean).some(([other,value])=>other!==key&&other.startsWith('room:')&&value.toLowerCase()===name.toLowerCase()))clean[key]=name;
+ }
+ return clean;
+}
 export function validateRoster(input){check(Array.isArray(input)&&input.length>=3&&input.length<=6,'Choose three to six players.');const names=new Set(),chosen=new Set();return input.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';check(name.length>0&&name.length<=30,'Give every player a name of up to 30 characters.');check(!names.has(name.toLowerCase()),'Every player needs a different name.');check(suspects.some(s=>s.id===p.suspect)&&!chosen.has(p.suspect),'Choose a different suspect for each player.');names.add(name.toLowerCase());chosen.add(p.suspect);return {name,suspect:p.suspect};});}
 export function label(game,id){return game.config[id]||id;}
 const shuffle=(list,random)=>{const result=[...list];for(let i=result.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[result[i],result[j]]=[result[j],result[i]];}return result;};
@@ -43,7 +53,7 @@ export function createGame(roster,config=defaultConfig(),random=Math.random){
  const players=validateRoster(roster).map(p=>({...p,hand:[],notes:{},eliminated:false,lastSuggestedRoom:null,summoned:false}));
  const solution=Object.keys(categories).map(type=>shuffle(cards.filter(c=>c.type===type),random)[0].id);
  shuffle(cards.filter(c=>!solution.includes(c.id)).map(c=>c.id),random).forEach((id,index)=>players[index%players.length].hand.push(id));
- return {version:1,config:validateConfig(config),players,positions:Object.fromEntries(suspects.map(s=>[s.id,s.start])),itemRooms:{},solution,turn:0,phase:'turn',dice:[],steps:0,pending:null,winner:null,log:['A new case is open. The three cards in the case file are the answer.'],turns:1};
+ return {version:1,boardRevision,config:validateConfig(config),players,positions:Object.fromEntries(suspects.map(s=>[s.id,s.start])),itemRooms:{},solution,turn:0,phase:'turn',dice:[],steps:0,pending:null,winner:null,log:['A new case is open. The three cards in the case file are the answer.'],turns:1};
 }
 const inside=(x,y,rect)=>x>=rect[0]&&y>=rect[1]&&x<rect[0]+rect[2]&&y<rect[1]+rect[3];
 export function roomAt(x,y){return rooms.find(r=>inside(x,y,r.rect));}
@@ -84,7 +94,7 @@ export function perform(original,action,random=Math.random){
  return game;
 }
 export function validateGame(game){
- check(game?.version===1,'Unknown saved game.');validateConfig(game.config);validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
+ check(game?.version===1,'Unknown saved game.');if((game.boardRevision||1)<boardRevision){game.config=migrateConfig(game.config);game.boardRevision=boardRevision;}else validateConfig(game.config);validateRoster(game.players);check(phases.has(game.phase)&&Number.isInteger(game.turn)&&!!game.players[game.turn],'Invalid saved turn.');
  check(Number.isInteger(game.turns)&&game.turns>0&&Array.isArray(game.log)&&game.log.every(t=>typeof t==='string'),'Invalid saved history.');
  check(Array.isArray(game.solution)&&game.solution.length===3&&Object.keys(categories).every(type=>game.solution.filter(id=>id.startsWith(type+':')&&cardIds.has(id)).length===1),'Invalid case file.');
  const dealt=[...game.solution];for(const p of game.players){check(Array.isArray(p.hand)&&p.hand.every(id=>cardIds.has(id))&&typeof p.eliminated==='boolean'&&typeof p.summoned==='boolean','Invalid saved cards.');check(p.notes&&Object.entries(p.notes).every(([id,value])=>cardIds.has(id)&&noteValues.has(value)),'Invalid notebook.');check(p.lastSuggestedRoom===null||rooms.some(r=>r.id===p.lastSuggestedRoom),'Invalid saved suggestion.');dealt.push(...p.hand);}

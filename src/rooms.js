@@ -1,4 +1,4 @@
-import {createGame,defaultConfig,validateConfig,suspects,cards,perform as clueAction,actor as clueActor,reachable as clueReachable} from '../public/clue/rules.js';
+import {createGame,defaultConfig,validateConfig,boardRevision,migrateConfig,suspects,cards,perform as clueAction,actor as clueActor,reachable as clueReachable} from '../public/clue/rules.js';
 import {newGame,perform as monopolyAction} from '../public/economy.js';
 import {pawns} from '../public/players.js';
 
@@ -21,7 +21,7 @@ export function project(room,member){
  return {code:room.code,kind:room.kind,status:state?'playing':'lobby',revision:room.revision,round:room.round||0,viewer:playerIndex,host:room.host===member.id,members:room.members.map(p=>({id:p.id,name:p.name,choice:p.choice,host:p.id===room.host})),config:room.config,state,motion,trade:room.trade||null,event:room.event||null};
 }
 export class GameRoom {
- constructor(ctx,env){this.ctx=ctx;this.env=env;this.room=null;ctx.blockConcurrencyWhile(async()=>{this.room=await ctx.storage.get('room')||null;});}
+ constructor(ctx,env){this.ctx=ctx;this.env=env;this.room=null;ctx.blockConcurrencyWhile(async()=>{this.room=await ctx.storage.get('room')||null;if(this.room?.kind==='clue'&&(this.room.layoutRevision||1)<boardRevision){this.room.config=migrateConfig(this.room.config);if(this.room.state){this.room.state.config=migrateConfig(this.room.state.config);this.room.state.boardRevision=boardRevision;}this.room.layoutRevision=boardRevision;}});}
  async persist(){await this.ctx.storage.put('room',this.room);await this.ctx.storage.setAlarm(Date.now()+7*24*60*60*1000);}
  async alarm(){await this.ctx.storage.deleteAll();this.room=null;}
  async fetch(request){return this.ctx.blockConcurrencyWhile(async()=>{try{return await this.handle(request);}catch(error){return json({error:error.message},error.status||400);}});}
@@ -30,7 +30,7 @@ export class GameRoom {
   if(path==='/init'&&request.method==='POST'){
    if(this.room)fail(409,'Room code is already in use.');const data=await body(request);if(!['clue','monoply'].includes(data.kind))fail(400,'Choose a game.');
    const member=this.newMember(data,[]),config=data.kind==='clue'?validateConfig(data.config||defaultConfig()):null;
-   this.room={code:data.code,kind:data.kind,config,members:[member],host:member.id,state:null,revision:1,round:0,processed:[],motion:null,trade:null,event:null};await this.persist();return json({...project(this.room,member),token:member.token},201);
+   this.room={code:data.code,kind:data.kind,layoutRevision:boardRevision,config,members:[member],host:member.id,state:null,revision:1,round:0,processed:[],motion:null,trade:null,event:null};await this.persist();return json({...project(this.room,member),token:member.token},201);
   }
   if(!this.room)fail(404,'That room was not found or has expired. Check the code or create a new room.');
   if(path==='/public'&&request.method==='GET')return json({code:this.room.code,kind:this.room.kind,status:this.room.state?'playing':'lobby',config:this.room.config,choices:this.room.members.map(p=>p.choice),count:this.room.members.length});

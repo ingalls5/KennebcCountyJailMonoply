@@ -1,7 +1,7 @@
 import {onlineSetup} from '../online-setup.js';
-import {suspects,categories,defaultConfig,validateConfig,validateRoster,createGame,loadGame,gameKey,rosterKey,configKey} from './rules.js';
+import {suspects,categories,boardRevision,migrateConfig,defaultConfig,validateConfig,validateRoster,createGame,loadGame,gameKey,rosterKey,configKey} from './rules.js';
 let config=defaultConfig(),players=suspects.slice(0,3).map(s=>({name:'',suspect:s.id}));
-try{config=validateConfig(JSON.parse(localStorage.getItem(configKey)));}catch{}
+try{const saved=JSON.parse(localStorage.getItem(configKey));config=saved?.__boardRevision===boardRevision?validateConfig(saved):migrateConfig(saved);}catch{}
 try{players=validateRoster(JSON.parse(localStorage.getItem(rosterKey)));}catch{}
 const rows=document.getElementById('cluePlayerRows'),status=document.getElementById('clueSetupStatus');
 const node=(tag,className,text)=>{const e=document.createElement(tag);if(className)e.className=className;if(text)e.textContent=text;return e;};
@@ -9,7 +9,7 @@ function render(){rows.replaceChildren();players.forEach((p,index)=>{const row=n
 const names=document.getElementById('caseNames');for(const [type,list] of Object.entries(categories)){const fieldset=node('fieldset'),legend=node('legend','',type==='room'?'The rooms':type==='suspect'?'The suspects':'The equipment');fieldset.append(legend);list.forEach((entry,index)=>{const label=node('label','',`${type==='room'?'Room':type==='suspect'?'Suspect':'Item'} ${index+1}`),input=node('input');input.value=config[type+':'+entry.id];input.required=true;input.maxLength=32;input.setAttribute('data-card',type+':'+entry.id);input.oninput=()=>{config[type+':'+entry.id]=input.value;};input.onchange=()=>{if(type==='suspect')render();window.dispatchEvent(new Event('case-names-changed'));};label.append(input);fieldset.append(label);});names.append(fieldset);}
 document.getElementById('clueAddPlayer').onclick=()=>{players.push({name:'',suspect:suspects.find(s=>!players.some(p=>p.suspect===s.id)).id});render();rows.lastElementChild.querySelector('input').focus();};
 const replace=document.getElementById('replaceCase');let pending=null;
-function start(){try{const clean=validateRoster(players),names=validateConfig(config),game=createGame(clean,names);localStorage.setItem(gameKey,JSON.stringify(game));localStorage.setItem(rosterKey,JSON.stringify(clean));localStorage.setItem(configKey,JSON.stringify(names));location.href='/clue';}catch(error){status.textContent=error.message;replace.close();}}
+function start(){try{const clean=validateRoster(players),names=validateConfig(config),game=createGame(clean,names);localStorage.setItem(gameKey,JSON.stringify(game));localStorage.setItem(rosterKey,JSON.stringify(clean));localStorage.setItem(configKey,JSON.stringify({...names,__boardRevision:boardRevision}));location.href='/clue';}catch(error){status.textContent=error.message;replace.close();}}
 document.getElementById('clueSetupForm').onsubmit=e=>{e.preventDefault();try{validateRoster(players);validateConfig(config);status.textContent='';if(loadGame()){pending=true;replace.showModal();}else start();}catch(error){status.textContent=error.message;}};
 document.getElementById('cancelNewCase').onclick=()=>{pending=null;replace.close();};document.getElementById('confirmNewCase').onclick=()=>{if(pending)start();};
 if(loadGame())document.getElementById('resumeCase').hidden=false;
