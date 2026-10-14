@@ -1,3 +1,4 @@
+import {OnlineRoom,roomBanner,setupPath,stateActor} from './online.js';
 import {sound} from './sound.js';
 import {animateTransfers} from './transfers.js';
 import {BoardCamera} from './camera.js';
@@ -7,7 +8,14 @@ import {pawns,loadPlayers} from './players.js';
 import {spaces,position,move} from './board.js';
 const STEP_MS=500;
 sound.bind([document.getElementById('soundToggle'),document.getElementById('turnSoundToggle'),document.getElementById('drawSoundToggle')]);
-const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=loadPlayers();let game=rosterChoice.length?loadGame(rosterChoice):null,players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
+const roomCode=new URLSearchParams(location.search).get('room')?.toUpperCase();
+const online=roomCode?new OnlineRoom('monoply',roomCode):null;
+let onlineError='';
+if(online){const status=roomBanner('monoply',roomCode,document.querySelector('main'));online.onstatus=text=>status.textContent=text;try{await online.connect();}catch(error){onlineError=error.message;status.textContent=onlineError;}}
+const board=document.getElementById('board'),details=document.getElementById('spaceDetails');const rosterChoice=online?(online.snapshot?.state?.players||[]).map(p=>({name:p.name,pawn:p.pawn})):loadPlayers();let game=online?online.snapshot?.state:(rosterChoice.length?loadGame(rosterChoice):null),players=game?.players||[],token=0,turn=game?.turn||0,selected=0;
+let currentMotion=null,currentCard=null,lastMotionId=null,lastOnlineEvent=online?.snapshot?.event?.id,onlineRound=online?.snapshot?.round;
+const canOperate=()=>!online||online.canAct;
+
 
 const camera=new BoardCamera(board,document.querySelector('.board-viewport'));
 
@@ -16,6 +24,12 @@ const drawDialog=document.getElementById('drawDialog');
 drawDialog.addEventListener('cancel',event=>event.preventDefault());
 document.getElementById('continueCard').onclick=()=>drawDialog.close();
 async function revealCard({deck,id},index){
+ const ordinal=currentMotion?currentMotion.ordinal++:null;
+ if(online&&currentMotion&&(online.snapshot.motion?.id!==currentMotion.id||online.snapshot.motion.acknowledged>ordinal))return;
+ currentCard=ordinal;
+ const continueButton=document.getElementById('continueCard');
+ if(online&&currentMotion){continueButton.disabled=online.viewer!==currentMotion.actor;continueButton.textContent=continueButton.disabled?'Waiting for '+players[index].name+'…':'Continue';continueButton.onclick=async()=>{try{continueButton.disabled=true;await online.action({type:'continue-card',cardIndex:ordinal});drawDialog.close();}catch(error){document.getElementById('drawPlayer').textContent=error.message;continueButton.disabled=false;}};}
+
  if(turnDialog.open)turnDialog.close();
  document.getElementById('drawDialogTitle').textContent=deck==='chance'?'Chance':'Supervisors Office';
  document.getElementById('drawPlayer').textContent=players[index].name+' drew a card. Read it, then continue.';
@@ -76,6 +90,7 @@ async function rollAcrossBoard(values){
  camera.follow(dice,'dice');try{await Promise.all(animations);}finally{stopDice();}
 }
 document.getElementById('roll').onclick=async()=>{
+ if(online){await onlineExecute({type:'roll'});return;}
  if(moving||(game&&game.phase!=='roll'))return;moving=true;const roll=document.getElementById('roll'),reset=document.getElementById('reset');roll.disabled=true;reset.disabled=true;document.getElementById('zoom').disabled=true;
  let completed=false;
  const actor=turn,player=players[actor],start=player?player.position:token,values=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)],total=values[0]+values[1],piece=pieces[player?actor:0];
@@ -98,13 +113,15 @@ document.getElementById('roll').onclick=async()=>{
   finally{document.getElementById('zoom').disabled=false;moving=false;roll.disabled=false;reset.disabled=false;if(game){select(selected);renderEconomy();}}
  }
 };
-document.getElementById('reset').onclick=()=>{
+document.getElementById('reset').onclick=async()=>{
+ if(online){if(moving||!online.snapshot?.host)return;if(confirm('Start a new game for everyone in this room? This resets all balances, deeds, and upgrades.')){try{await online.send('restart');}catch(error){document.getElementById('gameError').textContent=error.message;}}return;}
  if(moving)return;
  if(game&&!confirm('Start a new game? This resets all balances, property ownership, and upgrades on this device.'))return;
  camera.stop();board.querySelectorAll('.board-die').forEach(die=>die.remove());token=0;turn=0;if(game){game=newGame(rosterChoice);players=game.players;saveGame();}place();roster();select(0);document.getElementById('moveStatus').textContent='Everyone is back at Briefing.';document.querySelectorAll('#dice span').forEach(d=>d.textContent='⚀');document.getElementById('dice').setAttribute('aria-label','Dice not rolled yet');if(game)renderEconomy();
 };
-function saveGame(){try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
+function saveGame(){if(online)return;try{localStorage.setItem(gameKey,JSON.stringify(game));}catch{document.getElementById('gameError').textContent='This browser could not save the game. Keep this page open to continue.';}}
 async function execute(action){
+ if(online){await onlineExecute(action);return;}
  if(moving)return;const priorPhase=game.phase;document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';
  try{
   const next=perform(game,action);moving=true;document.getElementById('roll').disabled=true;document.getElementById('reset').disabled=true;document.getElementById('zoom').disabled=true;
@@ -117,7 +134,7 @@ async function execute(action){
  }catch(error){camera.stop();document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;}
  finally{moving=false;document.getElementById('zoom').disabled=false;document.getElementById('reset').disabled=false;select(selected);renderEconomy();}
 }
-function button(container,label,action,disabled=false){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=label;b.disabled=disabled||moving;b.onclick=()=>execute(action);container.append(b);return b;}
+function button(container,label,action,disabled=false){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=label;b.disabled=disabled||moving||!canOperate();b.onclick=()=>execute(action);container.append(b);return b;}
 function paragraph(container,text){const p=document.createElement('p');p.textContent=text;container.append(p);}
 function upgradeIcon(special){const img=document.createElement('img');img.src=special?'upgrades/special-checks.svg':'upgrades/camera.svg';img.alt='';return img;}
 function propertyControls(index){const property=game.properties[index],d=deed(index);if(!property)return;const owner=property.owner,manager=game.phase==='debt'?game.debts[0].payer:game.turn;
@@ -125,14 +142,16 @@ function propertyControls(index){const property=game.properties[index],d=deed(in
  if(d.rents){const table=document.createElement('table');table.className='rent-table';d.rents.forEach((amount,level)=>{const row=document.createElement('tr'),label=document.createElement('td'),price=document.createElement('td');label.textContent=level===0?'Base rent':level===5?'Special Checks':level+' Camera'+(level===1?'':'s');if(level>0){const icon=upgradeIcon(level===5);icon.className='upgrade-icon';label.prepend(icon);}price.textContent='$'+amount;row.append(label,price);table.append(row);});details.append(table);paragraph(details,'Full color group doubles unimproved rent. Cameras and Special Checks: $'+d.buildCost+' each.');}
  else paragraph(details,spaces[index].type==='railroad'?'Rent: $25 / $50 / $100 / $200 for 1 / 2 / 3 / 4 Transport Deputies owned.':'Rent: 4× the dice total, or 10× when both instructors are owned.');
  if(owner!==null)paragraph(details,'Current rent: '+(spaces[index].type==='utility'?'dice-based':'$'+rent(game,index))+' · Mortgage value: $'+d.mortgage);
- if(owner===manager&&game.phase!=='over'){const actions=document.createElement('div');actions.className='property-actions';if(d.buildCost){button(actions,(property.buildings===4?'Add Special Checks · $':'Install Camera · $')+d.buildCost,{type:'build',index},property.buildings===5||property.mortgaged);button(actions,(property.buildings===5?'Remove Special Checks · $':'Sell Camera · $')+d.buildCost/2,{type:'sell',index},property.buildings===0);button(actions,'Remove all upgrades in group',{type:'sell-group',index},property.buildings===0);}button(actions,property.mortgaged?'Lift mortgage · $'+Math.ceil(d.mortgage*1.1):'Mortgage · $'+d.mortgage,{type:property.mortgaged?'redeem':'mortgage',index});details.append(actions);
-  if(game.phase!=='auction'&&game.players.filter(p=>!p.bankrupt).length>1){const trade=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Trade this property';trade.append(summary);const otherLabel=document.createElement('label');otherLabel.textContent='Trade with';const other=document.createElement('select');game.players.forEach((player,i)=>{if(i!==manager&&!player.bankrupt){const option=document.createElement('option');option.value=i;option.textContent=player.name;other.append(option);}});otherLabel.append(other);trade.append(otherLabel);const exchangeLabel=document.createElement('label');exchangeLabel.textContent='Receive a property (optional)';const exchange=document.createElement('select');exchangeLabel.append(exchange);trade.append(exchangeLabel);function choices(){exchange.replaceChildren();const none=document.createElement('option');none.value='';none.textContent='No property in return';exchange.append(none);game.properties.forEach((p,i)=>{if(p?.owner===Number(other.value)){const option=document.createElement('option');option.value=i;option.textContent=spaces[i].name;exchange.append(option);}});}other.onchange=choices;choices();const cashLabel=document.createElement('label');cashLabel.textContent='Cash paid to you';const cash=document.createElement('input');cash.type='number';cash.min=0;cash.step=1;cash.value=0;cashLabel.append(cash);trade.append(cashLabel);const agree=document.createElement('button');agree.className='economy-button';agree.type='button';agree.textContent='Confirm trade';agree.disabled=moving;agree.onclick=()=>{if(confirm('Do both players agree to trade '+spaces[index].name+' for $'+cash.value+(exchange.value?' and '+spaces[Number(exchange.value)].name:'')+'?'))execute({type:'trade',index,player:Number(other.value),cash:Number(cash.value),exchange:exchange.value});};trade.append(agree);details.append(trade);}
+ if(owner===manager&&game.phase!=='over'&&canOperate()){const actions=document.createElement('div');actions.className='property-actions';if(d.buildCost){button(actions,(property.buildings===4?'Add Special Checks · $':'Install Camera · $')+d.buildCost,{type:'build',index},property.buildings===5||property.mortgaged);button(actions,(property.buildings===5?'Remove Special Checks · $':'Sell Camera · $')+d.buildCost/2,{type:'sell',index},property.buildings===0);button(actions,'Remove all upgrades in group',{type:'sell-group',index},property.buildings===0);}button(actions,property.mortgaged?'Lift mortgage · $'+Math.ceil(d.mortgage*1.1):'Mortgage · $'+d.mortgage,{type:property.mortgaged?'redeem':'mortgage',index});details.append(actions);
+  if(game.phase!=='auction'&&game.players.filter(p=>!p.bankrupt).length>1){const trade=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Trade this property';trade.append(summary);const otherLabel=document.createElement('label');otherLabel.textContent='Trade with';const other=document.createElement('select');game.players.forEach((player,i)=>{if(i!==manager&&!player.bankrupt){const option=document.createElement('option');option.value=i;option.textContent=player.name;other.append(option);}});otherLabel.append(other);trade.append(otherLabel);const exchangeLabel=document.createElement('label');exchangeLabel.textContent='Receive a property (optional)';const exchange=document.createElement('select');exchangeLabel.append(exchange);trade.append(exchangeLabel);function choices(){exchange.replaceChildren();const none=document.createElement('option');none.value='';none.textContent='No property in return';exchange.append(none);game.properties.forEach((p,i)=>{if(p?.owner===Number(other.value)){const option=document.createElement('option');option.value=i;option.textContent=spaces[i].name;exchange.append(option);}});}other.onchange=choices;choices();const cashLabel=document.createElement('label');cashLabel.textContent='Cash paid to you';const cash=document.createElement('input');cash.type='number';cash.min=0;cash.step=1;cash.value=0;cashLabel.append(cash);trade.append(cashLabel);const agree=document.createElement('button');agree.className='economy-button';agree.type='button';agree.textContent=online?'Send trade offer':'Confirm trade';agree.disabled=moving;agree.onclick=()=>{if(confirm((online?'Send a trade offer for ':'Do both players agree to trade ')+spaces[index].name+' for $'+cash.value+(exchange.value?' and '+spaces[Number(exchange.value)].name:'')+'?'))execute({type:'trade',index,player:Number(other.value),cash:Number(cash.value),exchange:exchange.value});};trade.append(agree);details.append(trade);}
  }
 }
 function renderEconomy(){
  board.querySelectorAll('.space').forEach((tile,index)=>{const p=game.properties[index];tile.classList.toggle('owned',p?.owner!==null&&!!p);tile.querySelector('.building-badge')?.remove();if(p?.buildings){const badge=document.createElement('span');badge.className='building-badge'+(p.buildings===5?' special-checks':'');badge.setAttribute('role','img');badge.setAttribute('aria-label',p.buildings===5?'Special Checks':p.buildings+' Cameras');for(let count=0;count<(p.buildings===5?1:p.buildings);count++)badge.append(upgradeIcon(p.buildings===5));tile.querySelector('.color-strip').append(badge);}});
  const controls=document.getElementById('turnActions'),economic=document.getElementById('economicActions');controls.replaceChildren();economic.replaceChildren();
- document.getElementById('roll').disabled=moving||game.phase!=='roll';
+ document.getElementById('roll').disabled=moving||game.phase!=='roll'||!canOperate();
+ document.getElementById('reset').disabled=moving||!!online&&(!online.snapshot.host||!!online.snapshot.motion);
+ document.getElementById('showTurnOptions').disabled=!!online&&!canOperate();
  document.getElementById('bankStock').textContent='Bank: '+game.bank.houses+' Cameras · '+game.bank.hotels+' Special Checks. Hospital Coverage has no jackpot.';
  const log=document.getElementById('gameLog');log.replaceChildren();game.log.slice(0,12).forEach(text=>{const li=document.createElement('li');li.textContent=text;log.append(li);});
  updateTurnSummary();
@@ -142,10 +161,10 @@ function renderEconomy(){
  if(game.players[game.turn].inJail&&game.phase==='roll'){paragraph(controls,'Two Bridges: roll doubles, pay $50, or use a get-out-free card.');button(controls,'Pay $50 bail',{type:'bail'});button(controls,'Use get-out-free card',{type:'free-card'},game.players[game.turn].freeCards.length===0);}
  if(game.phase==='purchase'){paragraph(controls,spaces[game.offer].name+' is available for $'+deed(game.offer).price+'.');button(controls,'Buy · $'+deed(game.offer).price,{type:'buy'},game.players[game.turn].cash<deed(game.offer).price);button(controls,'Send to auction',{type:'auction'});}
  if(game.phase==='auction'){
-  const a=game.auction;paragraph(controls,'Auction: '+spaces[a.index].name+'. High bid: $'+a.high+(a.bidder!==null?' by '+game.players[a.bidder].name:''));paragraph(controls,game.players[a.actor].name+' can bid or pass.');const label=document.createElement('label');label.textContent='Your bid';const input=document.createElement('input');input.type='number';input.min=a.high+1;input.max=game.players[a.actor].cash;input.value=a.high+1;input.id='auctionBid';input.disabled=moving;label.append(input);controls.append(label);const bid=button(controls,'Place bid',{type:'bid',amount:input.value});bid.onclick=()=>execute({type:'bid',amount:input.value});button(controls,'Pass on this auction',{type:'pass'});
+  const a=game.auction;paragraph(controls,'Auction: '+spaces[a.index].name+'. High bid: $'+a.high+(a.bidder!==null?' by '+game.players[a.bidder].name:''));paragraph(controls,game.players[a.actor].name+' can bid or pass.');const label=document.createElement('label');label.textContent='Your bid';const input=document.createElement('input');input.type='number';input.min=a.high+1;input.max=game.players[a.actor].cash;input.value=a.high+1;input.id='auctionBid';input.disabled=moving||!canOperate();label.append(input);controls.append(label);const bid=button(controls,'Place bid',{type:'bid',amount:input.value});bid.onclick=()=>execute({type:'bid',amount:input.value});button(controls,'Pass on this auction',{type:'pass'});
  }
  if(game.phase==='debt'){const d=game.debts[0];paragraph(controls,game.players[d.payer].name+' owes $'+d.amount+' for '+d.label+'. Select an owned space to sell upgrades or mortgage it.');const b=button(controls,'Declare bankruptcy',{type:'bankrupt'});b.onclick=()=>{if(confirm('Declare bankruptcy and leave this game?'))execute({type:'bankrupt'});};}
- if(game.phase==='roll'){const rollAgain=document.createElement('button');rollAgain.className='economy-button';rollAgain.type='button';rollAgain.disabled=moving;rollAgain.textContent=game.extraRoll?'Roll again':'Roll the dice';rollAgain.onclick=()=>{turnDialog.close();document.getElementById('roll').click();};controls.append(rollAgain);}
+ if(game.phase==='roll'){const rollAgain=document.createElement('button');rollAgain.className='economy-button';rollAgain.type='button';rollAgain.disabled=moving||!canOperate();rollAgain.textContent=game.extraRoll?'Roll again':'Roll the dice';rollAgain.onclick=()=>{turnDialog.close();document.getElementById('roll').click();};controls.append(rollAgain);}
  const manager=game.phase==='debt'?game.debts[0].payer:game.turn;paragraph(economic,game.players[manager].name+'’s properties');const list=document.createElement('div');list.className='owned-list';game.properties.forEach((property,index)=>{if(property?.owner===manager){const b=document.createElement('button');b.type='button';b.textContent=spaces[index].name+(property.mortgaged?' · Mortgaged':'');b.onclick=()=>select(index);list.append(b);}});economic.append(list);if(!list.children.length)paragraph(economic,'No properties yet.');
 }
 function updateTurnSummary(){
@@ -156,10 +175,57 @@ function updateTurnSummary(){
  const events=game.events?.length?game.events:[game.log[0]];events.filter(event=>!drawn.length||!event.startsWith('Chance: ')&&!event.startsWith('Supervisors Office: ')).forEach(event=>paragraph(summary,event));
  if(phase==='action')paragraph(summary,'Ready to end your turn? You can also view the board to manage your properties first.');
 }
-function openTurnDialog(force=false,whileMoving=false){if(!game||(moving&&!whileMoving))return;document.getElementById('showTurnOptions').hidden=false;if(force||game.phase!=='roll'||game.extraRoll||game.players[game.turn].inJail){if(!turnDialog.open)turnDialog.showModal();const focusTarget=game.phase==='auction'?document.getElementById('auctionBid'):document.querySelector('#turnActions button:not(:disabled)');focusTarget?.focus();}}
+function openTurnDialog(force=false,whileMoving=false){if(online&&!canOperate()){if(turnDialog.open)turnDialog.close();return;}if(!game||(moving&&!whileMoving))return;document.getElementById('showTurnOptions').hidden=false;if(force||game.phase!=='roll'||game.extraRoll||game.players[game.turn].inJail){if(!turnDialog.open)turnDialog.showModal();const focusTarget=game.phase==='auction'?document.getElementById('auctionBid'):document.querySelector('#turnActions button:not(:disabled)');focusTarget?.focus();}}
 document.getElementById('showTurnOptions').hidden=!game;
 document.getElementById('showTurnOptions').onclick=()=>openTurnDialog(true);
 document.getElementById('closeTurnDialog').onclick=()=>turnDialog.close();
 document.getElementById('manageProperties').onclick=()=>{turnDialog.close();camera.stop();if(game.phase==='debt'){const manager=game.debts[0].payer,index=game.properties.findIndex(p=>p?.owner===manager);if(index>=0){select(index);details.scrollIntoView({block:'start'});}}};
 document.getElementById('followCamera').onclick=event=>{camera.setEnabled(!camera.enabled);event.currentTarget.setAttribute('aria-pressed',String(camera.enabled));event.currentTarget.textContent='Follow camera: '+(camera.enabled?'on':'off');};
 document.getElementById('zoom').onclick=event=>{if(moving)return;camera.stop();const enabled=document.querySelector('.board-viewport').classList.toggle('enlarged');event.currentTarget.setAttribute('aria-pressed',String(enabled));event.currentTarget.textContent=enabled?'Fit the whole board ↙':'Enlarge board ↗';};
+
+function showOnlineTrade(){
+ document.getElementById('onlineTrade')?.remove();const offer=online?.snapshot?.trade;if(!offer)return;
+ const box=document.createElement('section');box.id='onlineTrade';box.className='online-trade';const title=document.createElement('h3');title.textContent='Trade offer';const p=document.createElement('p');p.textContent=players[offer.from].name+' offers '+spaces[offer.action.index].name+' to '+players[offer.to].name+' for $'+offer.action.cash+(offer.action.exchange!==null?' and '+spaces[offer.action.exchange].name:'')+'.';box.append(title,p);
+ function decision(text,type){const b=document.createElement('button');b.type='button';b.className='economy-button';b.textContent=text;b.onclick=()=>onlineExecute({type});box.append(b);}
+ if(online.viewer===offer.to){decision('Accept trade','accept-trade');decision('Decline trade','decline-trade');}else if(online.viewer===offer.from){decision('Cancel offer','cancel-trade');}else{const waiting=document.createElement('p');waiting.textContent='Waiting for '+players[offer.to].name+' to decide.';box.append(waiting);}
+ document.querySelector('.control-card').after(box);
+}
+function updateOnline(){
+ const snapshot=online.snapshot;if(!snapshot.state)return;game=snapshot.state;players=game.players;turn=game.turn;
+ if(snapshot.round!==onlineRound){onlineRound=snapshot.round;camera.stop();board.querySelectorAll('.board-die').forEach(d=>d.remove());lastMotionId=null;lastOnlineEvent=null;}
+ place();roster();select(selected);renderEconomy();showOnlineTrade();
+ const values=game.lastDice||[];if(values.length)document.querySelectorAll('#dice span').forEach((d,i)=>d.textContent=String.fromCodePoint(0x2680+values[i]-1));
+ document.getElementById('moveStatus').textContent=game.phase==='over'?players[game.winner].name+' wins!':snapshot.motion?players[snapshot.motion.actor].name+' is moving…':snapshot.trade?'Waiting for a trade decision.':online.canAct?'Your move, '+players[online.viewer].name+'.':players[stateActor(snapshot)].name+' is taking their turn.';
+ openTurnDialog();
+}
+async function onlineExecute(action){
+ if(moving||!online.snapshot?.state)return;
+ if(!online.canAct&&!['accept-trade','decline-trade','cancel-trade'].includes(action.type))return;
+ moving=true;renderEconomy();document.getElementById('gameError').textContent='';document.getElementById('turnError').textContent='';
+ try{await online.action(action);}catch(error){document.getElementById('gameError').textContent=error.message;document.getElementById('turnError').textContent=error.message;}
+ finally{moving=false;await syncOnline(online.snapshot);}
+}
+async function animateOnlineMotion(motion){
+ lastMotionId=motion.id;currentMotion={id:motion.id,actor:motion.actor,ordinal:0};moving=true;renderEconomy();document.getElementById('zoom').disabled=true;if(turnDialog.open)turnDialog.close();const piece=pieces[motion.actor];
+ try{
+  if(motion.dice.length){document.getElementById('moveStatus').textContent='Rolling the dice…';await rollAcrossBoard(motion.dice);await camera.overview();}
+  if(motion.route.length)await camera.focus([piece],'pawn');for(const step of motion.route)await travelStep(piece,step,motion.actor);
+  if(online.viewer===motion.actor&&online.snapshot.motion?.id===motion.id)await online.action({type:'finish-motion'});
+  // A spectator may finish the route slightly before its owner.
+  while(online.snapshot.motion?.id===motion.id){await new Promise(r=>setTimeout(r,100));}
+  game=online.snapshot.state;players=game.players;turn=game.turn;place();roster();select(selected);renderEconomy();openTurnDialog(false,true);
+  const event=online.snapshot.event;lastOnlineEvent=event?.id;await Promise.all([camera.finish(),animateTransfers(event?.transfers||[],players)]);
+ }catch(error){camera.stop();document.getElementById('gameError').textContent=error.message;}
+ finally{currentMotion=null;currentCard=null;moving=false;document.getElementById('zoom').disabled=false;updateOnline();if(online.snapshot.motion&&online.snapshot.motion.id!==lastMotionId)queueMicrotask(()=>syncOnline(online.snapshot));}
+}
+async function syncOnline(snapshot){
+ if(drawDialog.open&&currentMotion&&(snapshot.motion?.id!==currentMotion.id||snapshot.motion.acknowledged>currentCard))drawDialog.close();
+ if(moving||!snapshot.state)return;
+ if(snapshot.motion&&snapshot.motion.id!==lastMotionId){await animateOnlineMotion(snapshot.motion);return;}
+ updateOnline();
+ const event=snapshot.event;if(event&&event.id!==lastOnlineEvent){lastOnlineEvent=event.id;if(event.transfers?.length){moving=true;renderEconomy();try{await animateTransfers(event.transfers,players);}finally{moving=false;updateOnline();if(online.snapshot.motion&&online.snapshot.motion.id!==lastMotionId)queueMicrotask(()=>syncOnline(online.snapshot));}}}
+}
+if(online){
+ if(game){online.onchange=syncOnline;updateOnline();if(online.snapshot.motion)syncOnline(online.snapshot);}
+ else{document.getElementById('roll').disabled=true;document.getElementById('reset').disabled=true;document.getElementById('moveStatus').textContent=onlineError||'Wait for the host to start the game.';const join=document.createElement('a');join.className='primary';join.textContent='Join or return to this room →';join.href=setupPath('monoply')+'?room='+roomCode;document.querySelector('.control-card').append(join);}
+}

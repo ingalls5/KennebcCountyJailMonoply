@@ -14,7 +14,7 @@ try {
  await page.goto('http://127.0.0.1:8791/');
  const monopoly=JSON.stringify(newGame([{name:'Old Joe',pawn:'keys'},{name:'Old Jacob',pawn:'badge'}]));
  await page.evaluate(({key,raw})=>localStorage.setItem(key,raw),{key:monopolyKey,raw:monopoly});
- await page.getByRole('link',{name:'Play Clue',exact:false}).click();
+ await page.getByRole('link',{name:'Play Clue',exact:false}).click();await page.getByRole('button',{name:'One device',exact:true}).click();
  await page.locator('#clueAddPlayer').click();
  for(let i=0;i<4;i++)await page.locator('#cluePlayerRows input').nth(i).fill('Detective '+(i+1));
  await page.locator('.case-customize summary').click();
@@ -76,7 +76,7 @@ try {
  assert(solved,'The investigation must reach a correct final accusation');const final=await state();assert.notEqual(final.winner,null);assert(final.players[0].eliminated);assert.equal(await page.locator('.case-solution [data-card]').count(),3);assert(final.lastAccusation.correct);stats.winner=final.players[final.winner].name;
  await page.screenshot({path:folder+'/winner.png',fullPage:true});const raw=JSON.stringify(final);await page.reload();assert.equal(JSON.stringify(await state()),raw);assert.equal(await page.locator('#clueHandoff').evaluate(d=>d.open),false);
  assert.equal(await page.evaluate(k=>localStorage.getItem(k),monopolyKey),monopoly,'Clue must not modify the Monoply save');
- await page.getByRole('link',{name:'All games',exact:true}).click();await page.getByRole('link',{name:'View last case'}).waitFor({state:'visible'});await page.getByRole('link',{name:'Play Clue',exact:false}).click();
+ await page.getByRole('link',{name:'All games',exact:true}).click();await page.getByRole('link',{name:'View last case'}).waitFor({state:'visible'});await page.getByRole('link',{name:'Play Clue',exact:false}).click();await page.getByRole('button',{name:'One device',exact:true}).click();
  await page.getByRole('button',{name:'Open a new case'}).click();assert(await page.locator('#replaceCase').evaluate(d=>d.open));await page.getByRole('button',{name:'Keep current case'}).click();assert.equal(JSON.stringify(await state()),raw);await page.getByRole('button',{name:'Open a new case'}).click();await page.getByRole('button',{name:'Start new case',exact:true}).click();await page.waitForURL('**/clue');await page.locator('#clueHandoff[open]').waitFor();assert.equal((await state()).phase,'turn');assert.equal((await state()).config['room:booking'],'HD8');assert.equal((await state()).players.length,4);await privacy();
  await ready();await page.locator('#viewNotebook').click();const ownedSelect=await page.locator('.notebook-row.owned select').count();assert(ownedSelect>0);assert(await page.locator('.notebook-row.owned select').first().isDisabled());const mark=page.locator('.notebook-row:not(.owned) select').first();const markedId=await mark.getAttribute('data-note');await mark.selectOption('maybe');await page.locator('#closeCluePrivate').click();await reloadCovered();await page.locator('#viewNotebook').click();assert.equal(await page.locator(`[data-note="${markedId}"]`).inputValue(),'maybe');await page.locator('#closeCluePrivate').click();
  // A normal-motion roll and pawn move also finish and commit their state.
