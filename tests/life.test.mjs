@@ -8,8 +8,16 @@ test('The Academy and floor routes have different costs and pay without spending
  const floor=perform(start,{type:'choose',index:1});assert.equal(floor.players[0].cash,1300);assert.equal(floor.players[0].rank,0);assert.equal(floor.players[0].reputation,3);
  assert.equal(perform(academy,{type:'roll'},()=>0).players[0].cash,850);assert.equal(perform(floor,{type:'roll'},()=>0).players[0].cash,1500);
 });
+test('The spinner yields every value from 1 to 10, moves that many spaces and stops at retirement',()=>{
+ const ready=perform(createGame(roster(2)),{type:'choose',index:1});
+ for(let number=1;number<=10;number++){
+  const next=perform(ready,{type:'roll'},()=>(number-.5)/10);assert.equal(next.dice,number);assert.equal(next.players[0].position,number);assert.equal(next.route.length,number);assert.equal(next.players[0].cash,1500);assert.deepEqual(validateGame(next),next);
+ }
+ const near=structuredClone(ready);near.players[0].position=lastSpace-2;const retired=perform(near,{type:'roll'},()=>.999);assert.equal(retired.dice,10);assert.equal(retired.players[0].position,lastSpace);assert.equal(retired.players[0].retired,true);assert.deepEqual(retired.route,[lastSpace-1,lastSpace]);
+ const ten=perform(ready,{type:'roll'},()=>.999);assert.throws(()=>validateGame({...ten,dice:11}));assert.throws(()=>validateGame({...ten,dice:0}));
+});
 test('Passing a review with a large roll permits promotions and cannot bypass eligibility',()=>{
- let g=perform(createGame(roster(2)),{type:'choose',index:1});g.players[0].position=15;g=perform(g,{type:'roll'},()=>.999);assert.equal(g.players[0].position,21);assert.equal(g.pending.type,'promotion');const promoted=perform(g,{type:'choose',index:0});assert.equal(promoted.players[0].rank,1);assert.equal(promoted.players[0].reputation,2);
+ let g=perform(createGame(roster(2)),{type:'choose',index:1});g.players[0].position=15;g=perform(g,{type:'roll'},()=>.999);assert.equal(g.players[0].position,25);assert.equal(g.pending.type,'promotion');const promoted=perform(g,{type:'choose',index:0});assert.equal(promoted.players[0].rank,1);assert.equal(promoted.players[0].reputation,2);
  g.players[0].reputation=0;assert.throws(()=>perform(g,{type:'choose',index:0}),/available/);g.players[0].rank=4;assert(decision(g).options[0].disabled);assert.equal(perform(g,{type:'choose',index:1}).players[0].rank,4);
 });
 test('Every event choice respects resource bounds, negative savings and exhaustion recovery',()=>{
@@ -56,7 +64,7 @@ test('Six-device career authority: own turns, hidden deck, server die, duplicate
  let snap=await(await call(room,'/start',{revision:6,id:crypto.randomUUID()},host.token)).json();assert.equal(snap.state.deck,undefined);assert.equal(snap.state.phase,'choice');const act=action=>({revision:snap.revision,id:crypto.randomUUID(),action});
  assert.equal((await call(room,'/action',act({type:'choose',index:0}),seats[1].token)).status,403);const first=act({type:'choose',index:0});snap=await(await call(room,'/action',first,host.token)).json();assert.equal(snap.state.players[0].rank,1);const duplicate=await(await call(room,'/action',first,host.token)).json();assert.equal(duplicate.revision,snap.revision);assert.equal(duplicate.state.players[0].cash,500);
  assert.equal((await call(room,'/action',{revision:6,id:crypto.randomUUID(),action:{type:'roll'}},host.token)).status,409);
- snap=await(await call(room,'/action',act({type:'roll',dice:99,cash:999999}),host.token)).json();assert(snap.state.dice>=1&&snap.state.dice<=6);assert.equal(snap.state.players[0].cash,850);assert.equal(snap.state.deck,undefined);
+ snap=await(await call(room,'/action',act({type:'roll',dice:99,cash:999999}),host.token)).json();assert(snap.state.dice>=1&&snap.state.dice<=10);assert.equal(snap.state.players[0].cash,850);assert.equal(snap.state.deck,undefined);
  let actions=0;while(snap.state.phase!=='over'){
   const g=snap.state,action=g.phase==='roll'?{type:'roll'}:g.phase==='end'?{type:'end'}:{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)};
   const response=await call(room,'/action',act(action),seats[g.turn].token);assert.equal(response.status,200);snap=await response.json();assert(++actions<700);

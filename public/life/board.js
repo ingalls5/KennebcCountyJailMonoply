@@ -1,4 +1,4 @@
-import {spaces} from './rules.js';
+import {spaces,spinnerMax,spinnerStep} from './rules.js';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1200,boardHeight=1000;
@@ -64,15 +64,15 @@ function spinner(root){
  add(g,'ellipse',{cx:cx+6,cy:cy+18,rx:r+22,ry:r+13,fill:'#2c693e55'});
  add(g,'circle',{cx,cy:cy+7,r:r+22,fill:'#35884c',stroke:'#a2d27b','stroke-width':5});
  add(g,'circle',{cx,cy,r:r+8,fill:'#fffdf0',stroke:'#d0dac0','stroke-width':5});
- const fills=['#e9c74c','#d97b4d','#8fc477','#54acb1','#718ec0','#a578b3'];
- for(let i=0;i<6;i++){
-  const start=(i*60-120)*Math.PI/180,end=(i*60-60)*Math.PI/180;
+ const fills=['#e9c74c','#df9651','#d97868','#cb7da1','#a578b3','#8586bc','#649fc3','#54acb1','#72bba0','#8fc477'];
+ for(let i=0;i<spinnerMax;i++){
+  const start=(i*spinnerStep-90-spinnerStep/2)*Math.PI/180,end=(i*spinnerStep-90+spinnerStep/2)*Math.PI/180;
   const x1=cx+Math.cos(start)*r,y1=cy+Math.sin(start)*r,x2=cx+Math.cos(end)*r,y2=cy+Math.sin(end)*r;
   add(g,'path',{d:`M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}Z`,fill:fills[i],stroke:'#ffffef','stroke-width':4});
-  const angle=(i*60-90)*Math.PI/180;add(g,'text',{x:cx+Math.cos(angle)*89,y:cy+Math.sin(angle)*89+9,'text-anchor':'middle',class:'spinner-number'},String(i+1));
+  const angle=(i*spinnerStep-90)*Math.PI/180;add(g,'text',{x:cx+Math.cos(angle)*89,y:cy+Math.sin(angle)*89+9,'text-anchor':'middle',class:'spinner-number'},String(i+1));
  }
  // Outer pegs and a white center give the wheel its raised, plastic appearance.
- for(let i=0;i<12;i++){const a=i*Math.PI/6;add(g,'circle',{cx:cx+Math.cos(a)*(r+9),cy:cy+Math.sin(a)*(r+9),r:4,fill:'#fffdec',stroke:'#c5d2ba','stroke-width':1});}
+ for(let i=0;i<spinnerMax*2;i++){const a=i*Math.PI/spinnerMax;add(g,'circle',{cx:cx+Math.cos(a)*(r+9),cy:cy+Math.sin(a)*(r+9),r:4,fill:'#fffdec',stroke:'#c5d2ba','stroke-width':1});}
  const needle=add(g,'g',{id:'careerSpinnerNeedle',class:'spinner-needle'});needle.style.transformOrigin=`${cx}px ${cy}px`;
  add(needle,'path',{d:`M${cx-8} ${cy+46}L${cx-6} ${cy-61}L${cx-14} ${cy-61}L${cx} ${cy-95}L${cx+14} ${cy-61}H${cx+6}L${cx+8} ${cy+46}Z`,fill:'#fffef0',stroke:'#c1cbb6','stroke-width':2});
  add(g,'circle',{cx,cy:cy+4,r:34,fill:'#c1cfb9'});add(g,'circle',{cx,cy,r:34,fill:'url(#lifePlastic)',stroke:'#fffff5','stroke-width':3});add(g,'text',{x:cx,y:cy+5,'text-anchor':'middle',class:'spinner-center'},'SPIN');
@@ -81,7 +81,7 @@ function spinner(root){
 const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
 const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
 export function createBoard(target){
- const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. One hundred numbered stops lead from first briefing to retirement. A six-number spinner sits in the center.');
+ const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. One hundred numbered stops lead from first briefing to retirement. A ten-number spinner sits in the center.');
  const defs=add(svg,'defs');
  const grass=add(defs,'linearGradient',{id:'lifeGrass',x2:'0',y2:'1'});add(grass,'stop',{'stop-color':'#9cc97e'});add(grass,'stop',{offset:1,'stop-color':'#85ba75'});
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});

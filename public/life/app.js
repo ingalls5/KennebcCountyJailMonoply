@@ -1,4 +1,4 @@
-import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace} from './rules.js';
+import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep} from './rules.js';
 import {createBoard} from './board.js';
 import {OnlineRoom,roomBanner} from '../online.js';
 import {bindEndGame,clearEndedGame} from '../end-game.js';
@@ -35,7 +35,7 @@ async function render(previous){
  const animations=[];$('careerTokens').replaceChildren();
  const spun=previous&&game.dice&&game.players.some((p,i)=>p.position>previous.players[i].position);
  const spinDuration=spun&&!reduced()?1600:0;
- if(spun){const nextAngle=Math.ceil(spinnerAngle/360)*360+1080+(game.dice-1)*60;if(spinDuration)animations.push(board.needle.animate([{transform:`rotate(${spinnerAngle}deg)`},{transform:`rotate(${nextAngle}deg)`}],{duration:spinDuration,easing:'cubic-bezier(.15,.65,.12,1)'}));spinnerAngle=nextAngle;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}else if(!previous){spinnerAngle=((game.dice||1)-1)*60;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}
+ if(spun){const nextAngle=Math.ceil(spinnerAngle/360)*360+1080+(game.dice-1)*spinnerStep;if(spinDuration)animations.push(board.needle.animate([{transform:`rotate(${spinnerAngle}deg)`},{transform:`rotate(${nextAngle}deg)`}],{duration:spinDuration,easing:'cubic-bezier(.15,.65,.12,1)'}));spinnerAngle=nextAngle;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}else if(!previous){spinnerAngle=((game.dice||1)-1)*spinnerStep;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}
  game.players.forEach((p,i)=>{const img=el('img','career-token'+(i===game.turn?' active':''));img.src=pawns.find(c=>c.id===p.pawn).icon;img.alt=p.name+' · '+pawns.find(c=>c.id===p.pawn).name;img.title=p.name+' — stop '+(p.position+1);const target=coordinates(p.position,i);img.style.left=target.left+'%';img.style.top=target.top+'%';$('careerTokens').append(img);
   const old=previous?.players[i];if(old&&old.position<p.position&&!reduced()){
    const steps=(p.position-old.position)*8,frames=Array.from({length:steps+1},(_,j)=>{const at=coordinates(old.position+(p.position-old.position)*j/steps,i),hop=Math.sin(j/steps*(p.position-old.position)*Math.PI)*8;return {left:at.left+'%',top:at.top+'%',transform:`translate(-50%,calc(-50% - ${Math.abs(hop)}px))`,offset:j/steps};});animations.push(img.animate(frames,{delay:spinDuration,duration:(p.position-old.position)*350,easing:'linear',fill:'backwards'}));

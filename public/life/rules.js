@@ -1,5 +1,6 @@
 export const gameKey='kennebec-life-v1';
 export const spaceCount=100,lastSpace=spaceCount-1;
+export const spinnerMax=10,spinnerStep=360/spinnerMax;
 export const ranks=['Rookie','Officer','FTO','Corporal','Supervisor'];
 export const colors=['#bc5948','#497d9b','#b48a32','#6c8661','#8b6ba4','#368e89'];
 export const pawns=[
@@ -74,7 +75,7 @@ export function perform(before,action,random=Math.random){
  const g=structuredClone(validateGame(before)),p=g.players[g.turn];
  if(action.type==='roll'){
   if(g.phase!=='roll')throw Error('Finish this shift before spinning again.');
-  g.dice=1+Math.floor(random()*6);const start=p.position,end=Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
+  g.dice=1+Math.floor(random()*spinnerMax);const start=p.position,end=Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
   const pay=200+p.rank*150;p.cash+=pay;p.energy=clamp(p.energy-1);entry(g,`${p.name} spun ${g.dice} and earned $${pay} in shift pay.`);
   // Passing reviews gives every career a chance to advance, even with large rolls.
   const review=g.route.some(n=>spaces[n].type==='promotion');
@@ -101,7 +102,7 @@ export function validateGame(g){
  validateRoster(g.players);
  const integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
  const savedSize=g.boardSize===undefined?36:g.boardSize;if(![36,spaceCount].includes(savedSize))throw Error('This saved career could not be read.');
- if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,savedSize-1))||(g.dice!==null&&!integer(g.dice,1,6)))throw Error('This saved career could not be read.');
+ if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,savedSize-1))||(g.dice!==null&&!integer(g.dice,1,spinnerMax)))throw Error('This saved career could not be read.');
  for(const p of g.players)if(!integer(p.position,0,savedSize-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||!integer(p.reputation,0,10)||!integer(p.energy,0,10)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||p.retired!==(p.position===savedSize-1))throw Error('This saved career could not be read.');
  if(g.phase==='choice'&&(!g.pending||!['academy','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))))throw Error('This saved career could not be read.');
  if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&g.players[g.turn].retired)throw Error('This saved career could not be read.');
