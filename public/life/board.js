@@ -112,7 +112,7 @@ function crisisArea(root,step,point){
  const g=add(root,'g',{class:'crisis-area'}),fork=point((crisisFork+.5)*step),rejoin=point((crisisRejoin+.5)*step);
  add(g,'rect',{x:1205,y:15,width:320,height:490,rx:20,fill:'#d9cbb8',stroke:'#f3ead7','stroke-width':3});
  add(g,'text',{x:1365,y:51,'text-anchor':'middle',class:'crisis-board-title'},'MID-LIFE CRISIS');
- add(g,'text',{x:1365,y:76,'text-anchor':'middle',class:'crisis-board-subtitle'},'ENTER 56 · REJOIN 57');
+ add(g,'text',{x:1365,y:76,'text-anchor':'middle',class:'crisis-board-subtitle'},'OPTIONAL · 56 → 57');
  const entrance=add(g,'path',{d:`M${fork.x} ${fork.y}H1180V150H1260`,fill:'none',stroke:'none','data-crisis-entrance':''});
  const exit=add(g,'path',{d:`M1260 280H1180V${rejoin.y}H${rejoin.x}`,fill:'none',stroke:'none','data-crisis-exit':''});
  for(const line of [entrance,exit]){add(g,'path',{d:line.getAttribute('d'),fill:'none',stroke:'#fff9e5','stroke-width':24,'stroke-linejoin':'round'});add(g,'path',{d:line.getAttribute('d'),fill:'none',stroke:'#a47685','stroke-width':14,'stroke-linejoin':'round'});const p=line.getPointAtLength(line.getTotalLength()*.6),a=line.getPointAtLength(line.getTotalLength()*.6-1),b=line.getPointAtLength(line.getTotalLength()*.6+1);add(g,'text',{x:p.x,y:p.y+4,'text-anchor':'middle',class:'crisis-junction-arrow',transform:`rotate(${Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI} ${p.x} ${p.y})`},'➜');}
@@ -166,7 +166,7 @@ function spinner(root){
 const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
 const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
 export function createBoard(target){
- const svg=node('svg',{viewBox:`0 0 ${boardWidth} ${boardHeight}`,class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. A ten-space Mid-Life Crisis detour branches at Stop 56 and rejoins at Stop 57. A ten-number spinner sits in the center.');
+ const svg=node('svg',{viewBox:`0 0 ${boardWidth} ${boardHeight}`,class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. An optional ten-space Mid-Life Crisis detour branches at Stop 56 and rejoins at Stop 57. A ten-number spinner sits in the center.');
  const defs=add(svg,'defs');
  const grass=add(defs,'linearGradient',{id:'lifeGrass',x2:'0',y2:'1'});add(grass,'stop',{'stop-color':'#9cc97e'});add(grass,'stop',{offset:1,'stop-color':'#85ba75'});
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});
@@ -188,7 +188,7 @@ export function createBoard(target){
   const p=point((i+.5)*step);let angle=p.angle*180/Math.PI;if(angle>90)angle-=180;if(angle<-90)angle+=180;
   const text=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${angle})`});
   add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},i===crisisFork?'CRISIS':names[space.type][0]);
-  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},i===crisisFork?'DETOUR':names[space.type][1]);
+  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},i===crisisFork?'CHOICE':names[space.type][1]);
   add(text,'text',{x:-step*.27,y:27,'text-anchor':'middle',class:'road-space-number'},String(i+1).padStart(2,'0'));
   add(text,'text',{x:step*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:p.angle*180/Math.PI!==angle?'rotate(180 '+step*.26+' 22)':''},'➜');
  });

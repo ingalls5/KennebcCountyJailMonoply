@@ -39,7 +39,7 @@ export const entryTracks={
  ]
 };
 export const inEntry=player=>Number.isInteger(player.entryPosition);
-// Stop 56 sends each career through this branch once; Stop 57 is the rejoin point.
+// Stop 56 offers this optional branch once; both routes continue at Stop 57.
 export const crisisFork=55,crisisRejoin=56;
 export const crisisSpaces=[
  {name:'Burnout',lines:['BURN','OUT'],text:'The long shifts are catching up with you. Rest costs money; pushing through costs you.',options:[option('Take unpaid leave',-900,0,4),option('Push through extra shifts',250,-1,-4)]},
@@ -54,7 +54,8 @@ export const crisisSpaces=[
  {name:'A New Chapter',lines:['STOP','RESET'],text:'Set your priorities for the next chapter. Neither choice is free. After this decision, rejoin the main road at Stop 57.',options:[option('Set boundaries and recover',-600,0,3),option('Chase the next paycheck',300,-2,-3)]}
 ];
 export const inCrisis=player=>Number.isInteger(player.crisisPosition);
-function enterCrisis(g,p){p.crisisPosition=0;g.pending={type:'crisis'};g.phase='choice';entry(g,`${p.name} entered the Mid-Life Crisis detour at Stop 56.`);}
+function offerCrisis(g,p){g.pending={type:'crisis-fork'};g.phase='choice';entry(g,`${p.name} reached the Mid-Life Crisis choice at Stop 56.`);}
+function enterCrisis(g,p){p.crisisTaken=true;p.crisisPosition=0;g.pending={type:'crisis'};g.phase='choice';entry(g,`${p.name} entered the Mid-Life Crisis detour at Stop 56.`);}
 // Original career events. Values are game money, rather than county pay rates.
 export const events=[
  {id:'holiday',title:'Holiday coverage',icon:'☀',text:'The holiday roster has an empty spot. Your family has plans, too.',options:[option('Take the holiday shift',650,1,-3),option('Keep your day off',0,0,3)]},
@@ -97,7 +98,7 @@ export function validateRoster(roster){
  const names=new Set(),chosen=new Set();
  return roster.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';if(!name||name.length>30)throw Error('Give every player a name of up to 30 characters.');if(names.has(name.toLowerCase()))throw Error('Each player needs a different name.');if(!pawns.some(c=>c.id===p.pawn)||chosen.has(p.pawn))throw Error('Choose a different pawn for each player.');names.add(name.toLowerCase());chosen.add(p.pawn);return {name,pawn:p.pawn};});
 }
-export function createGame(roster,random=Math.random){return {version:1,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false,careerPath:null,entryPosition:null,crisisPosition:null,crisisDone:false})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
+export function createGame(roster,random=Math.random){return {version:1,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false,careerPath:null,entryPosition:null,crisisPosition:null,crisisDone:false,crisisTaken:false})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
 export const score=p=>p.cash+p.reputation*100+p.energy*50;
 export function standings(game){return game.players.map((p,i)=>({...p,index:i,score:score(p)})).sort((a,b)=>b.score-a.score);}
 const clamp=n=>Math.max(0,Math.min(10,n));
@@ -110,6 +111,7 @@ export function decision(game){
  if(game.pending.type==='entry'){
   const space=entryTracks[p.careerPath][p.entryPosition];return {title:(p.careerPath==='academy'?'Academy · ':'Jail career · ')+space.name,icon:space.promote?'★':'◷',text:space.text,options:[{...option(space.promote?'Graduate and join the main road':p.entryPosition===entryTracks[p.careerPath].length-1?'Join the main career road':'Continue',space.cash||0,space.reputation||0,space.energy||0),promote:!!space.promote}]};
  }
+ if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take the optional ten-space Mid-Life Crisis detour. The detour brings difficult tradeoffs between savings, reputation, and energy. Both paths continue at Stop 57.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
  if(game.pending.type==='crisis'){const space=crisisSpaces[p.crisisPosition];return {...space,title:'Mid-Life Crisis · '+space.name,icon:'⚡'};}
  if(game.pending.type==='event')return events.find(e=>e.id===game.pending.id);
  if(game.pending.type==='shift')return {title:'Your shift. Your call.',icon:'◷',text:'Money, experience, or a little breathing room? Choose what you need today.',options:[option('Work overtime',550,0,-3),option('Take a training shift',-100,3,-1),option('Take a recovery day',-50,0,4)]};
@@ -133,17 +135,17 @@ export function perform(before,action,random=Math.random){
   const start=p.position,fork=!p.crisisDone&&start<=crisisFork&&start+g.dice>=crisisFork,end=fork?crisisFork:Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
   // Passing reviews gives every career a chance to advance, even with large rolls.
   const review=g.route.some(n=>spaces[n].type==='promotion');
-  if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else enterCrisis(g,p);return g;}
+  if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else offerCrisis(g,p);return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired with a score of ${score(p).toLocaleString('en-US')}.`);}
   else {let type=review?'promotion':spaces[end].type;if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');
   const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;
   if(!choice||choice.disabled)throw Error('Choose an available option.');
-  const academy=g.pending.type==='academy',crisis=g.pending.type==='crisis',thenCrisis=!!g.pending.thenCrisis,finishCrisis=crisis&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;apply(p,choice);if(choice.promote)p.rank++;
+  const academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',crisis=g.pending.type==='crisis',thenCrisis=!!g.pending.thenCrisis,finishCrisis=crisis&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;apply(p,choice);if(choice.promote)p.rank++;
   // Exhaustion costs game money, then gives enough rest to keep playing.
-  let recovery='';if(p.energy===0){p.cash-=200;p.energy=3;recovery=' Exhaustion: $200 recovery cost; energy restored to 3.';}
-  entry(g,`${p.name}: ${crisis?event.title+' — ':''}${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop 57.`);}if(thenCrisis)enterCrisis(g,p);
+  let recovery='';if(p.energy===0&&!forkChoice){p.cash-=200;p.energy=3;recovery=' Exhaustion: $200 recovery cost; energy restored to 3.';}
+  entry(g,`${p.name}: ${crisis?event.title+' — ':''}${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop 57.`);}if(thenCrisis)offerCrisis(g,p);if(forkChoice){if(action.index===1)enterCrisis(g,p);else{p.crisisDone=true;p.crisisTaken=false;p.position=crisisRejoin;entry(g,`${p.name} stayed on the main road and continued to Stop 57.`);}}
  }else if(action.type==='end'){
   if(g.phase!=='end')throw Error('Resolve the shift before ending your turn.');
   g.turns++;g.route=[];
@@ -159,9 +161,9 @@ export function validateGame(g){
  const savedSize=g.boardSize===undefined?36:g.boardSize;if(![36,spaceCount].includes(savedSize))throw Error('This saved career could not be read.');
  if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,savedSize-1))||(g.dice!==null&&!integer(g.dice,1,spinnerMax)))throw Error('This saved career could not be read.');
  for(const p of g.players)if(!integer(p.position,0,savedSize-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||!integer(p.reputation,0,10)||!integer(p.energy,0,10)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||(p.careerPath!==undefined&&![null,'academy','jail'].includes(p.careerPath))||p.retired!==(p.position===savedSize-1))throw Error('This saved career could not be read.');
- for(const p of g.players)if((p.crisisDone!==undefined&&typeof p.crisisDone!=='boolean')||(p.crisisPosition!==undefined&&p.crisisPosition!==null&&(!integer(p.crisisPosition,0,crisisSpaces.length-1)||p.crisisDone||!p.academyDone||inEntry(p)||p.position!==crisisFork||p.retired)))throw Error('This saved career could not be read.');
+ for(const p of g.players)if((p.crisisDone!==undefined&&typeof p.crisisDone!=='boolean')||(p.crisisTaken!==undefined&&typeof p.crisisTaken!=='boolean')||(p.crisisPosition!==undefined&&p.crisisPosition!==null&&(!integer(p.crisisPosition,0,crisisSpaces.length-1)||p.crisisDone||!p.academyDone||inEntry(p)||p.position!==crisisFork||p.retired)))throw Error('This saved career could not be read.');
  for(const p of g.players)if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))throw Error('This saved career could not be read.');
- if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(g.players[g.turn]))||(g.pending.type==='crisis'&&!inCrisis(g.players[g.turn]))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||g.players[g.turn].position!==crisisFork||g.players[g.turn].crisisDone||inEntry(g.players[g.turn])||inCrisis(g.players[g.turn])))))throw Error('This saved career could not be read.');
+ if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis-fork','crisis','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(g.players[g.turn]))||(g.pending.type==='crisis'&&!inCrisis(g.players[g.turn]))||(g.pending.type==='crisis-fork'&&(g.players[g.turn].position!==crisisFork||g.players[g.turn].crisisDone||inCrisis(g.players[g.turn])||inEntry(g.players[g.turn])||!g.players[g.turn].academyDone))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||g.players[g.turn].position!==crisisFork||g.players[g.turn].crisisDone||inEntry(g.players[g.turn])||inCrisis(g.players[g.turn])))))throw Error('This saved career could not be read.');
  if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&g.players[g.turn].retired)throw Error('This saved career could not be read.');
  if(savedSize!==spaceCount){
   const migrated=structuredClone(g),position=n=>Math.round(n/(savedSize-1)*lastSpace);
