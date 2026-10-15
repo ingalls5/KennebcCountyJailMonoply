@@ -20,3 +20,5 @@
 .life-board-art .family-stop .road-space-title{font-size:11px;font-weight:950;fill:#172f45}.life-board-art .family-stop .road-space-detail{font-size:8px;font-weight:850;fill:#172f45}
 
 .career-token,.career-token.on-entry{width:1.4%;height:2.65%;object-fit:contain}
+
+.life-camera-layer{position:absolute;inset:0;transform-origin:0 0;will-change:transform}.board-heading .text-button{font-size:11px;margin-left:auto}

@@ -35,3 +35,13 @@ Both packs are by **Kenney Vleugels**, licensed **CC0 1.0**. The RPG pack's
 license is preserved in `KENNEY-RPG-LICENSE.txt`. Files were converted to mono
 44.1 kHz PCM WAV. Playback uses recorded paper fanning, sliding and placing,
 and real coin handling, layered and panned to follow the on-screen transfer.
+
+## Recorded car engine
+
+`car-engine.mp3` is a trimmed (18–27 seconds), faded, mono MP3 conversion of
+**WWS CarPrinzNSU1200Cengine**: an actual 1969 NSU Prinz 1200 C engine.
+Recorded by **Dušan Oblak**, **Work With Sounds / Technical Museum of Slovenia**.
+
+- Source: https://commons.wikimedia.org/wiki/File:WWS_CarPrinzNSU1200Cengine.ogg
+- License: [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+- Playback loops only during car movement. No synthetic engine audio is used.

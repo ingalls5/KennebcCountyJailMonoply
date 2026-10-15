@@ -1,3 +1,4 @@
+import {drivingEffects} from './driving.js?v=driving-1';
 import {carIcon,carDescription} from './cars.js?v=peg-cars-1';
 import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js?v=peg-cars-1';
 import {createBoard} from './board.js?v=peg-cars-1';
@@ -11,6 +12,7 @@ const online=code?new OnlineRoom('life',code):null;
 let game=null,busy=false,moving=false,cleared=false,generation=0,lastChoice='',endBinding,motionHint='Making the rounds…';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 const board=createBoard($('careerTiles')),coordinates=board.coordinates;
+const driving=drivingEffects($('careerBoard'));
 let spinnerAngle=0;
 function canAct(){return !!game&&!cleared&&!busy&&!moving&&game.phase!=='over'&&(!online||online.canAct);}
 function error(message){$('lifeError').textContent=message;$('decisionError').textContent=message;}
@@ -46,6 +48,7 @@ function renderRoster(){const leaders=standings(game),high=leaders[0].score;$('c
  $('careerLog').replaceChildren(...[...game.log].reverse().map(text=>el('li','',text)));
 }
 async function render(previous){
+ driving.reset();
  const currentGeneration=++generation;$('careerTokens').getAnimations({subtree:true}).forEach(a=>a.cancel());board.needle.getAnimations().forEach(a=>a.cancel());moving=false;
  if(!game)return;renderRoster();announceTiles(previous);
  const animations=[];$('careerTokens').replaceChildren();motionHint='Spinning, then making the rounds…';
@@ -53,7 +56,7 @@ async function render(previous){
  const spinDuration=spun&&!reduced()?1600:0;
  if(spun){const nextAngle=Math.ceil(spinnerAngle/360)*360+1080+(game.dice-1)*spinnerStep;if(spinDuration)animations.push(board.needle.animate([{transform:`rotate(${spinnerAngle}deg)`},{transform:`rotate(${nextAngle}deg)`}],{duration:spinDuration,easing:'cubic-bezier(.15,.65,.12,1)'}));spinnerAngle=nextAngle;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}else if(!previous){spinnerAngle=((game.dice||1)-1)*spinnerStep;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}
  game.players.forEach((p,i)=>{const img=el('img','career-token'+(i===game.turn?' active':'')+(inEntry(p)?' on-entry':''));img.src=carIcon(p);img.alt=p.name+' · '+carDescription(p);img.title=p.name+' — '+locationLabel(p);const target=!p.academyDone&&p.position===0?board.startCoordinates(i):inCrisis(p)?board.crisisCoordinates(p.crisisPosition,i):inEntry(p)?board.entryCoordinates(p.careerPath,p.entryPosition,i):coordinates(p.position,i);img.style.left=target.left+'%';img.style.top=target.top+'%';$('careerTokens').append(img);
-  const old=previous?.players[i];
+  const old=previous?.players[i],animationCount=animations.length;
   const frame=at=>({left:at.left+'%',top:at.top+'%',transform:'translate(-50%,-50%)'});
   if(old&&inCrisis(old)&&!inCrisis(p)&&!reduced()){
    motionHint='Leaving the crisis behind. Back to the main road…';animations.push(img.animate(board.crisisExitFrames(i).map(frame),{duration:1600,easing:'ease-in-out'}));
@@ -73,8 +76,9 @@ async function render(previous){
   }else if(old&&old.position<p.position&&!reduced()){
    const steps=(p.position-old.position)*8,frames=Array.from({length:steps+1},(_,j)=>{const at=coordinates(old.position+(p.position-old.position)*j/steps,i),hop=Math.sin(j/steps*(p.position-old.position)*Math.PI)*8;return {left:at.left+'%',top:at.top+'%',transform:`translate(-50%,calc(-50% - ${Math.abs(hop)}px))`,offset:j/steps};});animations.push(img.animate(frames,{delay:spinDuration,duration:(p.position-old.position)*350,easing:'linear',fill:'backwards'}));
   }
+  if(animations.length>animationCount)driving.follow(img,animations.at(-1));
  });
- moving=animations.length>0;controls();if(moving){$('careerDecision').close();await Promise.allSettled(animations.map(a=>a.finished));if(currentGeneration!==generation)return;moving=false;controls();}
+ moving=animations.length>0;controls();if(moving){$('careerDecision').close();await Promise.allSettled(animations.map(a=>a.finished));if(currentGeneration!==generation)return;await driving.overview();if(currentGeneration!==generation)return;moving=false;controls();}
  maybeOpenDecision();
 }
 function maybeOpenDecision(){if(game?.phase!=='choice'||!canAct()){if(game?.phase!=='choice'||online&&online.viewer!==game.turn)$('careerDecision').close();return;}if(game.pending.type==='academy')return;const key=game.turn+':'+game.turns+':'+game.pending.type+':'+(game.pending.id||'');if(key!==lastChoice&&!$('careerRules').open){lastChoice=key;renderDecision();if(!$('careerDecision').open)$('careerDecision').showModal();}}
