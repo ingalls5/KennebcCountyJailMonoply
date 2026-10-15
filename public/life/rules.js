@@ -1,7 +1,7 @@
 export const gameKey='kennebec-life-v1';
 export const spaceCount=100,lastSpace=spaceCount-1;
 export const spinnerMax=10,spinnerStep=360/spinnerMax;
-export const ranks=['Rookie','Officer','FTO','Corporal','Supervisor'];
+export const ranks=['Rookie','Officer','FTO','Corporal','Supervisor','Programs','Classification','Sergeant','Staff Sergeant','Lieutenant','Captain'];
 export const colors=['#bc5948','#497d9b','#b48a32','#6c8661','#8b6ba4','#368e89'];
 export const pawns=[
  {id:'badge',name:'Badge',icon:'/pawns/badge.svg'},
@@ -12,7 +12,7 @@ export const pawns=[
  {id:'white-key-card',name:'Key Card',icon:'/pawns/white-key-card.svg'}
 ];
 export const ruleSet='life-tiles-v1';
-export const salaries=[200,350,500,650,800];
+export const salaries=[200,350,500,650,800,850,900,1000,1150,1300,1500];
 export const salary=p=>salaries[p.rank];
 const option=(label,cash=0,tiles=0,extra={})=>({label,cash,tiles,...extra});
 // Original face-down LIFE tiles. Values are game dollars, revealed at the final briefing.
@@ -142,8 +142,8 @@ export function decision(game){
   if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',options:event.options.map(o=>({...o,marry:false}))};
   return event;
  }
- const next=Math.min(p.rank+1,ranks.length-1),cost=300*next;
- return {title:'Career choice',icon:'★',text:p.rank===ranks.length-1?'You are a Supervisor. Celebrate what you have achieved with a LIFE tile.':`Pay $${cost} for career training to become ${ranks[next]} and earn $${salaries[next]} at each Pay Day, or stay in your current job and collect a LIFE tile.`,options:[option('Train for the next role',-cost,0,{promote:true,disabled:p.rank===ranks.length-1}),option('Keep my career and collect a LIFE tile',0,1)]};
+ const opportunities=ranks.map((name,rank)=>({name,rank})).filter(job=>job.rank>p.rank);
+ return {title:'Career choice',icon:'★',text:opportunities.length?'Choose a new job and pay its training cost, or keep your current job and collect a LIFE tile. Each job pays its listed salary at every Pay Day.':`You are a ${ranks[p.rank]}. Celebrate what you have achieved with a LIFE tile.`,options:[...opportunities.map(job=>option(`${job.name} · Pay $${300*job.rank} · Salary $${salaries[job.rank]}`,-300*job.rank,0,{promoteTo:job.rank})),option('Keep my career and collect a LIFE tile',0,1)]};
 }
 export function perform(before,action,random=Math.random){
  if(!before||before.phase==='over')throw Error('This career has finished.');
@@ -161,7 +161,7 @@ export function perform(before,action,random=Math.random){
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
   const academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;
-  p.cash+=choice.cash;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry)p.married=true;if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
+  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry)p.married=true;if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
   entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy?'roll':'end';
   if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;
   if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}
@@ -177,7 +177,7 @@ export function validateGame(source){
  if(source?.version!==1||!Array.isArray(source.players))invalid();validateRoster(source.players);
  const size=source.boardSize===undefined?36:source.boardSize;if(![36,spaceCount].includes(size))invalid();
  if(!['roll','choice','end','over'].includes(source.phase)||!integer(source.turn,0,source.players.length-1)||!integer(source.turns,0,10000)||!Array.isArray(source.deck)||new Set(source.deck).size!==source.deck.length||source.deck.some(id=>!events.some(e=>e.id===id))||!integer(source.cursor,0,source.deck.length)||!Array.isArray(source.log)||source.log.some(t=>typeof t!=='string')||!Array.isArray(source.route)||source.route.some(n=>!integer(n,1,size-1))||(source.dice!==null&&!integer(source.dice,1,spinnerMax)))invalid();
- for(const p of source.players)if(!integer(p.position,0,size-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||p.retired!==(p.position===size-1)||(p.careerPath!==undefined&&![null,'academy','jail'].includes(p.careerPath)))invalid();
+ for(const p of source.players)if(!integer(p.position,0,size-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,ranks.length-1)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||p.retired!==(p.position===size-1)||(p.careerPath!==undefined&&![null,'academy','jail'].includes(p.careerPath)))invalid();
  let g=source;
  if(size!==spaceCount||source.ruleSet!==ruleSet){
   if(source.ruleSet!==undefined&&source.ruleSet!==ruleSet)invalid();
