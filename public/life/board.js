@@ -190,12 +190,12 @@ export function createBoard(target){
  spaces.forEach((space,i)=>{
   const tile=add(svg,'g',{class:'career-tile type-'+space.type,'aria-label':`Stop ${i+1}: ${space.name}`});
   const samples=Array.from({length:17},(_,j)=>point((i+j/16)*step));
-  add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:i===crisisFork?'#b3949d':fills[space.type],'stroke-width':roadWidth,'stroke-linejoin':'round'});
+  add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:space.eventId?(space.eventId==='house'?'#a0b3b8':space.eventId==='divorce'?'#b3949d':'#c5a7a0'):i===crisisFork?'#b3949d':fills[space.type],'stroke-width':roadWidth,'stroke-linejoin':'round'});
   if(i){const p=point(i*step),nx=-Math.sin(p.angle),ny=Math.cos(p.angle);add(tile,'path',{d:`M${p.x+nx*38} ${p.y+ny*38}L${p.x-nx*38} ${p.y-ny*38}`,stroke:'#837a4f99','stroke-width':1.2});}
   const p=point((i+.5)*step);let angle=p.angle*180/Math.PI;if(angle>90)angle-=180;if(angle<-90)angle+=180;
   const text=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${angle})`});
-  add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},i===crisisFork?'CRISIS':names[space.type][0]);
-  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},i===crisisFork?'CHOICE':names[space.type][1]);
+  add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},space.lines?space.lines[0]:i===crisisFork?'CRISIS':names[space.type][0]);
+  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},space.lines?space.lines[1]:i===crisisFork?'CHOICE':names[space.type][1]);
   add(text,'text',{x:-step*.27,y:27,'text-anchor':'middle',class:'road-space-number'},String(i+1).padStart(2,'0'));
   add(text,'text',{x:step*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:p.angle*180/Math.PI!==angle?'rotate(180 '+step*.26+' 22)':''},'➜');
  });

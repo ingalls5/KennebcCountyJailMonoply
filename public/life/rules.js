@@ -99,7 +99,16 @@ export const events=[
  {id:'house',title:'Buy a home',icon:'⌂',text:'Choose a home. Its sale value is added to your retirement total.',options:homes.map(home=>option('Buy the '+home.name,-home.price,0,{home}))},
  {id:'anniversary',title:'A milestone worth celebrating',icon:'★',text:'You have a story worth remembering.',options:[option('Celebrate with family and friends',-250,2),option('Enjoy a small celebration',-50,1)]}
 ];
+export const familySpaces={
+ 13:{name:'Get Married',eventId:'wedding',lines:['GET','MARRIED']},
+ 23:{name:'Buy a House',eventId:'house',lines:['BUY A','HOUSE']},
+ 33:{name:'Have a Child',eventId:'baby',lines:['HAVE A','CHILD']},
+ 43:{name:'Have a Child',eventId:'baby',lines:['HAVE A','CHILD']},
+ 63:{name:'Divorce',eventId:'divorce',lines:['DIVORCE','NEW CHAPTER']},
+ 73:{name:'Have a Child',eventId:'baby',lines:['HAVE A','CHILD']}
+};
 export const spaces=Array.from({length:spaceCount},(_,i)=>{
+ if(familySpaces[i])return {...familySpaces[i],type:'event',icon:familySpaces[i].eventId==='house'?'⌂':'♥'};
  if(i===0)return {name:'First briefing',type:'start',icon:'★'};
  if(i===lastSpace)return {name:'Retirement',type:'retire',icon:'☀'};
  if(i===crisisFork)return {name:'Choose your path',type:'fork',icon:'⇄'};
@@ -136,6 +145,7 @@ export function decision(game){
  if(game.pending.type==='crisis'){const space=crisisSpaces[p.crisisPosition];return {...space,title:'Mid-Life Crisis · '+space.name,icon:'⚡',options:space.options.map(o=>({...o,disabled:!!o.promote&&p.rank===ranks.length-1}))};}
  if(game.pending.type==='life'||game.pending.type==='rest')return {title:'Collect a LIFE tile',icon:'★',text:'A milestone worth remembering. Keep your tile face down; its cash bonus is revealed when everyone has retired.',options:[option('Collect your LIFE tile',0,1)]};
  if(game.pending.type==='shift')return {title:'Choose your next move',icon:'$',text:'Take extra work or make a memory for retirement.',options:[option('Work overtime',550),option('Take a class',-100,1),option('Enjoy a day off',-50,1)]};
+ if(game.pending.type==='divorce')return p.married?{title:'Divorce',icon:'♥',text:'Your marriage ends. Choose how to handle the legal costs. Your home, children, and LIFE tiles stay with you.',options:[option('Settle amicably',-300,0,{divorce:true}),option('Hire a lawyer',-600,1,{divorce:true})]}:{title:'A new chapter',icon:'♥',text:'You are single, so there is no divorce to resolve. Choose how to spend this next chapter.',options:[option('Enjoy time with friends',-100,1),option('Keep saving')]};
  if(game.pending.type==='event'){
   const event=events.find(e=>e.id===game.pending.id);
   if(event.id==='house')return {...event,text:p.home?'Sell your current home and choose a new one. The old home’s value is credited toward this purchase.':event.text,options:event.options.map(o=>({...o,cash:o.cash+homeValue(p)}))};
@@ -157,11 +167,11 @@ export function perform(before,action,random=Math.random){
   if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else offerCrisis(g,p);return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
-  else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
+  else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
   const academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;
-  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry)p.married=true;if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
+  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry)p.married=true;if(choice.divorce)p.married=false;if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
   entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy?'roll':'end';
   if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;
   if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}
@@ -193,7 +203,7 @@ export function validateGame(source){
   if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))invalid();
  }
  if(new Set(held).size!==held.length||held.length!==g.tileCursor||held.some(id=>!g.tileDeck.slice(0,g.tileCursor).includes(id)))invalid();
- const p=g.players[g.turn];if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis-fork','crisis','promotion','life','rest','shift','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(p))||(g.pending.type==='crisis'&&!inCrisis(p))||(g.pending.type==='crisis-fork'&&(p.position!==crisisFork||p.crisisDone||inCrisis(p)||inEntry(p)||!p.academyDone))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||p.position!==crisisFork||p.crisisDone||inEntry(p)||inCrisis(p)))))invalid();
+ const p=g.players[g.turn];if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis-fork','crisis','promotion','life','rest','shift','event','divorce'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(p))||(g.pending.type==='crisis'&&!inCrisis(p))||(g.pending.type==='crisis-fork'&&(p.position!==crisisFork||p.crisisDone||inCrisis(p)||inEntry(p)||!p.academyDone))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||p.position!==crisisFork||p.crisisDone||inEntry(p)||inCrisis(p)))))invalid();
  if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&p.retired)invalid();return g;
 }
 export function loadGame(){try{return validateGame(JSON.parse(localStorage.getItem(gameKey)));}catch{return null;}}
