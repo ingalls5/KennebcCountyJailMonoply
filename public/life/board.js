@@ -35,16 +35,13 @@ function scenery(root){
  woods.forEach(([x,y],i)=>{tree(root,x,y,.8+(i%3)*.18);tree(root,x+19,y+23,.7);});
  for(let i=0;i<85;i++){const x=45+(i*137)%1110,y=35+(i*79)%930;add(root,'path',{d:`M${x} ${y}l3 -5m-3 5l-4 -3`,stroke:'#4f9b4d','stroke-width':1.5,opacity:.28});}
  // Small raised buildings echo the plastic landmarks on a tabletop board.
- building(root,{x:180,y:816,w:119,h:64,label:'THE ACADEMY',roof:'#e7eedf'});
- const academy=root.lastChild;add(academy,'path',{d:'M10 -6L52 -30L96 -6Z',fill:'#fcfff1',stroke:'#d7e2cc','stroke-width':3});add(academy,'text',{x:53,y:-7,'text-anchor':'middle','font-size':12,fill:'#45747c','font-weight':900},'A');
  building(root,{x:470,y:125,w:85,h:35,label:'TRAINING',roof:'#d6e5ed'});
- building(root,{x:387,y:805,w:90,h:45,label:'CONTROL',roof:'#e5e9db'});
  building(root,{x:925,y:377,w:112,h:47,label:'BOOKING',roof:'#f1eee0',scale:.35});
  building(root,{x:225,y:329,w:120,h:32,label:'INTAKE',roof:'#dbe3d7',scale:.55});
  building(root,{x:890,y:611,w:103,h:45,label:'BRIEFING',roof:'#efe9d4',scale:.5});
  building(root,{x:570,y:778,w:98,h:40,label:'LAST BRIEFING',roof:'#f0ead7'});
  // Fenced rec yard.
- const yard=add(root,'g',{transform:'translate(225 562) scale(.5)'});
+ const yard=add(root,'g',{transform:'translate(345 -5) scale(.5)'});
  add(yard,'path',{d:'M197 443H315V485H197Z',fill:'#6eab64',stroke:'#e7ecd8','stroke-width':3});
  for(let i=0;i<8;i++)add(yard,'path',{d:`M${200+i*16} 441V486`,stroke:'#c7d4ba','stroke-width':1});
  add(yard,'path',{d:'M232 476V452H258V476M270 477V459H293V477',fill:'none',stroke:'#397f59','stroke-width':6});
@@ -54,10 +51,36 @@ function scenery(root){
  const pay=add(root,'g',{transform:'translate(407 263) rotate(-10)'});for(let i=3;i>=0;i--)add(pay,'rect',{x:i*2,y:i*3,width:76,height:99,rx:4,fill:'#fffbe9',stroke:'#94b18b','stroke-width':1.3});add(pay,'rect',{x:6,y:6,width:64,height:87,fill:'#86c77d',rx:3});add(pay,'text',{x:38,y:32,'text-anchor':'middle',class:'deck-title'},'SHIFT PAY');add(pay,'text',{x:38,y:61,'text-anchor':'middle','font-size':29,fill:'#214a3f'},'$');add(pay,'text',{x:38,y:80,'text-anchor':'middle','font-size':8,fill:'#214a3f'},'EACH TURN');
  // Colorful original title printed on the landscape.
  const title=add(root,'g',{transform:'translate(514 505) rotate(-3)'});['L','I','F','E'].forEach((letter,i)=>{add(title,'rect',{x:i*49,y:0,width:46,height:58,rx:2,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i],stroke:'#f9f5da','stroke-width':3});add(title,'text',{x:i*49+23,y:45,'text-anchor':'middle','font-family':'Georgia,serif','font-weight':900,'font-size':49,fill:'#fffbe8'},letter);});add(title,'text',{x:96,y:80,'text-anchor':'middle',class:'life-board-subtitle'},'ON THE INSIDE');add(title,'text',{x:96,y:98,'text-anchor':'middle',class:'life-board-edition'},'KENNEBEC COUNTY JAIL');
- sign(root,410,908,'CHOOSE YOUR START');
- // These short entrance lanes join the numbered path at the first briefing.
- for(const [d,color] of [['M230 953C150 968 132 938 100 895','#94cde0'],['M380 951C255 990 165 978 100 895','#ecb954']]){add(root,'path',{d,fill:'none',stroke:'#f8f5de','stroke-width':27,'stroke-linecap':'round'});add(root,'path',{d,fill:'none',stroke:color,'stroke-width':18,'stroke-linecap':'round'});}
- add(root,'text',{x:224,y:956,'text-anchor':'middle',class:'start-lane-label'},'ACADEMY');add(root,'text',{x:363,y:969,'text-anchor':'middle',class:'start-lane-label'},'START ON THE FLOOR');
+}
+export const careerPaths=[
+ {id:'academy',label:'Go to the Academy',details:'Pay $500 · Gain 3 reputation · Start as an Officer',color:'#88c6dd',x:185,y:810,w:120,h:104,road:'M450 970C448 935 405 925 350 925L235 925C170 925 150 900 100 895'},
+ {id:'jail',label:'Work in the Jail',details:'Collect $300 · Start earning right away as a Rookie',color:'#a5cb77',x:350,y:810,w:120,h:104,road:'M450 970C355 984 240 986 180 965C130 948 110 920 100 895'}
+];
+function startArea(root){
+ const g=add(root,'g',{class:'career-start-area'});
+ add(g,'rect',{x:162,y:782,width:320,height:211,rx:14,fill:'#c0d89b',stroke:'#e3edbd','stroke-width':3});
+ add(g,'text',{x:322,y:804,'text-anchor':'middle',class:'start-area-heading'},'CHOOSE YOUR CAREER PATH');
+ for(const path of careerPaths){
+  const lane=add(g,'g',{class:'start-route','data-path':path.id});
+  add(lane,'path',{d:path.road,fill:'none',stroke:'#fffde9','stroke-width':35,'stroke-linecap':'round',class:'start-route-edge'});
+  add(lane,'path',{d:path.road,fill:'none',stroke:path.color,'stroke-width':26,'stroke-linecap':'round','data-start-road':path.id});
+  const house=building(g,{x:path.id==='academy'?212:377,y:836,w:73,h:25,label:'',roof:path.id==='academy'?'#e9eede':'#b8c6c7'});
+  if(path.id==='academy'){add(house,'path',{d:'M1 -5L31 -24L62 -5Z',fill:'#fffef0',stroke:'#d7e2cc','stroke-width':2});add(house,'text',{x:31,y:-6,'text-anchor':'middle','font-size':10,'font-weight':800,fill:'#4a7284'},'A');}
+  else{add(house,'rect',{x:30,y:14,width:22,height:28,rx:2,fill:'#657980',stroke:'#dce5d5','stroke-width':2});add(house,'text',{x:35,y:0,'text-anchor':'middle','font-size':9,'font-weight':800,fill:'#415e69'},'KCJ');}
+  add(g,'text',{x:path.x+path.w/2,y:890,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'GO TO THE':'WORK IN');
+  add(g,'text',{x:path.x+path.w/2,y:905,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'ACADEMY':'THE JAIL');
+ }
+ add(g,'circle',{cx:450,cy:970,r:16,fill:'#c8784f',stroke:'#fffbe4','stroke-width':3});
+ add(g,'text',{x:450,y:974,'text-anchor':'middle',class:'start-dot-label'},'START');
+ add(g,'path',{d:'M324 925l-7 -4v8ZM287 979l-7 -4v8Z',fill:'#486b61'});
+}
+function startPanel(){
+ const panel=document.createElement('section');panel.id='careerStartPanel';panel.className='career-start-panel';panel.setAttribute('aria-labelledby','startPanelTitle');
+ const heading=document.createElement('h3');heading.id='startPanelTitle';heading.textContent='Choose your career path.';
+ const text=document.createElement('p');text.textContent='Work in the jail right away, or begin with Academy training. Both routes join at First Briefing.';
+ const choices=document.createElement('div');choices.className='start-panel-choices';const buttons=[];
+ for(const [index,path] of careerPaths.entries()){const button=document.createElement('button');button.id=path.id==='academy'?'startAcademy':'startJail';button.type='button';button.className='start-path-choice';button.dataset.startChoice=index;const label=document.createElement('strong');label.textContent=path.label;const detail=document.createElement('span');detail.textContent=path.details;button.append(label,detail);choices.append(button);buttons.push({button,path:path.id,index});}
+ panel.append(heading,text,choices);return {panel,buttons};
 }
 function spinner(root){
  const cx=625,cy=315,r=119,g=add(root,'g',{class:'life-spinner','aria-hidden':'true'});
@@ -87,7 +110,7 @@ export function createBoard(target){
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});
  const water=add(defs,'linearGradient',{id:'lifeWater',x2:'1',y2:'1'});add(water,'stop',{'stop-color':'#8ad0cb'});add(water,'stop',{offset:1,'stop-color':'#57aebf'});
  const plastic=add(defs,'radialGradient',{id:'lifePlastic',cx:'.35',cy:'.25'});add(plastic,'stop',{'stop-color':'#fffff9'});add(plastic,'stop',{offset:1,'stop-color':'#e2e9d4'});
- scenery(svg);
+ scenery(svg);startArea(svg);
  const route=add(svg,'path',{d:road,fill:'none',stroke:'none'}),length=route.getTotalLength(),step=length/spaces.length;
  const point=distance=>{const d=Math.max(0,Math.min(length,distance)),p=route.getPointAtLength(d),a=route.getPointAtLength(Math.max(0,d-1)),b=route.getPointAtLength(Math.min(length,d+1)),angle=Math.atan2(b.y-a.y,b.x-a.x);return {x:p.x,y:p.y,angle};};
  add(svg,'path',{d:road,fill:'none',stroke:'#2c643b55','stroke-width':96,'stroke-linecap':'round',transform:'translate(3 7)'});
@@ -107,8 +130,14 @@ export function createBoard(target){
  });
  spinner(svg);target.replaceChildren(svg);
  const spin=document.createElement('button');spin.type='button';spin.id='boardSpin';spin.className='board-spin-button';spin.setAttribute('aria-label','Spin the career wheel');spin.style.left=625/12+'%';spin.style.top=315/10+'%';target.parentElement.append(spin);
- return {
+ const {panel,buttons}=startPanel();target.parentElement.after(panel);
+ for(const [index,path] of careerPaths.entries()){const button=document.createElement('button');button.type='button';button.id=path.id==='academy'?'boardAcademy':'boardJail';button.className='board-path-button';button.style.left=path.x/12+'%';button.style.top=path.y/10+'%';button.style.width=path.w/12+'%';button.style.height=path.h/10+'%';button.setAttribute('aria-label',path.label);button.title=path.label+' · '+path.details;target.parentElement.append(button);buttons.push({button,path:path.id,index});}
+ const board={
   svg,spin,needle:svg.querySelector('#careerSpinnerNeedle'),
+  startPanel:panel,pathButtons:buttons,
+  setPath(path){for(const item of buttons)item.button.setAttribute('aria-pressed',String(item.path===path));for(const lane of svg.querySelectorAll('.start-route'))lane.dataset.selected=String(lane.dataset.path===path);},
+  startCoordinates(index){return {left:(435+index%2*22)/12,top:(941+Math.floor(index/2)*19)/10};},
+  entranceFrames(path,index){const line=svg.querySelector(`[data-start-road="${path}"]`),length=line.getTotalLength();return [board.startCoordinates(index),...Array.from({length:41},(_,i)=>{const p=line.getPointAtLength(length*i/40);return {left:p.x/12,top:p.y/10};}),board.coordinates(0,index)];},
   coordinates(position,index){
    const p=point((position+.5)*step),fraction=position-Math.floor(position);
    const offset=pos=>{const a=point((pos+.5)*step).angle,along=(index%2-.5)*25,across=(10+Math.floor(index/2)*25)*(Math.cos(a)<0?-1:1);return {x:Math.cos(a)*along-Math.sin(a)*across,y:Math.sin(a)*along+Math.cos(a)*across};};
@@ -116,5 +145,5 @@ export function createBoard(target){
    return {left:(p.x+a.x*(1-fraction)+b.x*fraction)/12,top:(p.y+a.y*(1-fraction)+b.y*fraction)/10};
   },
   center(position){return point((position+.5)*step);}
- };
+ };return board;
 }

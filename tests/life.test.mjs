@@ -4,8 +4,8 @@ import {createGame,perform,decision,pawns,spaces,events,validateGame,validateRos
 import {GameRoom} from '../src/rooms.js';
 const roster=n=>pawns.slice(0,n).map((p,i)=>({name:'Officer '+(i+1),pawn:p.id}));
 test('The Academy and floor routes have different costs and pay without spending a turn',()=>{
- const start=createGame(roster(2));const academy=perform(start,{type:'choose',index:0});assert.equal(academy.players[0].cash,500);assert.equal(academy.players[0].rank,1);assert.equal(academy.players[0].reputation,6);assert.equal(academy.phase,'roll');assert.equal(academy.turns,0);assert.equal(start.players[0].academyDone,false);
- const floor=perform(start,{type:'choose',index:1});assert.equal(floor.players[0].cash,1300);assert.equal(floor.players[0].rank,0);assert.equal(floor.players[0].reputation,3);
+ const start=createGame(roster(2));const academy=perform(start,{type:'choose',index:0});assert.equal(academy.players[0].careerPath,'academy');assert.equal(academy.players[0].cash,500);assert.equal(academy.players[0].rank,1);assert.equal(academy.players[0].reputation,6);assert.equal(academy.phase,'roll');assert.equal(academy.turns,0);assert.equal(start.players[0].academyDone,false);
+ const floor=perform(start,{type:'choose',index:1});assert.equal(floor.players[0].careerPath,'jail');assert.equal(floor.players[0].cash,1300);assert.equal(floor.players[0].rank,0);assert.equal(floor.players[0].reputation,3);
  assert.equal(perform(academy,{type:'roll'},()=>0).players[0].cash,850);assert.equal(perform(floor,{type:'roll'},()=>0).players[0].cash,1500);
 });
 test('The spinner yields every value from 1 to 10, moves that many spaces and stops at retirement',()=>{
