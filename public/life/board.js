@@ -78,10 +78,10 @@ function spinner(root){
  add(g,'circle',{cx,cy:cy+4,r:34,fill:'#c1cfb9'});add(g,'circle',{cx,cy,r:34,fill:'url(#lifePlastic)',stroke:'#fffff5','stroke-width':3});add(g,'text',{x:cx,y:cy+5,'text-anchor':'middle',class:'spinner-center'},'SPIN');
  add(g,'text',{x:cx,y:cy+r+42,'text-anchor':'middle',class:'scenery-label'},'MAKE YOUR NEXT MOVE');
 }
-const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','OFF THE CLOCK'],promotion:['STOP','PROMOTION REVIEW'],shift:['SHIFT CHOICE','Overtime · Train'],rest:['DAYS OFF','Take a breather'],event:['COUNTY EVENT','Draw a card']};
+const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
 const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
 export function createBoard(target){
- const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Thirty-six numbered stops lead from first briefing to retirement. A six-number spinner sits in the center.');
+ const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. One hundred numbered stops lead from first briefing to retirement. A six-number spinner sits in the center.');
  const defs=add(svg,'defs');
  const grass=add(defs,'linearGradient',{id:'lifeGrass',x2:'0',y2:'1'});add(grass,'stop',{'stop-color':'#9cc97e'});add(grass,'stop',{offset:1,'stop-color':'#85ba75'});
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});
@@ -111,7 +111,7 @@ export function createBoard(target){
   svg,spin,needle:svg.querySelector('#careerSpinnerNeedle'),
   coordinates(position,index){
    const p=point((position+.5)*step),fraction=position-Math.floor(position);
-   const offset=pos=>{const a=point((pos+.5)*step).angle,along=(index%3-1)*38,across=(14+Math.floor(index/3)*38)*(Math.cos(a)<0?-1:1);return {x:Math.cos(a)*along-Math.sin(a)*across,y:Math.sin(a)*along+Math.cos(a)*across};};
+   const offset=pos=>{const a=point((pos+.5)*step).angle,along=(index%2-.5)*25,across=(10+Math.floor(index/2)*25)*(Math.cos(a)<0?-1:1);return {x:Math.cos(a)*along-Math.sin(a)*across,y:Math.sin(a)*along+Math.cos(a)*across};};
    const a=offset(Math.floor(position)),b=offset(Math.ceil(position));
    return {left:(p.x+a.x*(1-fraction)+b.x*fraction)/12,top:(p.y+a.y*(1-fraction)+b.y*fraction)/10};
   },

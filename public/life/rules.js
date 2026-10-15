@@ -1,4 +1,5 @@
 export const gameKey='kennebec-life-v1';
+export const spaceCount=100,lastSpace=spaceCount-1;
 export const ranks=['Rookie','Officer','FTO','Corporal','Supervisor'];
 export const colors=['#bc5948','#497d9b','#b48a32','#6c8661','#8b6ba4','#368e89'];
 export const pawns=[
@@ -37,12 +38,12 @@ export const events=[
  {id:'budget',title:'Plan for the future',icon:'$',text:'Retirement is getting closer. A little planning now could make a difference.',options:[option('Take a paid extra shift',450,0,-2),option('Make time for yourself',0,1,2)]},
  {id:'coffee',title:'The last pot of coffee',icon:'☕',text:'You have a break before the next round. Make it count.',options:[option('Buy a round for the crew',-75,2,2),option('Enjoy a quiet cup',-25,0,3)]}
 ];
-export const spaces=Array.from({length:36},(_,i)=>{
+export const spaces=Array.from({length:spaceCount},(_,i)=>{
  if(i===0)return {name:'First briefing',type:'start',icon:'★'};
- if(i===35)return {name:'Retirement',type:'retire',icon:'☀'};
- if(i%6===0)return {name:'Promotion review',type:'promotion',icon:'★'};
- if([3,9,15,21,27,33].includes(i))return {name:'Choose your shift',type:'shift',icon:'◷'};
- if([5,11,17,23,29].includes(i))return {name:'Days off',type:'rest',icon:'☕'};
+ if(i===lastSpace)return {name:'Retirement',type:'retire',icon:'☀'};
+ if(i%18===0)return {name:'Promotion review',type:'promotion',icon:'★'};
+ if(i%10===5)return {name:'Choose your shift',type:'shift',icon:'◷'};
+ if(i%10===9)return {name:'Days off',type:'rest',icon:'☕'};
  return {name:['','On the roster','County curveball',''][i%4]||'On the roster',type:'event',icon:'?'};
 });
 export const chapters=['THE ACADEMY','FIND YOUR FEET','ON THE ROSTER','SHOW THE ROPES','LEAD THE SHIFT','THE HOME STRETCH'];
@@ -52,7 +53,7 @@ export function validateRoster(roster){
  const names=new Set(),chosen=new Set();
  return roster.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';if(!name||name.length>30)throw Error('Give every player a name of up to 30 characters.');if(names.has(name.toLowerCase()))throw Error('Each player needs a different name.');if(!pawns.some(c=>c.id===p.pawn)||chosen.has(p.pawn))throw Error('Choose a different pawn for each player.');names.add(name.toLowerCase());chosen.add(p.pawn);return {name,pawn:p.pawn};});
 }
-export function createGame(roster,random=Math.random){return {version:1,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
+export function createGame(roster,random=Math.random){return {version:1,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
 export const score=p=>p.cash+p.reputation*100+p.energy*50;
 export function standings(game){return game.players.map((p,i)=>({...p,index:i,score:score(p)})).sort((a,b)=>b.score-a.score);}
 const clamp=n=>Math.max(0,Math.min(10,n));
@@ -70,14 +71,14 @@ export function decision(game){
 }
 export function perform(before,action,random=Math.random){
  if(!before||before.phase==='over')throw Error('This career has finished.');
- const g=structuredClone(before),p=g.players[g.turn];
+ const g=structuredClone(validateGame(before)),p=g.players[g.turn];
  if(action.type==='roll'){
   if(g.phase!=='roll')throw Error('Finish this shift before spinning again.');
-  g.dice=1+Math.floor(random()*6);const start=p.position,end=Math.min(35,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
+  g.dice=1+Math.floor(random()*6);const start=p.position,end=Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
   const pay=200+p.rank*150;p.cash+=pay;p.energy=clamp(p.energy-1);entry(g,`${p.name} spun ${g.dice} and earned $${pay} in shift pay.`);
   // Passing reviews gives every career a chance to advance, even with large rolls.
-  const review=g.route.some(n=>n>0&&n<35&&n%6===0);
-  if(end===35){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired with a score of ${score(p).toLocaleString('en-US')}.`);}
+  const review=g.route.some(n=>spaces[n].type==='promotion');
+  if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired with a score of ${score(p).toLocaleString('en-US')}.`);}
   else {let type=review?'promotion':spaces[end].type;if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');
@@ -99,10 +100,16 @@ export function validateGame(g){
  if(g?.version!==1||!Array.isArray(g.players))throw Error('This saved career could not be read.');
  validateRoster(g.players);
  const integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
- if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,35))||(g.dice!==null&&!integer(g.dice,1,6)))throw Error('This saved career could not be read.');
- for(const p of g.players)if(!integer(p.position,0,35)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||!integer(p.reputation,0,10)||!integer(p.energy,0,10)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||p.retired!==(p.position===35))throw Error('This saved career could not be read.');
+ const savedSize=g.boardSize===undefined?36:g.boardSize;if(![36,spaceCount].includes(savedSize))throw Error('This saved career could not be read.');
+ if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,savedSize-1))||(g.dice!==null&&!integer(g.dice,1,6)))throw Error('This saved career could not be read.');
+ for(const p of g.players)if(!integer(p.position,0,savedSize-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||!integer(p.reputation,0,10)||!integer(p.energy,0,10)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||p.retired!==(p.position===savedSize-1))throw Error('This saved career could not be read.');
  if(g.phase==='choice'&&(!g.pending||!['academy','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))))throw Error('This saved career could not be read.');
  if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&g.players[g.turn].retired)throw Error('This saved career could not be read.');
+ if(savedSize!==spaceCount){
+  const migrated=structuredClone(g),position=n=>Math.round(n/(savedSize-1)*lastSpace);
+  migrated.boardSize=spaceCount;migrated.players.forEach(p=>p.position=position(p.position));migrated.route=migrated.route.map(position);
+  return migrated;
+ }
  return g;
 }
 export function loadGame(){try{return validateGame(JSON.parse(localStorage.getItem(gameKey)));}catch{return null;}}
