@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=family-stops-2';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;
@@ -188,9 +188,11 @@ export function createBoard(target){
  add(svg,'path',{d:road,fill:'none',stroke:'#dce1e4','stroke-width':94,'stroke-linecap':'round','stroke-linejoin':'round'});
  add(svg,'path',{d:road,fill:'none',stroke:'#657580','stroke-width':79,'stroke-linecap':'round'});
  spaces.forEach((space,i)=>{
-  const tile=add(svg,'g',{class:'career-tile type-'+space.type,'aria-label':`Stop ${i+1}: ${space.name}`});
+  const tile=add(svg,'g',{class:'career-tile type-'+space.type+(space.eventId?' family-stop':''),'aria-label':`Stop ${i+1}: ${space.name}`});
   const samples=Array.from({length:17},(_,j)=>point((i+j/16)*step));
   add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:space.eventId?(space.eventId==='house'?'#a0b3b8':space.eventId==='divorce'?'#b3949d':'#c5a7a0'):i===crisisFork?'#b3949d':fills[space.type],'stroke-width':roadWidth,'stroke-linejoin':'round'});
+  if(space.eventId)add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:'#263e54','stroke-width':roadWidth,'stroke-linejoin':'round'});
+  if(space.eventId)add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:space.eventId==='house'?'#d7e5e8':space.eventId==='divorce'?'#dccbd7':'#f0d6c6','stroke-width':roadWidth-9,'stroke-linejoin':'round'});
   if(i){const p=point(i*step),nx=-Math.sin(p.angle),ny=Math.cos(p.angle);add(tile,'path',{d:`M${p.x+nx*38} ${p.y+ny*38}L${p.x-nx*38} ${p.y-ny*38}`,stroke:'#837a4f99','stroke-width':1.2});}
   const p=point((i+.5)*step);let angle=p.angle*180/Math.PI;if(angle>90)angle-=180;if(angle<-90)angle+=180;
   const text=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${angle})`});

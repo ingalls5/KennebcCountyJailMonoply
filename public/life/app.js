@@ -1,5 +1,5 @@
-import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js';
-import {createBoard} from './board.js';
+import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js?v=family-stops-2';
+import {createBoard} from './board.js?v=family-stops-2';
 import {OnlineRoom,roomBanner} from '../online.js';
 import {bindEndGame,clearEndedGame} from '../end-game.js';
 const $=id=>document.getElementById(id),el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
