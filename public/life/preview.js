@@ -1,5 +1,5 @@
-import {createBoard} from './board.js?v=smooth-cars-1';
-import {spinnerMax,spinnerStep} from './rules.js?v=smooth-cars-1';
+import {createBoard} from './board.js?v=job-cards-1';
+import {spinnerMax,spinnerStep} from './rules.js?v=job-cards-1';
 const board=createBoard(document.getElementById('careerTiles'));
 let angle=0;
 for(const {button,path} of board.pathButtons)button.onclick=()=>{board.setPath(path);document.getElementById('previewSpinResult').textContent=path==='academy'?'Academy route: spin through 12 spaces, stop at graduation, then join the main road.':'Jail route: spin through 8 work spaces, finish the first shift, then join the main road.';};

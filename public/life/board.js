@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=smooth-cars-1';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=job-cards-1';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;
@@ -59,8 +59,8 @@ function scenery(root){
  const title=add(root,'g',{transform:'translate(514 505) rotate(-3)'});['L','I','F','E'].forEach((letter,i)=>{add(title,'rect',{x:i*49,y:0,width:46,height:58,rx:2,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i],stroke:'#f9f5da','stroke-width':3});add(title,'text',{x:i*49+23,y:45,'text-anchor':'middle','font-family':'Georgia,serif','font-weight':900,'font-size':49,fill:'#fffbe8'},letter);});add(title,'text',{x:96,y:80,'text-anchor':'middle',class:'life-board-subtitle'},'ON THE INSIDE');add(title,'text',{x:96,y:98,'text-anchor':'middle',class:'life-board-edition'},'KENNEBEC COUNTY JAIL');
 }
 export const careerPaths=[
- {id:'academy',label:'Go to the Academy',details:'Pay $500 · 12 spaces · Graduate as an Officer',color:'#9aafbd',x:560,y:1098,w:130,h:100},
- {id:'jail',label:'Work in the Jail',details:'Collect $300 · 8 work spaces · Start as a Rookie',color:'#a8b5a4',x:780,y:1098,w:130,h:100}
+ {id:'academy',label:'Go to the Academy',details:'Pay $500 · 12 spaces · Reveal 2 jobs and choose 1',color:'#9aafbd',x:560,y:1098,w:130,h:100},
+ {id:'jail',label:'Work in the Jail',details:'Collect $300 · Draw 1 unknown job · 8 work spaces',color:'#a8b5a4',x:780,y:1098,w:130,h:100}
 ];
 const roadWidth=76;
 const percent=p=>({left:p.x/boardWidth*100,top:p.y/boardHeight*100});
