@@ -1,3 +1,4 @@
+import {paycheckEffects} from './payday.js?v=payday-1';
 import {drivingEffects} from './driving.js?v=driving-1';
 import {carIcon,carDescription} from './cars.js?v=driver-pegs-1';
 import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js?v=driver-pegs-1';
@@ -11,6 +12,7 @@ const code=new URLSearchParams(location.search).get('room')?.toUpperCase();
 const online=code?new OnlineRoom('life',code):null;
 let game=null,busy=false,moving=false,cleared=false,generation=0,lastChoice='',endBinding,motionHint='Making the rounds…';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+const paychecks=paycheckEffects({money,reduced,onMoney:(index,cash)=>{if(index===game.turn){const value=$('turnStats').querySelector('.stat strong');if(value)value.textContent=money(cash);}const value=$('careerRoster').children[index]?.querySelector('.officer-numbers strong');if(value)value.textContent=money(cash);}});
 const board=createBoard($('careerTiles')),coordinates=board.coordinates;
 const driving=drivingEffects($('careerBoard'));
 const panelSpin=document.createElement('button');panelSpin.type='button';panelSpin.id='panelSpin';panelSpin.className='panel-spin';panelSpin.setAttribute('aria-label','Spin the wheel');
@@ -49,7 +51,7 @@ function renderDecision(){
 }
 function controls(){if(!game)return;const p=game.players[game.turn],mine=!online||online.viewer===game.turn,active=canAct();
  $('turnEyebrow').textContent=game.phase==='over'?'OFF THE CLOCK':mine?'ON THE CLOCK':'WAITING FOR THE CREW';$('turnName').textContent=game.phase==='over'?'Everyone’s retired.':p.name;$('turnRank').textContent=game.phase==='over'?'The final briefing':ranks[p.rank]+' · '+locationLabel(p);
- $('turnStats').replaceChildren();for(const [label,value] of [['Savings / debt',money(p.cash)],['Pay Day salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const stat=el('div','stat',label);stat.append(el('strong','',value));$('turnStats').append(stat);}
+ $('turnStats').replaceChildren();for(const [label,value] of [['Savings / debt',money(paychecks.display(p,game.turn))],['Pay Day salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const stat=el('div','stat',label);stat.append(el('strong','',value));$('turnStats').append(stat);}
  $('careerDie').textContent=game.dice||'–';$('careerDie').setAttribute('aria-label',game.dice?'Spun '+game.dice:'Spinner ready');board.spin.disabled=game.phase!=='roll'||!active;panelSpin.disabled=board.spin.disabled;
  const starting=game.phase==='choice'&&game.pending.type==='academy';board.startPanel.hidden=true;board.setPath(p.careerPath);
  for(const {button} of board.pathButtons)button.disabled=!starting||!active;
@@ -58,15 +60,15 @@ function controls(){if(!game)return;const p=game.players[game.turn],mine=!online
  for(const [id,phase] of [['rollCareer','roll'],['openDecision','choice'],['endCareerTurn','end']]){$(id).hidden=game.phase!==phase||!mine;$(id).disabled=!active;}
  renderDecision();renderTiles($('lifeTileRack'),p,game.phase==='over');endBinding?.update();
 }
-function renderRoster(){const leaders=standings(game),high=leaders[0].score;$('careerRoster').replaceChildren();game.players.forEach((p,i)=>{const card=el('article','officer-card'+(i===game.turn&&game.phase!=='over'?' current':''));card.style.setProperty('--player-color',colors[i]);const heading=el('div','officer-heading'),img=el('img');img.src=carIcon(p);img.alt=carDescription(p);const text=el('div');text.append(el('h3','',p.name),el('p','',ranks[p.rank]+' · '+locationLabel(p)+(online?.viewer===i?' · You':'')));heading.append(img,text);const numbers=el('div','officer-numbers');for(const [label,value] of [['Savings',money(p.cash)],['Salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const item=el('span','',label+' ');item.append(el('strong','',value));numbers.append(item);}const track=el('div','progress-track'),fill=el('span');fill.style.width=p.position/lastSpace*100+'%';track.append(fill);const family=el('p','family-summary',(p.married?(p.spouse?'Married · '+p.spouse+' spouse':'Married'):'Single')+' · '+p.children+' child'+(p.children===1?'':'ren')+(p.home?' · '+p.home.name:''));const tiles=el('div','');renderTiles(tiles,p,game.phase==='over');card.append(heading,numbers,family,tiles,track);$('careerRoster').append(card);});
+function renderRoster(){const leaders=standings(game),high=leaders[0].score;$('careerRoster').replaceChildren();game.players.forEach((p,i)=>{const card=el('article','officer-card'+(i===game.turn&&game.phase!=='over'?' current':''));card.style.setProperty('--player-color',colors[i]);const heading=el('div','officer-heading'),img=el('img');img.src=carIcon(p);img.alt=carDescription(p);const text=el('div');text.append(el('h3','',p.name),el('p','',ranks[p.rank]+' · '+locationLabel(p)+(online?.viewer===i?' · You':'')));heading.append(img,text);const numbers=el('div','officer-numbers');for(const [label,value] of [['Savings',money(paychecks.display(p,i))],['Salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const item=el('span','',label+' ');item.append(el('strong','',value));numbers.append(item);}const track=el('div','progress-track'),fill=el('span');fill.style.width=p.position/lastSpace*100+'%';track.append(fill);const family=el('p','family-summary',(p.married?(p.spouse?'Married · '+p.spouse+' spouse':'Married'):'Single')+' · '+p.children+' child'+(p.children===1?'':'ren')+(p.home?' · '+p.home.name:''));const tiles=el('div','');renderTiles(tiles,p,game.phase==='over');card.append(heading,numbers,family,tiles,track);$('careerRoster').append(card);});
  $('careerResults').hidden=game.phase!=='over';if(game.phase==='over'){const winners=leaders.filter(p=>p.score===high);$('resultsTitle').textContent=winners.length===1?winners[0].name+' wins the county career.':winners.map(p=>p.name).join(' & ')+' share the win.';$('finalScores').replaceChildren(...leaders.map(p=>el('li','',p.name+' · '+money(p.score)+' total — '+money(p.cash)+' savings, '+money(tileBonus(p))+' LIFE bonus, '+money(homeValue(p))+' home value, '+money(familyBonus(p))+' family bonus')));}
  $('careerLog').replaceChildren(...[...game.log].reverse().map(text=>el('li','',text)));
 }
 async function render(previous){
- driving.reset();
+ driving.reset();paychecks.prepare(previous,game);
  const currentGeneration=++generation;$('careerTokens').getAnimations({subtree:true}).forEach(a=>a.cancel());[board.needle,panelNeedle].forEach(n=>n.getAnimations().forEach(a=>a.cancel()));moving=false;
  if(!game)return;renderRoster();announceTiles(previous);
- const animations=[];$('careerTokens').replaceChildren();motionHint='Spinning, then making the rounds…';
+ const animations=[],payments=[];$('careerTokens').replaceChildren();motionHint='Spinning, then making the rounds…';
  const spun=previous&&previous.phase==='roll'&&game.dice&&game.players.some((p,i)=>p.position>previous.players[i].position&&!inCrisis(previous.players[i])||inEntry(p)&&inEntry(previous.players[i])&&p.entryPosition>previous.players[i].entryPosition||inCrisis(p)&&inCrisis(previous.players[i])&&p.crisisPosition>previous.players[i].crisisPosition||previous.phase==='roll'&&game.pending?.type==='crisis');
  const spinDuration=spun&&!reduced()?1600:0;
  if(spun){const nextAngle=Math.ceil(spinnerAngle/360)*360+1080+(game.dice-1)*spinnerStep;if(spinDuration)for(const needle of [board.needle,panelNeedle])animations.push(needle.animate([{transform:`rotate(${spinnerAngle}deg)`},{transform:`rotate(${nextAngle}deg)`}],{duration:spinDuration,easing:'cubic-bezier(.15,.65,.12,1)'}));spinnerAngle=nextAngle;for(const needle of [board.needle,panelNeedle])needle.style.transform=`rotate(${spinnerAngle}deg)`;}else if(!previous){spinnerAngle=((game.dice||1)-1)*spinnerStep;for(const needle of [board.needle,panelNeedle])needle.style.transform=`rotate(${spinnerAngle}deg)`;}
@@ -91,9 +93,10 @@ async function render(previous){
   }else if(old&&old.position<p.position&&!reduced()){
    const steps=(p.position-old.position)*8,frames=Array.from({length:steps+1},(_,j)=>{const at=coordinates(old.position+(p.position-old.position)*j/steps,i);return {left:at.left+'%',top:at.top+'%',transform:'translate(-50%,-50%)',offset:j/steps};});animations.push(drive(img,frames,{delay:spinDuration,duration:(p.position-old.position)*750,easing:'linear',fill:'backwards'}));
   }
-  if(animations.length>animationCount)driving.follow(img,animations.at(-1));
+  if(animations.length>animationCount){driving.follow(img,animations.at(-1));if(i===game.turn)payments.push(paychecks.watch(animations.at(-1),img));}
  });
- moving=animations.length>0;controls();if(moving){$('careerDecision').close();await Promise.allSettled(animations.map(a=>a.finished));if(currentGeneration!==generation)return;await driving.overview();if(currentGeneration!==generation)return;moving=false;controls();}
+ if(!animations.length&&previous&&paychecks.hasPayDays())payments.push(paychecks.instant($('careerTokens').children[game.turn]));
+ moving=animations.length>0||payments.length>0;controls();if(moving){$('careerDecision').close();await Promise.allSettled([...animations.map(a=>a.finished),...payments]);if(currentGeneration!==generation)return;await driving.overview();if(currentGeneration!==generation)return;moving=false;controls();}
  maybeOpenDecision();
 }
 function maybeOpenDecision(){if(game?.phase!=='choice'||!canAct()){if(game?.phase!=='choice'||online&&online.viewer!==game.turn)$('careerDecision').close();return;}const key=game.turn+':'+game.turns+':'+game.pending.type+':'+(game.pending.id||'')+':'+(game.pending.revealed||[]).join(',');if(key!==lastChoice&&!$('careerRules').open){lastChoice=key;renderDecision();if(!$('careerDecision').open)$('careerDecision').showModal();}}
