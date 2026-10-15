@@ -19,7 +19,7 @@ export function project(room,member){
   if(state.pending&&!(state.phase==='view'&&state.turn===playerIndex))state.pending.card=null;
  }else if(state){delete state.cards;if(room.kind==='life'){delete state.deck;if(state.pending?.type==='jobs')state.pending.cards=state.pending.cards.map((rank,i)=>state.pending.revealed.includes(i)?rank:null);state.lifeTilesRemaining=state.tileDeck.length-state.tileCursor;delete state.tileDeck;delete state.tileCursor;state.players.forEach(p=>{p.lifeTileCount=p.lifeTiles.length;if(state.phase!=='over')delete p.lifeTiles;});}}
  const motion=room.motion?{id:room.motion.id,actor:room.motion.actor,route:room.motion.next.route,dice:room.motion.dice,acknowledged:room.motion.acknowledged}:null;
- return {code:room.code,kind:room.kind,status:state?'playing':'lobby',revision:room.revision,round:room.round||0,viewer:playerIndex,host:room.host===member.id,members:room.members.map(p=>({id:p.id,name:p.name,choice:p.choice,host:p.id===room.host})),config:room.config,state,motion,trade:room.trade||null,event:room.event||null};
+ return {code:room.code,kind:room.kind,status:state?'playing':'lobby',revision:room.revision,round:room.round||0,viewer:playerIndex,host:room.host===member.id,members:room.members.map(p=>({id:p.id,name:p.name,choice:p.choice,...(room.kind==='life'?{pegGender:p.pegGender||'male'}:{}),host:p.id===room.host})),config:room.config,state,motion,trade:room.trade||null,event:room.event||null};
 }
 export class GameRoom {
  constructor(ctx,env){this.ctx=ctx;this.env=env;this.room=null;ctx.blockConcurrencyWhile(async()=>{this.room=await ctx.storage.get('room')||null;if(this.room?.kind==='clue'&&(this.room.layoutRevision||1)<boardRevision){this.room.config=migrateConfig(this.room.config,this.room.layoutRevision||1);if(this.room.state){this.room.state=validateGame(this.room.state);}this.room.layoutRevision=boardRevision;}if(this.room?.kind==='life'&&this.room.state)this.room.state=validateLife(this.room.state);});}
@@ -48,7 +48,7 @@ export class GameRoom {
   if(path==='/start'||path==='/restart'){
    if(member.id!==this.room.host)fail(403,'Only the room host can start a game.');if(this.room.motion)fail(409,'Finish the current move first.');if(path==='/start'&&this.room.state)fail(409,'This game has already started.');
    const minimum=this.room.kind==='clue'?3:2;if(this.room.members.length<minimum)fail(400,`You need at least ${minimum} players to start.`);
-   const roster=this.room.members.map(p=>this.room.kind==='clue'?{name:p.name,suspect:p.choice}:{name:p.name,pawn:p.choice});this.room.state=this.room.kind==='clue'?createGame(roster,this.room.config,random):this.room.kind==='life'?createLife(roster,random):newGame(roster);this.room.trade=null;this.room.round++;this.room.event=null;
+   const roster=this.room.members.map(p=>this.room.kind==='clue'?{name:p.name,suspect:p.choice}:{name:p.name,pawn:p.choice,...(this.room.kind==='life'?{pegGender:p.pegGender||'male'}:{})});this.room.state=this.room.kind==='clue'?createGame(roster,this.room.config,random):this.room.kind==='life'?createLife(roster,random):newGame(roster);this.room.trade=null;this.room.round++;this.room.event=null;
   }else if(path==='/end'){
    if(member.id!==this.room.host)fail(403,'Only the room host can end the game.');
    if(!this.room.state)fail(409,'There is no game to end.');
@@ -92,6 +92,6 @@ export class GameRoom {
  }
  newMember(data,members){
   const name=typeof data.name==='string'?data.name.trim():'';if(!name||name.length>30)fail(400,'Enter your name (up to 30 characters).');if(members.some(p=>p.name.toLowerCase()===name.toLowerCase()))fail(409,'Choose a different player name.');
-  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:kind==='life'?lifePawns:pawns;if(!list.some(p=>p.id===data.choice))fail(400,kind==='clue'?'Choose a role.':'Choose a valid pawn.');if(members.some(p=>p.choice===data.choice))fail(409,kind==='clue'?'That role is already taken. Choose another.':'Choose an available pawn.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice};
+  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:kind==='life'?lifePawns:pawns;if(!list.some(p=>p.id===data.choice))fail(400,kind==='clue'?'Choose a role.':'Choose a valid pawn.');if(members.some(p=>p.choice===data.choice))fail(409,kind==='clue'?'That role is already taken. Choose another.':'Choose an available pawn.');if(kind==='life'&&data.pegGender!==undefined&&!['male','female'].includes(data.pegGender))fail(400,'Choose a male or female driver peg.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice,...(kind==='life'?{pegGender:data.pegGender||'male'}:{})};
  }
 }
