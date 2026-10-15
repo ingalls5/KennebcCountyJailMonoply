@@ -67,7 +67,19 @@ export const crisisSpaces=[
 export const inCrisis=p=>Number.isInteger(p.crisisPosition);
 function offerCrisis(g,p){g.pending={type:'crisis-fork'};g.phase='choice';entry(g,`${p.name} reached the path choice at Stop 56.`);}
 function enterCrisis(g,p){p.crisisTaken=true;p.crisisPosition=0;g.pending={type:'crisis'};g.phase='choice';entry(g,`${p.name} entered Mid-Life Crisis.`);}
-export const homes=[{id:'starter',name:'Starter Home',price:700,value:900},{id:'family',name:'Family Home',price:1400,value:1800}];
+const legacyHomes=[{id:'starter',name:'Starter Home',price:700,value:900},{id:'family',name:'Family Home',price:1400,value:1800}];
+export const homes=[
+ {id:'used-camper',name:'Used Camper',price:250,value:300},
+ {id:'tiny-trailer',name:'Tiny Trailer',price:350,value:400},
+ {id:'single-wide',name:'Older Single-Wide',price:450,value:550},
+ {id:'fixer-cabin',name:'Fixer-Upper Cabin',price:550,value:650},
+ {id:'park-model',name:'Park Model Trailer',price:650,value:750},
+ {id:'small-condo',name:'Small Condo',price:750,value:900},
+ {id:'old-bungalow',name:'Old Bungalow',price:850,value:1000},
+ {id:'mill-house',name:'Mill Worker House',price:950,value:1150},
+ {id:'small-ranch',name:'Small Ranch',price:1100,value:1300},
+ {id:'double-wide',name:'Used Double-Wide',price:1250,value:1450}
+];
 // Cash and LIFE-tile choices replace reputation and energy entirely.
 export const events=[
  {id:'holiday',title:'Holiday coverage',icon:'☀',text:'Work the holiday or make a memory with your family.',options:[option('Take the holiday shift',650),option('Keep your day off',0,1)]},
@@ -94,7 +106,7 @@ export const events=[
  {id:'alarm',title:'A very long night',icon:'◷',text:'A busy night brings extra work and a chance to help.',options:[option('Take the paid lead shift',250),option('Stay to support a teammate',0,1)]},
  {id:'budget',title:'Plan for the future',icon:'$',text:'Earn more now or make a memory for later.',options:[option('Take a paid extra shift',450),option('Make time for yourself',-100,1)]},
  {id:'coffee',title:'The last pot of coffee',icon:'☕',text:'Make a little time for your crew.',options:[option('Buy a round for everyone',-75,1),option('Enjoy a quiet cup',-25)]},
- {id:'wedding',title:'Wedding bells',icon:'♥',text:'Celebrate a new chapter with someone you love.',options:[option('Have a big celebration',-500,2,{marry:true}),option('Keep the celebration small',-150,1,{marry:true})]},
+ {id:'wedding',title:'Wedding bells',icon:'♥',text:'Choose a male or female spouse. Either choice costs $150 and awards one LIFE tile.',options:[option('Marry a male spouse',-150,1,{marry:true,spouse:'male'}),option('Marry a female spouse',-150,1,{marry:true,spouse:'female'})]},
  {id:'baby',title:'A growing family',icon:'♥',text:'Welcome a child into your family. Each child adds $100 to your retirement total.',options:[option('Take a family trip to celebrate',-200,2,{children:1}),option('Celebrate at home',-75,1,{children:1})]},
  {id:'house',title:'Buy a home',icon:'⌂',text:'Choose a home. Its sale value is added to your retirement total.',options:homes.map(home=>option('Buy the '+home.name,-home.price,0,{home}))},
  {id:'anniversary',title:'A milestone worth celebrating',icon:'★',text:'You have a story worth remembering.',options:[option('Celebrate with family and friends',-250,2),option('Enjoy a small celebration',-50,1)]}
@@ -149,7 +161,7 @@ export function decision(game){
  if(game.pending.type==='event'){
   const event=events.find(e=>e.id===game.pending.id);
   if(event.id==='house')return {...event,text:p.home?'Sell your current home and choose a new one. The old home’s value is credited toward this purchase.':event.text,options:event.options.map(o=>({...o,cash:o.cash+homeValue(p)}))};
-  if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',options:event.options.map(o=>({...o,marry:false}))};
+  if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',text:'You are already married. Celebrate another year together.',options:[option('Celebrate with friends',-250,2),option('Keep it small',-50,1)]};
   return event;
  }
  const opportunities=ranks.map((name,rank)=>({name,rank})).filter(job=>job.rank>p.rank);
@@ -162,19 +174,21 @@ export function perform(before,action,random=Math.random){
   if(g.phase!=='roll')throw Error('Finish this turn before spinning again.');g.dice=1+Math.floor(random()*spinnerMax);entry(g,`${p.name} spun ${g.dice}.`);
   if(inEntry(p)){const start=p.entryPosition,end=Math.min(entryTracks[p.careerPath].length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.entryPosition=end;g.pending={type:'entry'};g.phase='choice';return g;}
   if(inCrisis(p)){const start=p.crisisPosition,end=Math.min(crisisSpaces.length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);collectPay(g,p,g.route.filter(n=>crisisSpaces[n].payday).length);p.crisisPosition=end;g.pending={type:'crisis'};g.phase='choice';return g;}
-  const start=p.position,fork=!p.crisisDone&&start<=crisisFork&&start+g.dice>=crisisFork,end=fork?crisisFork:Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;collectPay(g,p,g.route.filter(n=>spaces[n].type==='payday').length);
+  const start=p.position,target=Math.min(lastSpace,start+g.dice),familyStop=Object.keys(familySpaces).map(Number).find(n=>n>start&&n<=target),end=Math.min(target,familyStop??lastSpace,!p.crisisDone&&start<=crisisFork?crisisFork:lastSpace),fork=!p.crisisDone&&end===crisisFork;g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;collectPay(g,p,g.route.filter(n=>spaces[n].type==='payday').length);
   const review=g.route.some(n=>spaces[n].type==='promotion');
   if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else offerCrisis(g,p);return g;}
+  if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
   else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
-  const academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;
-  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry)p.married=true;if(choice.divorce)p.married=false;if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
-  entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy?'roll':'end';
+  const spinAgain=!!g.pending.spinAgain,thenFamily=!!g.pending.thenFamily,academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;
+  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry){p.married=true;p.spouse=choice.spouse||null;}if(choice.divorce){p.married=false;p.spouse=null;}if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
+  entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy||spinAgain?'roll':'end';if(spinAgain){g.route=[];g.dice=null;entry(g,`${p.name} resolved the full stop and can spin again.`);}
   if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;
   if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}
+  if(thenFamily){const id=familySpaces[p.position].eventId;g.pending={...(id==='divorce'?{type:'divorce'}:{type:'event',id}),spinAgain:true};g.phase='choice';}
   if(thenCrisis)offerCrisis(g,p);if(forkChoice){if(action.index===1)enterCrisis(g,p);else{p.crisisDone=true;p.crisisTaken=false;p.position=crisisFork+1;}}
  }else if(action.type==='end'){
   if(g.phase!=='end')throw Error('Resolve the turn before ending it.');g.turns++;g.route=[];
@@ -198,7 +212,7 @@ export function validateGame(source){
  }
  if(g.deck.length!==events.length||g.tileDeck?.length!==lifeTiles.length||new Set(g.tileDeck).size!==lifeTiles.length||g.tileDeck.some(id=>!tileById.has(id))||!integer(g.tileCursor,0,lifeTiles.length))invalid();
  const held=[];for(const p of g.players){
-  if(!Array.isArray(p.lifeTiles)||p.lifeTiles.some(id=>!tileById.has(id))||typeof p.married!=='boolean'||!integer(p.children,0,1000)||(p.home!==null&&!homes.some(h=>h.id===p.home?.id&&h.value===p.home.value&&h.price===p.home.price)))invalid();held.push(...p.lifeTiles);
+  if(!Array.isArray(p.lifeTiles)||p.lifeTiles.some(id=>!tileById.has(id))||typeof p.married!=='boolean'||(p.spouse!==undefined&&![null,'male','female'].includes(p.spouse))||!integer(p.children,0,1000)||(p.home!==null&&![...homes,...legacyHomes].some(h=>h.id===p.home?.id&&h.value===p.home.value&&h.price===p.home.price)))invalid();held.push(...p.lifeTiles);
   if((p.crisisDone!==undefined&&typeof p.crisisDone!=='boolean')||(p.crisisTaken!==undefined&&typeof p.crisisTaken!=='boolean')||(p.crisisPosition!==undefined&&p.crisisPosition!==null&&(!integer(p.crisisPosition,0,crisisSpaces.length-1)||p.crisisDone||!p.academyDone||inEntry(p)||p.position!==crisisFork||p.retired)))invalid();
   if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))invalid();
  }

@@ -194,6 +194,7 @@ export function createBoard(target){
   if(i){const p=point(i*step),nx=-Math.sin(p.angle),ny=Math.cos(p.angle);add(tile,'path',{d:`M${p.x+nx*38} ${p.y+ny*38}L${p.x-nx*38} ${p.y-ny*38}`,stroke:'#837a4f99','stroke-width':1.2});}
   const p=point((i+.5)*step);let angle=p.angle*180/Math.PI;if(angle>90)angle-=180;if(angle<-90)angle+=180;
   const text=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${angle})`});
+  if(space.eventId)add(text,'text',{x:0,y:-27,'text-anchor':'middle','font-size':6,'font-weight':900,fill:'#34414a'},'STOP · SPIN AGAIN');
   add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},space.lines?space.lines[0]:i===crisisFork?'CRISIS':names[space.type][0]);
   add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},space.lines?space.lines[1]:i===crisisFork?'CHOICE':names[space.type][1]);
   add(text,'text',{x:-step*.27,y:27,'text-anchor':'middle',class:'road-space-number'},String(i+1).padStart(2,'0'));
