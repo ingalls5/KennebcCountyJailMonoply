@@ -39,8 +39,8 @@ export const entryTracks={
  ]
 };
 export const inEntry=player=>Number.isInteger(player.entryPosition);
-// Stop 56 offers this optional branch once; both routes continue at Stop 57.
-export const crisisFork=55,crisisRejoin=56;
+// Stop 56 offers this optional branch once; the detour rejoins at Stop 67.
+export const crisisFork=55,crisisRejoin=66;
 export const crisisSpaces=[
  {name:'Burnout',lines:['BURN','OUT'],text:'The long shifts are catching up with you. Rest costs money; pushing through costs you.',options:[option('Take unpaid leave',-900,0,4),option('Push through extra shifts',250,-1,-4)]},
  {name:'Family Time',lines:['FAMILY','TIME'],text:'Another family milestone falls on a weekend you could work. Someone will be disappointed.',options:[option('Protect the family weekend',-650,-1,2),option('Take the overtime anyway',550,-2,-3)]},
@@ -51,7 +51,7 @@ export const crisisSpaces=[
  {name:'Always the Backup',lines:['ALWAYS','BACKUP'],text:'Everyone calls you when the roster falls apart. The crew needs help, and you need a break.',options:[option('Be the dependable one again',0,3,-4),option('Say no and take time away',-300,-2,2)]},
  {name:'Change of Direction',lines:['CHANGE','DIRECTION'],text:'A new specialty could renew your career, but training costs money and evenings. Staying means more of the same.',options:[option('Pay for a new specialty',-850,3,-2),option('Stay and collect extra shifts',450,-2,-3)]},
  {name:'Retirement Worries',lines:['RETIREMENT','WORRIES'],text:'Your retirement plan looks thinner than you hoped. Fixing it will cost savings now or energy later.',options:[option('Put money toward the future',-1000,1,-1),option('Work more to make up the gap',450,-1,-4)]},
- {name:'A New Chapter',lines:['STOP','RESET'],text:'Set your priorities for the next chapter. Neither choice is free. After this decision, rejoin the main road at Stop 57.',options:[option('Set boundaries and recover',-600,0,3),option('Chase the next paycheck',300,-2,-3)]}
+ {name:'A New Chapter',lines:['STOP','RESET'],text:'Set your priorities for the next chapter. Neither choice is free. After this decision, rejoin the main road at Stop 67.',options:[option('Set boundaries and recover',-600,0,3),option('Chase the next paycheck',300,-2,-3)]}
 ];
 export const inCrisis=player=>Number.isInteger(player.crisisPosition);
 function offerCrisis(g,p){g.pending={type:'crisis-fork'};g.phase='choice';entry(g,`${p.name} reached the Mid-Life Crisis choice at Stop 56.`);}
@@ -111,7 +111,7 @@ export function decision(game){
  if(game.pending.type==='entry'){
   const space=entryTracks[p.careerPath][p.entryPosition];return {title:(p.careerPath==='academy'?'Academy · ':'Jail career · ')+space.name,icon:space.promote?'★':'◷',text:space.text,options:[{...option(space.promote?'Graduate and join the main road':p.entryPosition===entryTracks[p.careerPath].length-1?'Join the main career road':'Continue',space.cash||0,space.reputation||0,space.energy||0),promote:!!space.promote}]};
  }
- if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take the ten-space Mid-Life Crisis detour. The detour brings difficult tradeoffs between savings, reputation, and energy. Both paths continue at Stop 57.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
+ if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take the ten-space Mid-Life Crisis detour. The detour brings difficult tradeoffs between savings, reputation, and energy. Staying on the main road continues at Stop 57. The detour rejoins at Stop 67.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
  if(game.pending.type==='crisis'){const space=crisisSpaces[p.crisisPosition];return {...space,title:'Mid-Life Crisis · '+space.name,icon:'⚡'};}
  if(game.pending.type==='event')return events.find(e=>e.id===game.pending.id);
  if(game.pending.type==='shift')return {title:'Your shift. Your call.',icon:'◷',text:'Money, experience, or a little breathing room? Choose what you need today.',options:[option('Work overtime',550,0,-3),option('Take a training shift',-100,3,-1),option('Take a recovery day',-50,0,4)]};
@@ -145,7 +145,7 @@ export function perform(before,action,random=Math.random){
   const academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',crisis=g.pending.type==='crisis',thenCrisis=!!g.pending.thenCrisis,finishCrisis=crisis&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;apply(p,choice);if(choice.promote)p.rank++;
   // Exhaustion costs game money, then gives enough rest to keep playing.
   let recovery='';if(p.energy===0&&!forkChoice){p.cash-=200;p.energy=3;recovery=' Exhaustion: $200 recovery cost; energy restored to 3.';}
-  entry(g,`${p.name}: ${crisis?event.title+' — ':''}${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop 57.`);}if(thenCrisis)offerCrisis(g,p);if(forkChoice){if(action.index===1)enterCrisis(g,p);else{p.crisisDone=true;p.crisisTaken=false;p.position=crisisRejoin;entry(g,`${p.name} stayed on the main road and continued to Stop 57.`);}}
+  entry(g,`${p.name}: ${crisis?event.title+' — ':''}${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}if(thenCrisis)offerCrisis(g,p);if(forkChoice){if(action.index===1)enterCrisis(g,p);else{p.crisisDone=true;p.crisisTaken=false;p.position=crisisFork+1;entry(g,`${p.name} stayed on the main road and continued to Stop 57.`);}}
  }else if(action.type==='end'){
   if(g.phase!=='end')throw Error('Resolve the shift before ending your turn.');
   g.turns++;g.route=[];
