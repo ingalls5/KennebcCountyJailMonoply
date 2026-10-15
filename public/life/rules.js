@@ -4,12 +4,12 @@ export const spinnerMax=10,spinnerStep=360/spinnerMax;
 export const ranks=['Rookie','Officer','FTO','Corporal','Supervisor','Programs','Classification','Sergeant','Staff Sergeant','Lieutenant','Captain'];
 export const colors=['#bc5948','#497d9b','#b48a32','#6c8661','#8b6ba4','#368e89'];
 export const pawns=[
- {id:'badge',name:'Badge',icon:'/pawns/badge.svg'},
- {id:'keys',name:'Key',icon:'/pawns/keys.svg'},
- {id:'walkie-talkie',name:'Radio',icon:'/pawns/walkie-talkie.svg'},
- {id:'energy-drink',name:'Energy Drink',icon:'/pawns/energy-drink.svg'},
- {id:'flashlight',name:'Flashlight',icon:'/pawns/flashlight.svg'},
- {id:'white-key-card',name:'Key Card',icon:'/pawns/white-key-card.svg'}
+ {id:'badge',name:'Red Car',icon:'/life/cars/badge.svg'},
+ {id:'keys',name:'Blue Car',icon:'/life/cars/keys.svg'},
+ {id:'walkie-talkie',name:'Gold Car',icon:'/life/cars/walkie-talkie.svg'},
+ {id:'energy-drink',name:'Green Car',icon:'/life/cars/energy-drink.svg'},
+ {id:'flashlight',name:'Purple Car',icon:'/life/cars/flashlight.svg'},
+ {id:'white-key-card',name:'Teal Car',icon:'/life/cars/white-key-card.svg'}
 ];
 export const ruleSet='life-tiles-v1';
 export const salaries=[200,350,500,650,800,850,900,1000,1150,1300,1500];

@@ -1,0 +1,10 @@
+// Original top-down toy cars, with six peg seats and a visible growing family.
+const paint={badge:'#c45b4c',keys:'#4e8fb5','walkie-talkie':'#d3ad4d','energy-drink':'#6c9876',flashlight:'#9578ad','white-key-card':'#54a7a6'};
+export function carSvg(player){
+ const color=paint[player.pawn]||'#4e8fb5';
+ const people=['#f3d482',...(player.married?[player.spouse==='female'?'#e99caf':player.spouse==='male'?'#8fbfe8':'#c3ace0']:[]),...Array(Math.min(6,Math.max(0,player.children||0))).fill('#a7ded0')];
+ const seats=Array.from({length:6},(_,i)=>{const x=17+i%2*14,y=29+Math.floor(i/2)*14;return `<circle cx="${x}" cy="${y}" r="5.2" fill="#263d4b"/>`+(people[i]?`<ellipse cx="${x}" cy="${y+2}" rx="4" ry="4.6" fill="${people[i]}"/><circle cx="${x}" cy="${y-2}" r="3.7" fill="${people[i]}" stroke="#ffffff" stroke-opacity=".6" stroke-width=".8"/>`:'');}).join('');
+ return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 88"><rect x="3" y="14" width="8" height="17" rx="3" fill="#20303a"/><rect x="37" y="14" width="8" height="17" rx="3" fill="#20303a"/><rect x="3" y="58" width="8" height="17" rx="3" fill="#20303a"/><rect x="37" y="58" width="8" height="17" rx="3" fill="#20303a"/><rect x="8" y="4" width="32" height="79" rx="12" fill="${color}" stroke="#23394a" stroke-width="2"/><path d="M14 17Q24 11 34 17L32 23H16Z" fill="#c7e3ec" stroke="#294958"/><path d="M12 27Q24 23 36 27V66Q24 72 12 66Z" fill="#ecdfc3" stroke="#344b57" stroke-width="1.5"/>${seats}<path d="M14 75H34" stroke="#eff4e8" stroke-width="3"/><path d="M12 10H17M31 10H36" stroke="#fff0bc" stroke-width="3"/>${people.length>6?`<circle cx="36" cy="73" r="10" fill="#23394a"/><text x="36" y="77" text-anchor="middle" font-family="sans-serif" font-size="10" fill="white">+${people.length-6}</text>`:''}</svg>`;
+}
+export const carIcon=player=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(carSvg(player));
+export const carDescription=player=>`car with a driver${player.married?', a '+(player.spouse||'')+' spouse':''}${player.children?', and '+player.children+' child'+(player.children===1?'':'ren'):''}`;
