@@ -12,6 +12,33 @@ export const pawns=[
  {id:'white-key-card',name:'Key Card',icon:'/pawns/white-key-card.svg'}
 ];
 const option=(label,cash=0,reputation=0,energy=0)=>({label,cash,reputation,energy});
+export const entryTracks={
+ academy:[
+  {name:'Enrollment',short:'ENROLL',text:'Your Academy training starts here.'},
+  {name:'Uniforms',short:'UNIFORM',text:'Get the uniforms you need for training.',cash:-100},
+  {name:'Classroom Training',short:'CLASS',text:'Learn the policies behind the work.',reputation:1,energy:-1},
+  {name:'Policy Quiz',short:'QUIZ',text:'Put your new knowledge to the test.',reputation:1,energy:-1},
+  {name:'Study Break',short:'BREAK',text:'Take a break before the next class.',energy:2},
+  {name:'Defensive Tactics',short:'TACTICS',text:'Practice your skills with an instructor.',reputation:1,energy:-2},
+  {name:'Report Writing',short:'REPORT',text:'A clear report makes a difference.',reputation:1,energy:-1},
+  {name:'First Aid',short:'FIRST AID',text:'Practice the basics of emergency care.',reputation:1,energy:-1},
+  {name:'Range Training',short:'RANGE',text:'Complete another part of your training.',reputation:1,energy:-2},
+  {name:'Final Exam',short:'EXAM',text:'Show what you have learned.',reputation:1,energy:-1},
+  {name:'Rest Before Graduation',short:'REST',text:'Catch your breath before graduation day.',energy:2},
+  {name:'Graduation',short:'GRAD',text:'Stop here to graduate. Gain 3 reputation, become an Officer, and join the main career road at First Briefing.',reputation:3,promote:true}
+ ],
+ jail:[
+  {name:'Clock In',short:'CLOCK IN',text:'Your jail career starts here.'},
+  {name:'Orientation',short:'ORIENT',text:'Meet the crew and learn the routine.',reputation:1,energy:-1},
+  {name:'First Rounds',short:'ROUNDS',text:'Complete your first set of rounds.',cash:100,energy:-1},
+  {name:'Equipment Check',short:'GEAR',text:'Make sure your equipment is ready.',reputation:1},
+  {name:'Shift Pay',short:'PAY DAY',text:'Collect an extra shift payment.',cash:200,energy:-1},
+  {name:'Break Room',short:'BREAK',text:'Take your first break with the crew.',energy:2},
+  {name:'Work with an FTO',short:'FTO',text:'Learn from someone who knows the floor.',reputation:2,energy:-1},
+  {name:'First Shift Complete',short:'JOIN',text:'Stop here to finish your first shift, then join the main career road at First Briefing.',reputation:1,energy:1}
+ ]
+};
+export const inEntry=player=>Number.isInteger(player.entryPosition);
 // Original career events. Values are game money, rather than county pay rates.
 export const events=[
  {id:'holiday',title:'Holiday coverage',icon:'☀',text:'The holiday roster has an empty spot. Your family has plans, too.',options:[option('Take the holiday shift',650,1,-3),option('Keep your day off',0,0,3)]},
@@ -54,7 +81,7 @@ export function validateRoster(roster){
  const names=new Set(),chosen=new Set();
  return roster.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';if(!name||name.length>30)throw Error('Give every player a name of up to 30 characters.');if(names.has(name.toLowerCase()))throw Error('Each player needs a different name.');if(!pawns.some(c=>c.id===p.pawn)||chosen.has(p.pawn))throw Error('Choose a different pawn for each player.');names.add(name.toLowerCase());chosen.add(p.pawn);return {name,pawn:p.pawn};});
 }
-export function createGame(roster,random=Math.random){return {version:1,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false,careerPath:null})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
+export function createGame(roster,random=Math.random){return {version:1,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,reputation:3,energy:7,rank:0,retired:false,academyDone:false,careerPath:null,entryPosition:null})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived for their first briefing.'],turns:0};}
 export const score=p=>p.cash+p.reputation*100+p.energy*50;
 export function standings(game){return game.players.map((p,i)=>({...p,index:i,score:score(p)})).sort((a,b)=>b.score-a.score);}
 const clamp=n=>Math.max(0,Math.min(10,n));
@@ -63,7 +90,10 @@ function entry(g,text){g.log.push(text);g.log=g.log.slice(-30);}
 export function decision(game){
  if(!game.pending)return null;
  const p=game.players[game.turn];
- if(game.pending.type==='academy')return {title:'Choose your career path',icon:'★',text:'Choose to work in the jail right away or go to the Academy first. The Academy costs $500, builds 3 reputation, and starts you at Officer rank for higher shift pay.',options:[{...option('Go to the Academy',-500,3,-1),promote:true},option('Work in the Jail',300,0,-1)]};
+ if(game.pending.type==='academy')return {title:'Choose your career path',icon:'★',text:'Play through 12 Academy spaces or 8 jail-career spaces before joining the main road. The Academy costs $500; graduation gives you 3 reputation and Officer rank. Working in the jail gives you $300 right away.',options:[option('Go to the Academy',-500,0,-1),option('Work in the Jail',300,0,-1)]};
+ if(game.pending.type==='entry'){
+  const space=entryTracks[p.careerPath][p.entryPosition];return {title:(p.careerPath==='academy'?'Academy · ':'Jail career · ')+space.name,icon:space.promote?'★':'◷',text:space.text,options:[{...option(space.promote?'Graduate and join the main road':p.entryPosition===entryTracks[p.careerPath].length-1?'Join the main career road':'Continue',space.cash||0,space.reputation||0,space.energy||0),promote:!!space.promote}]};
+ }
  if(game.pending.type==='event')return events.find(e=>e.id===game.pending.id);
  if(game.pending.type==='shift')return {title:'Your shift. Your call.',icon:'◷',text:'Money, experience, or a little breathing room? Choose what you need today.',options:[option('Work overtime',550,0,-3),option('Take a training shift',-100,3,-1),option('Take a recovery day',-50,0,4)]};
  if(game.pending.type==='rest')return {title:'You earned a day off.',icon:'☕',text:'Step away from the floor. Choose how you spend your time.',options:[option('A quiet day at home',0,0,3),option('Get away for the day',-150,1,5)]};
@@ -75,8 +105,12 @@ export function perform(before,action,random=Math.random){
  const g=structuredClone(validateGame(before)),p=g.players[g.turn];
  if(action.type==='roll'){
   if(g.phase!=='roll')throw Error('Finish this shift before spinning again.');
-  g.dice=1+Math.floor(random()*spinnerMax);const start=p.position,end=Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
+  g.dice=1+Math.floor(random()*spinnerMax);
   const pay=200+p.rank*150;p.cash+=pay;p.energy=clamp(p.energy-1);entry(g,`${p.name} spun ${g.dice} and earned $${pay} in shift pay.`);
+  if(inEntry(p)){
+   const start=p.entryPosition,end=Math.min(entryTracks[p.careerPath].length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.entryPosition=end;g.pending={type:'entry'};g.phase='choice';return g;
+  }
+  const start=p.position,end=Math.min(lastSpace,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
   // Passing reviews gives every career a chance to advance, even with large rolls.
   const review=g.route.some(n=>spaces[n].type==='promotion');
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired with a score of ${score(p).toLocaleString('en-US')}.`);}
@@ -85,10 +119,10 @@ export function perform(before,action,random=Math.random){
   if(g.phase!=='choice')throw Error('There is no decision to make.');
   const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;
   if(!choice||choice.disabled)throw Error('Choose an available option.');
-  const academy=g.pending.type==='academy';apply(p,choice);if(choice.promote)p.rank++;
+  const academy=g.pending.type==='academy',finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;apply(p,choice);if(choice.promote)p.rank++;
   // Exhaustion costs game money, then gives enough rest to keep playing.
   let recovery='';if(p.energy===0){p.cash-=200;p.energy=3;recovery=' Exhaustion: $200 recovery cost; energy restored to 3.';}
-  entry(g,`${p.name}: ${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';}
+  entry(g,`${p.name}: ${choice.label}.${recovery}`);g.pending=null;g.phase=academy?'roll':'end';if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;}if(finishEntry)p.entryPosition=null;
  }else if(action.type==='end'){
   if(g.phase!=='end')throw Error('Resolve the shift before ending your turn.');
   g.turns++;g.route=[];
@@ -104,7 +138,8 @@ export function validateGame(g){
  const savedSize=g.boardSize===undefined?36:g.boardSize;if(![36,spaceCount].includes(savedSize))throw Error('This saved career could not be read.');
  if(!['roll','choice','end','over'].includes(g.phase)||!integer(g.turn,0,g.players.length-1)||!integer(g.turns,0,10000)||!Array.isArray(g.deck)||g.deck.length!==events.length||new Set(g.deck).size!==events.length||g.deck.some(id=>!events.some(e=>e.id===id))||!integer(g.cursor,0,g.deck.length)||!Array.isArray(g.log)||g.log.some(t=>typeof t!=='string')||!Array.isArray(g.route)||g.route.some(n=>!integer(n,1,savedSize-1))||(g.dice!==null&&!integer(g.dice,1,spinnerMax)))throw Error('This saved career could not be read.');
  for(const p of g.players)if(!integer(p.position,0,savedSize-1)||!Number.isSafeInteger(p.cash)||!integer(p.rank,0,4)||!integer(p.reputation,0,10)||!integer(p.energy,0,10)||typeof p.retired!=='boolean'||typeof p.academyDone!=='boolean'||(p.careerPath!==undefined&&![null,'academy','jail'].includes(p.careerPath))||p.retired!==(p.position===savedSize-1))throw Error('This saved career could not be read.');
- if(g.phase==='choice'&&(!g.pending||!['academy','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))))throw Error('This saved career could not be read.');
+ for(const p of g.players)if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))throw Error('This saved career could not be read.');
+ if(g.phase==='choice'&&(!g.pending||!['academy','entry','promotion','shift','rest','event'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(g.players[g.turn]))))throw Error('This saved career could not be read.');
  if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&g.players[g.turn].retired)throw Error('This saved career could not be read.');
  if(savedSize!==spaceCount){
   const migrated=structuredClone(g),position=n=>Math.round(n/(savedSize-1)*lastSpace);

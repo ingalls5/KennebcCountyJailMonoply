@@ -1,15 +1,36 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGame,perform,decision,pawns,spaces,events,validateGame,validateRoster,standings,score,spaceCount,lastSpace} from '../public/life/rules.js';
+import {createGame,perform,decision,pawns,spaces,events,validateGame,validateRoster,standings,score,spaceCount,lastSpace,entryTracks,inEntry} from '../public/life/rules.js';
 import {GameRoom} from '../src/rooms.js';
 const roster=n=>pawns.slice(0,n).map((p,i)=>({name:'Officer '+(i+1),pawn:p.id}));
-test('The Academy and floor routes have different costs and pay without spending a turn',()=>{
- const start=createGame(roster(2));const academy=perform(start,{type:'choose',index:0});assert.equal(academy.players[0].careerPath,'academy');assert.equal(academy.players[0].cash,500);assert.equal(academy.players[0].rank,1);assert.equal(academy.players[0].reputation,6);assert.equal(academy.phase,'roll');assert.equal(academy.turns,0);assert.equal(start.players[0].academyDone,false);
+test('Choosing a starting route places the pawn on its first playable space',()=>{
+ const start=createGame(roster(2));const academy=perform(start,{type:'choose',index:0});assert.equal(academy.players[0].careerPath,'academy');assert.equal(academy.players[0].cash,500);assert.equal(academy.players[0].rank,0);assert.equal(academy.players[0].reputation,3);assert.equal(academy.players[0].entryPosition,0);assert.equal(academy.phase,'roll');assert.equal(academy.turns,0);assert.equal(start.players[0].academyDone,false);
  const floor=perform(start,{type:'choose',index:1});assert.equal(floor.players[0].careerPath,'jail');assert.equal(floor.players[0].cash,1300);assert.equal(floor.players[0].rank,0);assert.equal(floor.players[0].reputation,3);
- assert.equal(perform(academy,{type:'roll'},()=>0).players[0].cash,850);assert.equal(perform(floor,{type:'roll'},()=>0).players[0].cash,1500);
+ assert.equal(perform(academy,{type:'roll'},()=>0).players[0].cash,700);assert.equal(perform(floor,{type:'roll'},()=>0).players[0].cash,1500);
+});
+test('Both entry routes play over turns, stop at their final space, and join without unused movement',()=>{
+ for(const [index,path] of ['academy','jail'].entries()){
+  assert.equal(entryTracks[path].length,index?8:12);
+  let g=perform(createGame(roster(2)),{type:'choose',index}),landings=0;
+  while(inEntry(g.players[0])){
+   g=perform(g,{type:'roll'},()=>0);landings++;assert.equal(g.pending.type,'entry');assert.equal(g.players[0].entryPosition,landings);assert.equal(g.players[0].position,0);
+   assert.deepEqual(validateGame(JSON.parse(JSON.stringify(g))),g);assert.match(decision(g).title,/Academy|Jail career/);
+   g=perform(g,{type:'choose',index:0});assert.equal(g.phase,'end');assert.throws(()=>perform(g,{type:'choose',index:0}),/no decision/);
+   if(inEntry(g.players[0])){g=perform(g,{type:'end'});if(!g.players[1].academyDone)g=perform(g,{type:'choose',index:1});g=perform(g,{type:'roll'},()=>.999);if(g.phase==='choice')g=perform(g,{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)});g=perform(g,{type:'end'});assert.equal(g.turn,0);}
+  }
+  assert.equal(landings,entryTracks[path].length-1);assert.equal(g.players[0].rank,index?0:1);assert.equal(g.players[0].position,0);
+  let near=perform(createGame(roster(2)),{type:'choose',index});near.players[0].entryPosition=entryTracks[path].length-2;
+  const stopped=perform(near,{type:'roll'},()=>.999);assert.equal(stopped.players[0].entryPosition,entryTracks[path].length-1);assert.equal(stopped.players[0].position,0);assert.equal(stopped.players[0].rank,0);assert.equal(stopped.phase,'choice');assert.equal(stopped.pending.type,'entry');assert.equal(stopped.route.length,1);
+  const joined=perform(stopped,{type:'choose',index:0});assert.equal(joined.players[0].entryPosition,null);assert.equal(joined.players[0].position,0);assert.equal(joined.players[0].reputation,index?4:6);assert.equal(joined.players[0].rank,index?0:1);assert.equal(joined.phase,'end');
+ }
+});
+test('Existing careers stay on the main road and invalid entry saves are rejected',()=>{
+ const old=perform(createGame(roster(2)),{type:'choose',index:1});delete old.players[0].entryPosition;delete old.players[0].careerPath;old.players[0].position=12;
+ const continued=perform(JSON.parse(JSON.stringify(old)),{type:'roll'},()=>0);assert.equal(continued.players[0].position,13);assert.equal(inEntry(continued.players[0]),false);
+ for(const change of [{entryPosition:8},{entryPosition:-1},{entryPosition:1.5},{entryPosition:1,position:2},{entryPosition:1,careerPath:null},{entryPosition:1,academyDone:false}]){const bad=perform(createGame(roster(2)),{type:'choose',index:1});Object.assign(bad.players[0],change);assert.throws(()=>validateGame(bad));}
 });
 test('The spinner yields every value from 1 to 10, moves that many spaces and stops at retirement',()=>{
- const ready=perform(createGame(roster(2)),{type:'choose',index:1});
+ const ready=perform(createGame(roster(2)),{type:'choose',index:1});ready.players[0].entryPosition=null;
  for(let number=1;number<=10;number++){
   const next=perform(ready,{type:'roll'},()=>(number-.5)/10);assert.equal(next.dice,number);assert.equal(next.players[0].position,number);assert.equal(next.route.length,number);assert.equal(next.players[0].cash,1500);assert.deepEqual(validateGame(next),next);
  }
@@ -17,7 +38,7 @@ test('The spinner yields every value from 1 to 10, moves that many spaces and st
  const ten=perform(ready,{type:'roll'},()=>.999);assert.throws(()=>validateGame({...ten,dice:11}));assert.throws(()=>validateGame({...ten,dice:0}));
 });
 test('Passing a review with a large roll permits promotions and cannot bypass eligibility',()=>{
- let g=perform(createGame(roster(2)),{type:'choose',index:1});g.players[0].position=15;g=perform(g,{type:'roll'},()=>.999);assert.equal(g.players[0].position,25);assert.equal(g.pending.type,'promotion');const promoted=perform(g,{type:'choose',index:0});assert.equal(promoted.players[0].rank,1);assert.equal(promoted.players[0].reputation,2);
+ let g=perform(createGame(roster(2)),{type:'choose',index:1});g.players[0].entryPosition=null;g.players[0].position=15;g=perform(g,{type:'roll'},()=>.999);assert.equal(g.players[0].position,25);assert.equal(g.pending.type,'promotion');const promoted=perform(g,{type:'choose',index:0});assert.equal(promoted.players[0].rank,1);assert.equal(promoted.players[0].reputation,2);
  g.players[0].reputation=0;assert.throws(()=>perform(g,{type:'choose',index:0}),/available/);g.players[0].rank=4;assert(decision(g).options[0].disabled);assert.equal(perform(g,{type:'choose',index:1}).players[0].rank,4);
 });
 test('Every event choice respects resource bounds, negative savings and exhaustion recovery',()=>{
@@ -62,9 +83,9 @@ test('Existing online careers restore onto 100 spaces with the same seats, deck 
 test('Six-device career authority: own turns, hidden deck, server die, duplicate and stale actions, reconnect and deletion',async()=>{
  const ctx=memory();let room=new GameRoom(ctx,{});await Promise.resolve();const host=await(await call(room,'/init',{kind:'life',code:'ABC234',name:'Officer 1',choice:pawns[0].id})).json(),seats=[host];for(let i=1;i<6;i++)seats.push(await(await call(room,'/join',{name:'Officer '+(i+1),choice:pawns[i].id})).json());
  let snap=await(await call(room,'/start',{revision:6,id:crypto.randomUUID()},host.token)).json();assert.equal(snap.state.deck,undefined);assert.equal(snap.state.phase,'choice');const act=action=>({revision:snap.revision,id:crypto.randomUUID(),action});
- assert.equal((await call(room,'/action',act({type:'choose',index:0}),seats[1].token)).status,403);const first=act({type:'choose',index:0});snap=await(await call(room,'/action',first,host.token)).json();assert.equal(snap.state.players[0].rank,1);const duplicate=await(await call(room,'/action',first,host.token)).json();assert.equal(duplicate.revision,snap.revision);assert.equal(duplicate.state.players[0].cash,500);
+ assert.equal((await call(room,'/action',act({type:'choose',index:0}),seats[1].token)).status,403);const first=act({type:'choose',index:0});snap=await(await call(room,'/action',first,host.token)).json();assert.equal(snap.state.players[0].rank,0);const duplicate=await(await call(room,'/action',first,host.token)).json();assert.equal(duplicate.revision,snap.revision);assert.equal(duplicate.state.players[0].cash,500);
  assert.equal((await call(room,'/action',{revision:6,id:crypto.randomUUID(),action:{type:'roll'}},host.token)).status,409);
- snap=await(await call(room,'/action',act({type:'roll',dice:99,cash:999999}),host.token)).json();assert(snap.state.dice>=1&&snap.state.dice<=10);assert.equal(snap.state.players[0].cash,850);assert.equal(snap.state.deck,undefined);
+ snap=await(await call(room,'/action',act({type:'roll',dice:99,cash:999999}),host.token)).json();assert(snap.state.dice>=1&&snap.state.dice<=10);assert.equal(snap.state.players[0].cash,700);assert.equal(snap.state.deck,undefined);
  let actions=0;while(snap.state.phase!=='over'){
   const g=snap.state,action=g.phase==='roll'?{type:'roll'}:g.phase==='end'?{type:'end'}:{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)};
   const response=await call(room,'/action',act(action),seats[g.turn].token);assert.equal(response.status,200);snap=await response.json();assert(++actions<700);

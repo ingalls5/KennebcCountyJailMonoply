@@ -1,4 +1,4 @@
-import {spaces,spinnerMax,spinnerStep} from './rules.js';
+import {spaces,entryTracks,spinnerMax,spinnerStep} from './rules.js';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1200,boardHeight=1000;
@@ -53,31 +53,45 @@ function scenery(root){
  const title=add(root,'g',{transform:'translate(514 505) rotate(-3)'});['L','I','F','E'].forEach((letter,i)=>{add(title,'rect',{x:i*49,y:0,width:46,height:58,rx:2,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i],stroke:'#f9f5da','stroke-width':3});add(title,'text',{x:i*49+23,y:45,'text-anchor':'middle','font-family':'Georgia,serif','font-weight':900,'font-size':49,fill:'#fffbe8'},letter);});add(title,'text',{x:96,y:80,'text-anchor':'middle',class:'life-board-subtitle'},'ON THE INSIDE');add(title,'text',{x:96,y:98,'text-anchor':'middle',class:'life-board-edition'},'KENNEBEC COUNTY JAIL');
 }
 export const careerPaths=[
- {id:'academy',label:'Go to the Academy',details:'Pay $500 · Gain 3 reputation · Start as an Officer',color:'#88c6dd',x:185,y:810,w:120,h:104,road:'M450 970C448 935 405 925 350 925L235 925C170 925 150 900 100 895'},
- {id:'jail',label:'Work in the Jail',details:'Collect $300 · Start earning right away as a Rookie',color:'#a5cb77',x:350,y:810,w:120,h:104,road:'M450 970C355 984 240 986 180 965C130 948 110 920 100 895'}
+ {id:'academy',label:'Go to the Academy',details:'Pay $500 · 12 spaces · Graduate as an Officer',color:'#88c6dd',x:185,y:810,w:120,h:104,road:'M450 942C448 925 405 925 350 925L165 925'},
+ {id:'jail',label:'Work in the Jail',details:'Collect $300 · 8 work spaces · Start as a Rookie',color:'#a5cb77',x:350,y:810,w:120,h:104,road:'M450 966C355 980 240 982 180 961C165 956 153 950 145 944'}
 ];
 function startArea(root){
  const g=add(root,'g',{class:'career-start-area'});
  add(g,'rect',{x:162,y:782,width:320,height:211,rx:14,fill:'#c0d89b',stroke:'#e3edbd','stroke-width':3});
  add(g,'text',{x:322,y:804,'text-anchor':'middle',class:'start-area-heading'},'CHOOSE YOUR CAREER PATH');
+ add(g,'path',{d:'M464 966L450 942',fill:'none',stroke:'#fffde9','stroke-width':18});
  for(const path of careerPaths){
+  add(g,'path',{d:path.id==='academy'?'M165 925Q125 925 100 895':'M145 944Q110 930 100 895',fill:'none',stroke:'#fffde9','stroke-width':18});
   const lane=add(g,'g',{class:'start-route','data-path':path.id});
-  add(lane,'path',{d:path.road,fill:'none',stroke:'#fffde9','stroke-width':35,'stroke-linecap':'round',class:'start-route-edge'});
-  add(lane,'path',{d:path.road,fill:'none',stroke:path.color,'stroke-width':26,'stroke-linecap':'round','data-start-road':path.id});
+  add(lane,'path',{d:path.road,fill:'none',stroke:'#fffde9','stroke-width':40,'stroke-linecap':'round',class:'start-route-edge'});
+  const line=add(lane,'path',{d:path.road,fill:'none',stroke:path.color,'stroke-width':32,'stroke-linecap':'round','data-start-road':path.id});
+  const length=line.getTotalLength(),track=entryTracks[path.id],step=length/track.length;
+  track.forEach((space,i)=>{
+   const tile=add(lane,'g',{class:'entry-tile','aria-label':`${path.id==='academy'?'Academy':'Jail career'} space ${i+1}: ${space.name}`}),last=i===track.length-1;
+   const points=Array.from({length:17},(_,j)=>line.getPointAtLength((i+j/16)*step));
+   add(tile,'path',{d:points.map((p,j)=>(j?'L':'M')+p.x+' '+p.y).join(' '),fill:'none',stroke:last?'#df805f':path.color,'stroke-width':32,'stroke-linejoin':'round'});
+   const at=line.getPointAtLength((i+.5)*step),a=line.getPointAtLength(Math.max(0,(i+.5)*step-1)),b=line.getPointAtLength(Math.min(length,(i+.5)*step+1)),angle=Math.atan2(b.y-a.y,b.x-a.x);
+   if(i){const p=line.getPointAtLength(i*step);add(tile,'path',{d:`M${p.x-Math.sin(angle)*16} ${p.y+Math.cos(angle)*16}L${p.x+Math.sin(angle)*16} ${p.y-Math.cos(angle)*16}`,stroke:'#476b6b88','stroke-width':1});}
+   let degrees=angle*180/Math.PI;if(degrees>90)degrees-=180;if(degrees<-90)degrees+=180;
+   const label=add(tile,'g',{transform:`translate(${at.x} ${at.y}) rotate(${degrees})`});
+   add(label,'text',{y:-3,'text-anchor':'middle',class:'entry-space-number'},(path.id==='academy'?'A':'J')+(i+1));
+   add(label,'text',{y:7,'text-anchor':'middle',class:'entry-space-label'},last?'STOP · '+space.short:space.short);
+  });
   const house=building(g,{x:path.id==='academy'?212:377,y:836,w:73,h:25,label:'',roof:path.id==='academy'?'#e9eede':'#b8c6c7'});
   if(path.id==='academy'){add(house,'path',{d:'M1 -5L31 -24L62 -5Z',fill:'#fffef0',stroke:'#d7e2cc','stroke-width':2});add(house,'text',{x:31,y:-6,'text-anchor':'middle','font-size':10,'font-weight':800,fill:'#4a7284'},'A');}
   else{add(house,'rect',{x:30,y:14,width:22,height:28,rx:2,fill:'#657980',stroke:'#dce5d5','stroke-width':2});add(house,'text',{x:35,y:0,'text-anchor':'middle','font-size':9,'font-weight':800,fill:'#415e69'},'KCJ');}
-  add(g,'text',{x:path.x+path.w/2,y:890,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'GO TO THE':'WORK IN');
-  add(g,'text',{x:path.x+path.w/2,y:905,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'ACADEMY':'THE JAIL');
+  add(g,'text',{x:path.x+path.w/2,y:886,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'GO TO THE':'WORK IN');
+  add(g,'text',{x:path.x+path.w/2,y:900,'text-anchor':'middle',class:'start-choice-label'},path.id==='academy'?'ACADEMY':'THE JAIL');
  }
- add(g,'circle',{cx:450,cy:970,r:16,fill:'#c8784f',stroke:'#fffbe4','stroke-width':3});
- add(g,'text',{x:450,y:974,'text-anchor':'middle',class:'start-dot-label'},'START');
- add(g,'path',{d:'M324 925l-7 -4v8ZM287 979l-7 -4v8Z',fill:'#486b61'});
+ add(g,'circle',{cx:464,cy:966,r:11,fill:'#c8784f',stroke:'#fffbe4','stroke-width':3});
+ add(g,'text',{x:464,y:969,'text-anchor':'middle',class:'start-dot-label'},'START');
+
 }
 function startPanel(){
  const panel=document.createElement('section');panel.id='careerStartPanel';panel.className='career-start-panel';panel.setAttribute('aria-labelledby','startPanelTitle');
  const heading=document.createElement('h3');heading.id='startPanelTitle';heading.textContent='Choose your career path.';
- const text=document.createElement('p');text.textContent='Work in the jail right away, or begin with Academy training. Both routes join at First Briefing.';
+ const text=document.createElement('p');text.textContent='Spin through 12 Academy spaces or 8 jail-career spaces. Stop at graduation or the end of your first shift, then join the main road at First Briefing.';
  const choices=document.createElement('div');choices.className='start-panel-choices';const buttons=[];
  for(const [index,path] of careerPaths.entries()){const button=document.createElement('button');button.id=path.id==='academy'?'startAcademy':'startJail';button.type='button';button.className='start-path-choice';button.dataset.startChoice=index;const label=document.createElement('strong');label.textContent=path.label;const detail=document.createElement('span');detail.textContent=path.details;button.append(label,detail);choices.append(button);buttons.push({button,path:path.id,index});}
  panel.append(heading,text,choices);return {panel,buttons};
@@ -104,7 +118,7 @@ function spinner(root){
 const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
 const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
 export function createBoard(target){
- const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. One hundred numbered stops lead from first briefing to retirement. A ten-number spinner sits in the center.');
+ const svg=node('svg',{viewBox:'0 0 1200 1000',class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. A ten-number spinner sits in the center.');
  const defs=add(svg,'defs');
  const grass=add(defs,'linearGradient',{id:'lifeGrass',x2:'0',y2:'1'});add(grass,'stop',{'stop-color':'#9cc97e'});add(grass,'stop',{offset:1,'stop-color':'#85ba75'});
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});
@@ -137,7 +151,12 @@ export function createBoard(target){
   startPanel:panel,pathButtons:buttons,
   setPath(path){for(const item of buttons)item.button.setAttribute('aria-pressed',String(item.path===path));for(const lane of svg.querySelectorAll('.start-route'))lane.dataset.selected=String(lane.dataset.path===path);},
   startCoordinates(index){return {left:(435+index%2*22)/12,top:(941+Math.floor(index/2)*19)/10};},
-  entranceFrames(path,index){const line=svg.querySelector(`[data-start-road="${path}"]`),length=line.getTotalLength();return [board.startCoordinates(index),...Array.from({length:41},(_,i)=>{const p=line.getPointAtLength(length*i/40);return {left:p.x/12,top:p.y/10};}),board.coordinates(0,index)];},
+  entryCoordinates(path,position,index){
+   const line=svg.querySelector(`[data-start-road="${path}"]`),length=line.getTotalLength(),distance=(position+.5)*length/entryTracks[path].length;
+   const p=line.getPointAtLength(distance),a=line.getPointAtLength(Math.max(0,distance-1)),b=line.getPointAtLength(Math.min(length,distance+1)),angle=Math.atan2(b.y-a.y,b.x-a.x),along=(index%2-.5)*14,across=(Math.floor(index/2)-1)*14;
+   return {left:(p.x+Math.cos(angle)*along-Math.sin(angle)*across)/12,top:(p.y+Math.sin(angle)*along+Math.cos(angle)*across)/10};
+  },
+  exitFrames(path,index){const line=svg.querySelector(`[data-start-road="${path}"]`),p=line.getPointAtLength(line.getTotalLength());return [board.entryCoordinates(path,entryTracks[path].length-1,index),{left:p.x/12,top:p.y/10},{left:100/12,top:895/10},board.coordinates(0,index)];},
   coordinates(position,index){
    const p=point((position+.5)*step),fraction=position-Math.floor(position);
    const offset=pos=>{const a=point((pos+.5)*step).angle,along=(index%2-.5)*25,across=(10+Math.floor(index/2)*25)*(Math.cos(a)<0?-1:1);return {x:Math.cos(a)*along-Math.sin(a)*across,y:Math.sin(a)*along+Math.cos(a)*across};};
