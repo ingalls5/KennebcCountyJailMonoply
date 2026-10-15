@@ -22,3 +22,5 @@
 .career-token,.career-token.on-entry{width:1.4%;height:2.65%;object-fit:contain}
 
 .life-camera-layer{position:absolute;inset:0;transform-origin:0 0;will-change:transform}.board-heading .text-button{font-size:11px;margin-left:auto}
+
+.turn-panel .roll-area{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}.panel-spin{display:block;width:min(100%,230px);padding:0;border:0;background:transparent;cursor:pointer;flex:0 0 100%}.panel-spin svg{display:block;width:100%;height:auto;overflow:visible}.panel-spin:disabled{cursor:default;opacity:1}.panel-spin:focus-visible{outline:3px solid #46677f;outline-offset:3px;border-radius:50%}.turn-panel #turnHint{flex:1;min-width:90px}.panel-spin .spinner-number{font-size:26px;font-weight:800;fill:#253b4d}.panel-spin .spinner-center{font-size:12px;fill:#344b60}.panel-spin .scenery-label{font-size:10px;fill:#263c50;stroke:none}

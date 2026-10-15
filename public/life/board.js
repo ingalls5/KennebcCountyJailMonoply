@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=peg-cars-1';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=smooth-cars-1';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;
@@ -222,12 +222,7 @@ export function createBoard(target){
    return percent({x:p.x+Math.cos(angle)*along-Math.sin(angle)*across,y:p.y+Math.sin(angle)*along+Math.cos(angle)*across});
   },
   exitFrames(path,index){const line=svg.querySelector(`[data-start-road="${path}"]`),p=line.getPointAtLength(line.getTotalLength());return [board.entryCoordinates(path,entryTracks[path].length-1,index),percent(p),...(path==='academy'?[percent({x:360,y:1240})]:[]),percent({x:300,y:1240}),board.coordinates(0,index)];},
-  coordinates(position,index){
-   const p=point((position+.5)*step),fraction=position-Math.floor(position);
-   const offset=pos=>{const a=point((pos+.5)*step).angle,along=(index%2-.5)*25,across=(10+Math.floor(index/2)*25)*(Math.cos(a)<0?-1:1);return {x:Math.cos(a)*along-Math.sin(a)*across,y:Math.sin(a)*along+Math.cos(a)*across};};
-   const a=offset(Math.floor(position)),b=offset(Math.ceil(position));
-   return percent({x:p.x+a.x*(1-fraction)+b.x*fraction,y:p.y+a.y*(1-fraction)+b.y*fraction});
-  },
+  coordinates(position,index){return alongLine(route,index,position,spaces.length);},
   center(position){return point((position+.5)*step);}
  };return board;
 }

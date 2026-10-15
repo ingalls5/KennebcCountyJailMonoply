@@ -1,4 +1,4 @@
-import {pawns,createGame,loadGame,gameKey,validateRoster} from './rules.js?v=peg-cars-1';
+import {pawns,createGame,loadGame,gameKey,validateRoster} from './rules.js?v=smooth-cars-1';
 import {onlineSetup} from '../online-setup.js';
 const form=document.getElementById('lifeSetupForm'),rows=document.getElementById('lifePlayerRows'),status=document.getElementById('setupStatus');
 const el=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
