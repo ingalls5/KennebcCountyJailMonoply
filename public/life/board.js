@@ -69,12 +69,12 @@ function spinner(root){
   const start=(i*spinnerStep-90-spinnerStep/2)*Math.PI/180,end=(i*spinnerStep-90+spinnerStep/2)*Math.PI/180;
   const x1=cx+Math.cos(start)*r,y1=cy+Math.sin(start)*r,x2=cx+Math.cos(end)*r,y2=cy+Math.sin(end)*r;
   add(g,'path',{d:`M${cx} ${cy}L${x1} ${y1}A${r} ${r} 0 0 1 ${x2} ${y2}Z`,fill:fills[i],stroke:'#ffffef','stroke-width':4});
-  const angle=(i*spinnerStep-90)*Math.PI/180;add(g,'text',{x:cx+Math.cos(angle)*89,y:cy+Math.sin(angle)*89+9,'text-anchor':'middle',class:'spinner-number'},String(i+1));
+  const angle=(i*spinnerStep-90)*Math.PI/180;add(g,'text',{x:cx+Math.cos(angle)*96,y:cy+Math.sin(angle)*96+9,'text-anchor':'middle',class:'spinner-number'},String(i+1));
  }
  // Outer pegs and a white center give the wheel its raised, plastic appearance.
  for(let i=0;i<spinnerMax*2;i++){const a=i*Math.PI/spinnerMax;add(g,'circle',{cx:cx+Math.cos(a)*(r+9),cy:cy+Math.sin(a)*(r+9),r:4,fill:'#fffdec',stroke:'#c5d2ba','stroke-width':1});}
  const needle=add(g,'g',{id:'careerSpinnerNeedle',class:'spinner-needle'});needle.style.transformOrigin=`${cx}px ${cy}px`;
- add(needle,'path',{d:`M${cx-8} ${cy+46}L${cx-6} ${cy-61}L${cx-14} ${cy-61}L${cx} ${cy-95}L${cx+14} ${cy-61}H${cx+6}L${cx+8} ${cy+46}Z`,fill:'#fffef0',stroke:'#c1cbb6','stroke-width':2});
+ add(needle,'path',{d:`M${cx-8} ${cy+46}L${cx-6} ${cy-61}L${cx-14} ${cy-61}L${cx} ${cy-80}L${cx+14} ${cy-61}H${cx+6}L${cx+8} ${cy+46}Z`,fill:'#fffef0',stroke:'#c1cbb6','stroke-width':2});
  add(g,'circle',{cx,cy:cy+4,r:34,fill:'#c1cfb9'});add(g,'circle',{cx,cy,r:34,fill:'url(#lifePlastic)',stroke:'#fffff5','stroke-width':3});add(g,'text',{x:cx,y:cy+5,'text-anchor':'middle',class:'spinner-center'},'SPIN');
  add(g,'text',{x:cx,y:cy+r+42,'text-anchor':'middle',class:'scenery-label'},'MAKE YOUR NEXT MOVE');
 }
