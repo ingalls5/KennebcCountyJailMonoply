@@ -34,7 +34,7 @@ export const entryTracks={
   {name:'Defensive Tactics',short:'TACTICS',text:'Complete defensive tactics training. Collect a LIFE tile.',tiles:1},
   {name:'Report Writing',short:'REPORT',text:'Finish your report-writing course. Collect a LIFE tile.',tiles:1},
   {name:'First Aid',short:'FIRST AID',text:'Earn your first aid certificate. Collect a LIFE tile.',tiles:1},
-  {name:'Range Training',short:'RANGE',text:'Pay your range and equipment fee.',cash:-75},
+  {name:'PREA Training',short:'PREA',text:'Pay $75 to complete your PREA training.',cash:-75},
   {name:'Final Exam',short:'EXAM',text:'Pass your final exam. Collect a LIFE tile.',tiles:1},
   {name:'Rest Before Graduation',short:'REST',text:'Celebrate finishing the Academy with your classmates.',cash:-50},
   {name:'Graduation',short:'GRAD',text:'Graduate as an Officer with a $350 salary at each Pay Day. Collect a LIFE tile and join First Briefing.',tiles:1,promote:true}
