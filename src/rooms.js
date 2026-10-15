@@ -1,6 +1,7 @@
 import {createGame,defaultConfig,validateConfig,boardRevision,migrateConfig,validateGame,suspects,perform as clueAction,actor as clueActor,reachable as clueReachable} from '../public/clue/rules.js';
 import {newGame,perform as monopolyAction} from '../public/economy.js';
 import {pawns} from '../public/players.js';
+import {createGame as createLife,perform as lifeAction,pawns as lifePawns} from '../public/life/rules.js';
 
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 export const json=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
@@ -16,7 +17,7 @@ export function project(room,member){
   if(state.phase!=='over')delete state.solution;
   state.players.forEach((p,i)=>{if(i!==playerIndex){p.hand=[];p.notes={};}});
   if(state.pending&&!(state.phase==='view'&&state.turn===playerIndex))state.pending.card=null;
- }else if(state){delete state.cards;}
+ }else if(state){delete state.cards;if(room.kind==='life')delete state.deck;}
  const motion=room.motion?{id:room.motion.id,actor:room.motion.actor,route:room.motion.next.route,dice:room.motion.dice,acknowledged:room.motion.acknowledged}:null;
  return {code:room.code,kind:room.kind,status:state?'playing':'lobby',revision:room.revision,round:room.round||0,viewer:playerIndex,host:room.host===member.id,members:room.members.map(p=>({id:p.id,name:p.name,choice:p.choice,host:p.id===room.host})),config:room.config,state,motion,trade:room.trade||null,event:room.event||null};
 }
@@ -28,7 +29,7 @@ export class GameRoom {
  async handle(request){
   const path=new URL(request.url).pathname;
   if(path==='/init'&&request.method==='POST'){
-   if(this.room)fail(409,'Room code is already in use.');const data=await body(request);if(!['clue','monoply'].includes(data.kind))fail(400,'Choose a game.');
+   if(this.room)fail(409,'Room code is already in use.');const data=await body(request);if(!['clue','monoply','life'].includes(data.kind))fail(400,'Choose a game.');
    const member=this.newMember(data,[]),config=data.kind==='clue'?validateConfig(data.config||defaultConfig()):null;
    this.room={code:data.code,kind:data.kind,layoutRevision:boardRevision,config,members:[member],host:member.id,state:null,revision:1,round:0,processed:[],motion:null,trade:null,event:null};await this.persist();return json({...project(this.room,member),token:member.token},201);
   }
@@ -47,7 +48,7 @@ export class GameRoom {
   if(path==='/start'||path==='/restart'){
    if(member.id!==this.room.host)fail(403,'Only the room host can start a game.');if(this.room.motion)fail(409,'Finish the current move first.');if(path==='/start'&&this.room.state)fail(409,'This game has already started.');
    const minimum=this.room.kind==='clue'?3:2;if(this.room.members.length<minimum)fail(400,`You need at least ${minimum} players to start.`);
-   const roster=this.room.members.map(p=>this.room.kind==='clue'?{name:p.name,suspect:p.choice}:{name:p.name,pawn:p.choice});this.room.state=this.room.kind==='clue'?createGame(roster,this.room.config,random):newGame(roster);this.room.trade=null;this.room.round++;this.room.event=null;
+   const roster=this.room.members.map(p=>this.room.kind==='clue'?{name:p.name,suspect:p.choice}:{name:p.name,pawn:p.choice});this.room.state=this.room.kind==='clue'?createGame(roster,this.room.config,random):this.room.kind==='life'?createLife(roster,random):newGame(roster);this.room.trade=null;this.room.round++;this.room.event=null;
   }else if(path==='/end'){
    if(member.id!==this.room.host)fail(403,'Only the room host can end the game.');
    if(!this.room.state)fail(409,'There is no game to end.');
@@ -61,7 +62,12 @@ export class GameRoom {
    if(member.id!==this.room.host||this.room.state)fail(403,'Only the host can remove players before the game starts.');const target=this.room.members.findIndex(p=>p.id===data.player&&p.id!==member.id);if(target<0)fail(400,'Choose another player.');this.room.members.splice(target,1);
   }else if(path==='/action'){
    if(!this.room.state)fail(409,'Wait for the host to start the game.');const action=data.action;if(!action||typeof action.type!=='string')fail(400,'Choose a game action.');
-   if(this.room.kind==='clue'){
+   if(this.room.kind==='life'){
+    if(this.room.state.turn!==index)fail(403,'Wait for your turn.');
+    if(!['roll','choose','end'].includes(action.type))fail(400,'Choose a valid career action.');
+    this.room.state=lifeAction(this.room.state,{type:action.type,index:action.index},random);
+    event={id:crypto.randomUUID(),type:action.type,actor:index};
+   }else if(this.room.kind==='clue'){
     if(action.type==='note'){
      if(!this.room.state.deck.includes(action.card)||!['unknown','no','maybe','yes'].includes(action.value))fail(400,'Choose a valid notebook mark.');if(this.room.state.phase==='over')fail(409,'This case is closed.');const next=structuredClone(this.room.state);if(next.players[index].hand.includes(action.card)&&action.value!=='no')fail(400,'A card in your hand is ruled out.');next.players[index].notes[action.card]=action.value;this.room.state=next;
     }else{
@@ -86,6 +92,6 @@ export class GameRoom {
  }
  newMember(data,members){
   const name=typeof data.name==='string'?data.name.trim():'';if(!name||name.length>30)fail(400,'Enter your name (up to 30 characters).');if(members.some(p=>p.name.toLowerCase()===name.toLowerCase()))fail(409,'Choose a different player name.');
-  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:pawns;if(!list.some(p=>p.id===data.choice))fail(400,kind==='clue'?'Choose a role.':'Choose a valid pawn.');if(members.some(p=>p.choice===data.choice))fail(409,kind==='clue'?'That role is already taken. Choose another.':'Choose an available pawn.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice};
+  const kind=this.room?.kind||data.kind,list=kind==='clue'?suspects:kind==='life'?lifePawns:pawns;if(!list.some(p=>p.id===data.choice))fail(400,kind==='clue'?'Choose a role.':'Choose a valid pawn.');if(members.some(p=>p.choice===data.choice))fail(409,kind==='clue'?'That role is already taken. Choose another.':'Choose an available pawn.');return {id:crypto.randomUUID(),token:token(),name,choice:data.choice};
  }
 }

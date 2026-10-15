@@ -20,7 +20,8 @@
     "test:clue-online-game": "node tests/clue-online-game.mjs",
     "test:clue-recovery-browser": "node tests/clue-recovery-browser.mjs",
     "test:end-button-browser": "node tests/end-button-browser.mjs",
-    "test:online-browser": "node tests/online-browser.mjs"
+    "test:online-browser": "node tests/online-browser.mjs",
+    "test:life-browser": "node tests/life-browser.mjs"
   },
   "devDependencies": {
     "wrangler": "4.92.0",

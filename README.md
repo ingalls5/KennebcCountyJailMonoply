@@ -1,6 +1,16 @@
 # KennebcCountyJailMonoply
 
-A custom Monopoly-style game on Cloudflare, with renamed county-jail spaces, equipment pawns, and animated dice and movement. The homepage at `/` offers game selection, with Monoply ready to play and a playable Kennebec County Jail Clue draft. `/setup` supports one to six named players with unique pawns, and `/board` opens the game. The homepage offers continuation for a matching saved game without altering it. Both games support room codes for separate devices; one-device play remains available.
+A collection of county-jail board games on Cloudflare: Monoply, Clue, and Life on the Inside. The homepage at `/` offers all three games and continuation for saved sessions. Each game supports one-device play or room codes for separate devices.
+
+## Life on the Inside
+
+An original career game at `/life-setup` and `/life` for 2–6 players. Players choose **Go to the Academy** ($500 cost, +3 reputation, Officer rank) or **Start on the floor** (+$300). Both use 1 energy. Each career starts with $1,000, 3 reputation and 7 energy before this choice.
+
+The 36-stop path uses a single die and 24 shuffled, original event cards with decisions. Every rolled turn pays $200 plus $150 per rank above Rookie and costs 1 energy. Crossing a promotion review offers advancement even if the die passes the space; its decision replaces the landing event. Promotion costs reputation equal to the new rank index and 2 energy. Ranks are Rookie, Officer, FTO, Corporal, Supervisor. Other stops offer overtime, training, days off and county events. Reputation/energy range from 0–10. A decision leaving zero energy costs $200 and restores energy to 3. Negative savings count as debt. These amounts and ranks are fictional game rules.
+
+No exact roll is needed to retire, and retirees skip future turns. Once everyone retires, the score is savings + $100 × reputation + $50 × energy, with exact ties sharing the win. Local saves use only `kennebec-life-v1`. Online rooms use the existing authoritative server, seat credentials, revision checks and idempotency; event order stays on the server. End game confirms, clears only that career session, and returns participants home.
+
+Run `npm test` and `npm run test:life-browser` with the dev server on port 8791. Tests cover every event option, Academy routes, promotions, exhaustion, complete 2–6-player simulations, six-player local play and six isolated online browsers through retirement, phone layouts, reconnect and deletion.
 
 ## Economy
 

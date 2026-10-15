@@ -1,6 +1,6 @@
 const seatKey='kennebec-room-seats-v1';
-export const gamePath=kind=>kind==='clue'?'/clue':'/board';
-export const setupPath=kind=>kind==='clue'?'/clue-setup':'/setup';
+export const gamePath=kind=>kind==='life'?'/life':kind==='clue'?'/clue':'/board';
+export const setupPath=kind=>kind==='life'?'/life-setup':kind==='clue'?'/clue-setup':'/setup';
 export function readSeat(kind,code){try{const seats=JSON.parse(localStorage.getItem(seatKey)||'{}');code=code||localStorage.getItem('kennebec-last-room-'+kind);const seat=seats[code];return seat?.kind===kind?{...seat,code}:null;}catch{return null;}}
 export function keepSeat(snapshot){const seats=JSON.parse(localStorage.getItem(seatKey)||'{}');seats[snapshot.code]={kind:snapshot.kind,token:snapshot.token};localStorage.setItem(seatKey,JSON.stringify(seats));localStorage.setItem('kennebec-last-room-'+snapshot.kind,snapshot.code);}
 export function forgetSeat(kind,code){try{const seats=JSON.parse(localStorage.getItem(seatKey)||'{}');delete seats[code];localStorage.setItem(seatKey,JSON.stringify(seats));if(localStorage.getItem('kennebec-last-room-'+kind)===code)localStorage.removeItem('kennebec-last-room-'+kind);}catch{}}
