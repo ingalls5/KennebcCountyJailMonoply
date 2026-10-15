@@ -47,8 +47,11 @@ function scenery(root){
  add(yard,'path',{d:'M232 476V452H258V476M270 477V459H293V477',fill:'none',stroke:'#397f59','stroke-width':6});
  add(yard,'text',{x:256,y:500,'text-anchor':'middle',class:'scenery-label'},'REC YARD');
  // Printed card stacks sit in the open spaces between roads.
- const deck=add(root,'g',{transform:'translate(585 607) rotate(12)'});for(let i=3;i>=0;i--)add(deck,'rect',{x:i*2,y:i*3,width:78,height:108,rx:5,fill:'#fff9e7',stroke:'#a5b68f','stroke-width':1.4});add(deck,'rect',{x:7,y:7,width:64,height:94,rx:3,fill:'#a776b0'});add(deck,'text',{x:39,y:35,'text-anchor':'middle',class:'deck-title'},'COUNTY');add(deck,'text',{x:39,y:51,'text-anchor':'middle',class:'deck-title'},'EVENTS');add(deck,'text',{x:39,y:82,'text-anchor':'middle','font-size':28,fill:'#fff8dd'},'?');
- const pay=add(root,'g',{transform:'translate(407 263) rotate(-10)'});for(let i=3;i>=0;i--)add(pay,'rect',{x:i*2,y:i*3,width:76,height:99,rx:4,fill:'#fffbe9',stroke:'#94b18b','stroke-width':1.3});add(pay,'rect',{x:6,y:6,width:64,height:87,fill:'#86c77d',rx:3});add(pay,'text',{x:38,y:32,'text-anchor':'middle',class:'deck-title'},'SHIFT PAY');add(pay,'text',{x:38,y:61,'text-anchor':'middle','font-size':29,fill:'#214a3f'},'$');add(pay,'text',{x:38,y:80,'text-anchor':'middle','font-size':8,fill:'#214a3f'},'EACH TURN');
+ const deck=add(root,'g',{transform:'translate(585 607) rotate(12)',class:'board-life-tile-bank'});for(let i=3;i>=0;i--)add(deck,'rect',{x:i*2,y:i*3,width:78,height:108,rx:5,fill:'#fff9e7',stroke:'#a5b68f','stroke-width':1.4});
+ add(deck,'text',{x:39,y:18,'text-anchor':'middle','font-size':8,'font-weight':800,fill:'#365e4c'},'COLLECT');
+ ['L','I','F','E'].forEach((letter,i)=>{add(deck,'rect',{x:7+i*16,y:28,width:16,height:29,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i]});add(deck,'text',{x:15+i*16,y:50,'text-anchor':'middle','font-size':23,'font-weight':850,fill:'#fffbe8'},letter);});
+ add(deck,'text',{x:39,y:74,'text-anchor':'middle','font-size':9,'font-weight':850,fill:'#365e4c'},'TILES');add(deck,'text',{x:39,y:91,'text-anchor':'middle','font-size':5.5,fill:'#365e4c'},'FACE DOWN UNTIL RETIREMENT');
+ const pay=add(root,'g',{transform:'translate(407 263) rotate(-10)'});for(let i=3;i>=0;i--)add(pay,'rect',{x:i*2,y:i*3,width:76,height:99,rx:4,fill:'#fffbe9',stroke:'#94b18b','stroke-width':1.3});add(pay,'rect',{x:6,y:6,width:64,height:87,fill:'#86c77d',rx:3});add(pay,'text',{x:38,y:32,'text-anchor':'middle',class:'deck-title'},'PAY DAY');add(pay,'text',{x:38,y:61,'text-anchor':'middle','font-size':29,fill:'#214a3f'},'$');add(pay,'text',{x:38,y:80,'text-anchor':'middle','font-size':8,fill:'#214a3f'},'PASS OR LAND');
  // Colorful original title printed on the landscape.
  const title=add(root,'g',{transform:'translate(514 505) rotate(-3)'});['L','I','F','E'].forEach((letter,i)=>{add(title,'rect',{x:i*49,y:0,width:46,height:58,rx:2,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i],stroke:'#f9f5da','stroke-width':3});add(title,'text',{x:i*49+23,y:45,'text-anchor':'middle','font-family':'Georgia,serif','font-weight':900,'font-size':49,fill:'#fffbe8'},letter);});add(title,'text',{x:96,y:80,'text-anchor':'middle',class:'life-board-subtitle'},'ON THE INSIDE');add(title,'text',{x:96,y:98,'text-anchor':'middle',class:'life-board-edition'},'KENNEBEC COUNTY JAIL');
 }
@@ -129,7 +132,7 @@ function crisisArea(root,step,point){
   if(i){const p=line.getPointAtLength(i*tileStep);add(tile,'path',{d:`M${p.x-Math.sin(angle)*38} ${p.y+Math.cos(angle)*38}L${p.x+Math.sin(angle)*38} ${p.y-Math.cos(angle)*38}`,stroke:'#714c6088','stroke-width':1.2});}
   let degrees=angle*180/Math.PI;if(degrees>90)degrees-=180;if(degrees<-90)degrees+=180;
   const label=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${degrees})`});
-  add(label,'text',{y:-13,'text-anchor':'middle',class:'road-space-title'},space.lines[0]);add(label,'text',{y:1,'text-anchor':'middle',class:'road-space-detail'},space.lines[1]);add(label,'text',{x:i===0?0:-tileStep*.27,y:27,'text-anchor':'middle',class:'road-space-number'},'C'+(i+1));add(label,'text',{x:tileStep*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:angle*180/Math.PI!==degrees?'rotate(180 '+tileStep*.26+' 22)':''},'➜');
+  add(label,'text',{y:-13,'text-anchor':'middle',class:'road-space-title'},space.lines[0]);add(label,'text',{y:1,'text-anchor':'middle',class:'road-space-detail'},space.lines[1]);if(space.payday)add(label,'text',{x:tileStep*.28,y:-24,'text-anchor':'middle','font-size':10,'font-weight':850,fill:'#244d3b'},'$');add(label,'text',{x:i===0?0:-tileStep*.27,y:27,'text-anchor':'middle',class:'road-space-number'},'C'+(i+1));add(label,'text',{x:tileStep*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:angle*180/Math.PI!==degrees?'rotate(180 '+tileStep*.26+' 22)':''},'➜');
  });
  add(g,'text',{x:1210,y:226,'text-anchor':'middle',class:'crisis-board-title'},'MID-LIFE');
  add(g,'text',{x:1210,y:254,'text-anchor':'middle',class:'crisis-board-title'},'CRISIS');
@@ -163,8 +166,8 @@ function spinner(root){
  add(g,'circle',{cx,cy:cy+4,r:34,fill:'#c1cfb9'});add(g,'circle',{cx,cy,r:34,fill:'url(#lifePlastic)',stroke:'#fffff5','stroke-width':3});add(g,'text',{x:cx,y:cy+5,'text-anchor':'middle',class:'spinner-center'},'SPIN');
  add(g,'text',{x:cx,y:cy+r+42,'text-anchor':'middle',class:'scenery-label'},'MAKE YOUR NEXT MOVE');
 }
-const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
-const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
+const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['CAREER','CHOICE'],payday:['PAY','DAY'],life:['LIFE','TILE'],fork:['CRISIS','CHOICE'],event:['LIFE','EVENT']};
+const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',payday:'#9acb7d',life:'#a6d9e8',fork:'#c58c9b',event:'#f2cc5b'};
 export function createBoard(target){
  const svg=node('svg',{viewBox:`0 0 ${boardWidth} ${boardHeight}`,class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. A ten-space Mid-Life Crisis detour branches at Stop 56 and rejoins at Stop 67. A ten-number spinner sits in the center.');
  const defs=add(svg,'defs');

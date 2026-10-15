@@ -1,4 +1,4 @@
-import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork} from './rules.js';
+import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js';
 import {createBoard} from './board.js';
 import {OnlineRoom,roomBanner} from '../online.js';
 import {bindEndGame,clearEndedGame} from '../end-game.js';
@@ -13,29 +13,40 @@ const board=createBoard($('careerTiles')),coordinates=board.coordinates;
 let spinnerAngle=0;
 function canAct(){return !!game&&!cleared&&!busy&&!moving&&game.phase!=='over'&&(!online||online.canAct);}
 function error(message){$('lifeError').textContent=message;$('decisionError').textContent=message;}
+function tileBack(){const card=el('div','life-tile-back');card.setAttribute('aria-hidden','true');for(const letter of 'LIFE')card.append(el('span','',letter));return card;}
+function renderTiles(target,p,reveal){
+ target.replaceChildren();target.className='life-tile-collection';
+ const count=tileCount(p),heading=el('p','tile-rack-label',count+' LIFE tile'+(count===1?'':'s')+(reveal?' · '+money(tileBonus(p)):' · Face down until retirement'));target.append(heading);
+ const rack=el('div','life-tile-rack');rack.setAttribute('aria-label',count+' LIFE tiles');
+ if(!count)rack.append(el('span','tile-empty','Collect memories along the way.'));
+ else if(!reveal){for(let i=0;i<Math.min(count,6);i++)rack.append(tileBack());if(count>6)rack.append(el('span','tile-more','+'+(count-6)));}
+ else for(const id of p.lifeTiles||[]){const tile=lifeTiles.find(t=>t.id===id),card=el('div','life-tile-face');card.append(el('strong','',money(tile.value)),el('span','',tile.name));rack.append(card);}
+ target.append(rack);
+}
+function announceTiles(previous){if(!previous)return;const gains=game.players.map((p,i)=>({p,count:tileCount(p)-tileCount(previous.players[i])})).filter(a=>a.count>0);if(!gains.length)return;document.querySelector('.life-tile-award')?.remove();const notice=el('div','life-tile-award');notice.setAttribute('role','status');notice.append(tileBack(),el('span','',gains.map(({p,count})=>p.name+' earned '+count+' LIFE tile'+(count===1?'':'s')+'!').join(' ')));document.body.append(notice);setTimeout(()=>notice.remove(),3200);}
 function renderDecision(){
  const event=decision(game);if(!event)return;
  $('decisionPlayer').textContent=game.players[game.turn].name+' · '+(game.pending.type==='academy'?'YOUR FIRST DECISION':game.pending.type==='crisis'?'MID-LIFE CRISIS':'ON THE CLOCK');$('decisionTitle').textContent=event.title;$('decisionIcon').textContent=event.icon;$('decisionText').textContent=event.text;$('decisionOptions').replaceChildren();
- event.options.forEach((choice,index)=>{const button=el('button','decision-choice',choice.label);button.type='button';button.disabled=!!choice.disabled||!canAct();const changes=[];if(choice.cash)changes.push((choice.cash>0?'+':'−')+money(Math.abs(choice.cash)));if(choice.reputation)changes.push((choice.reputation>0?'+':'')+choice.reputation+' reputation');if(choice.energy)changes.push((choice.energy>0?'+':'')+choice.energy+' energy');if(choice.promote)changes.push('Rank +1');button.append(el('span','',changes.join(' · ')+(choice.disabled?' · Not eligible yet':'')));button.onclick=()=>act({type:'choose',index});$('decisionOptions').append(button);});
+ event.options.forEach((choice,index)=>{const button=el('button','decision-choice',choice.label);button.type='button';button.disabled=!!choice.disabled||!canAct();const changes=[];if(choice.cash)changes.push((choice.cash>0?'+':'−')+money(Math.abs(choice.cash)));if(choice.tiles)changes.push('+'+choice.tiles+' LIFE tile'+(choice.tiles===1?'':'s'));if(choice.promote)changes.push('Higher salary');if(choice.home)changes.push('Retirement home value '+money(choice.home.value));if(choice.children)changes.push('+1 child');button.append(el('span','',changes.join(' · ')+(choice.disabled?' · Not eligible yet':'')));button.onclick=()=>act({type:'choose',index});$('decisionOptions').append(button);});
 }
 function controls(){if(!game)return;const p=game.players[game.turn],mine=!online||online.viewer===game.turn,active=canAct();
  $('turnEyebrow').textContent=game.phase==='over'?'OFF THE CLOCK':mine?'ON THE CLOCK':'WAITING FOR THE CREW';$('turnName').textContent=game.phase==='over'?'Everyone’s retired.':p.name;$('turnRank').textContent=game.phase==='over'?'The final briefing':ranks[p.rank]+' · '+locationLabel(p);
- $('turnStats').replaceChildren();for(const [label,value] of [['Savings / debt',money(p.cash)],['Reputation',p.reputation+'/10'],['Energy',p.energy+'/10']]){const stat=el('div','stat',label);stat.append(el('strong','',value));$('turnStats').append(stat);}
+ $('turnStats').replaceChildren();for(const [label,value] of [['Savings / debt',money(p.cash)],['Pay Day salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const stat=el('div','stat',label);stat.append(el('strong','',value));$('turnStats').append(stat);}
  $('careerDie').textContent=game.dice||'–';$('careerDie').setAttribute('aria-label',game.dice?'Spun '+game.dice:'Spinner ready');board.spin.disabled=game.phase!=='roll'||!active;
  const starting=game.phase==='choice'&&game.pending.type==='academy';board.startPanel.hidden=!starting||!mine;board.setPath(p.careerPath);
  for(const {button} of board.pathButtons)button.disabled=!starting||!active;
  $('openDecision').textContent=starting?'Choose your career path →':'Make your decision →';
  $('turnHint').textContent=moving?motionHint:game.phase==='over'?'Compare the crew’s final scores below.':!mine?'Waiting for '+p.name+'.':game.phase==='choice'?(starting?'Choose Work in the Jail or Go to the Academy below the board.':'A decision is waiting for you.'):game.phase==='end'?(p.retired?'Your career is complete. Pass the turn to the crew.':'Shift complete. Pass it to the next officer.'):'Your next shift is one spin away.';
  for(const [id,phase] of [['rollCareer','roll'],['openDecision','choice'],['endCareerTurn','end']]){$(id).hidden=game.phase!==phase||!mine;$(id).disabled=!active;}
- renderDecision();endBinding?.update();
+ renderDecision();renderTiles($('lifeTileRack'),p,game.phase==='over');endBinding?.update();
 }
-function renderRoster(){const leaders=standings(game),high=leaders[0].score;$('careerRoster').replaceChildren();game.players.forEach((p,i)=>{const card=el('article','officer-card'+(i===game.turn&&game.phase!=='over'?' current':''));card.style.setProperty('--player-color',colors[i]);const heading=el('div','officer-heading'),img=el('img');img.src=pawns.find(c=>c.id===p.pawn).icon;img.alt='';const text=el('div');text.append(el('h3','',p.name),el('p','',ranks[p.rank]+' · '+locationLabel(p)+(online?.viewer===i?' · You':'')));heading.append(img,text);const numbers=el('div','officer-numbers');for(const [label,value] of [['Savings',money(p.cash)],['Reputation',p.reputation+'/10'],['Energy',p.energy+'/10']]){const item=el('span','',label+' ');item.append(el('strong','',value));numbers.append(item);}const track=el('div','progress-track'),fill=el('span');fill.style.width=p.position/lastSpace*100+'%';track.append(fill);card.append(heading,numbers,track);$('careerRoster').append(card);});
- $('careerResults').hidden=game.phase!=='over';if(game.phase==='over'){const winners=leaders.filter(p=>p.score===high);$('resultsTitle').textContent=winners.length===1?winners[0].name+' wins the county career.':winners.map(p=>p.name).join(' & ')+' share the win.';$('finalScores').replaceChildren(...leaders.map(p=>el('li','',p.name+' · '+money(p.score)+' total — '+money(p.cash)+' savings, '+p.reputation+' reputation, '+p.energy+' energy')));}
+function renderRoster(){const leaders=standings(game),high=leaders[0].score;$('careerRoster').replaceChildren();game.players.forEach((p,i)=>{const card=el('article','officer-card'+(i===game.turn&&game.phase!=='over'?' current':''));card.style.setProperty('--player-color',colors[i]);const heading=el('div','officer-heading'),img=el('img');img.src=pawns.find(c=>c.id===p.pawn).icon;img.alt='';const text=el('div');text.append(el('h3','',p.name),el('p','',ranks[p.rank]+' · '+locationLabel(p)+(online?.viewer===i?' · You':'')));heading.append(img,text);const numbers=el('div','officer-numbers');for(const [label,value] of [['Savings',money(p.cash)],['Salary',money(salary(p))],['LIFE tiles',String(tileCount(p))]]){const item=el('span','',label+' ');item.append(el('strong','',value));numbers.append(item);}const track=el('div','progress-track'),fill=el('span');fill.style.width=p.position/lastSpace*100+'%';track.append(fill);const family=el('p','family-summary',(p.married?'Married':'Single')+' · '+p.children+' child'+(p.children===1?'':'ren')+(p.home?' · '+p.home.name:''));const tiles=el('div','');renderTiles(tiles,p,game.phase==='over');card.append(heading,numbers,family,tiles,track);$('careerRoster').append(card);});
+ $('careerResults').hidden=game.phase!=='over';if(game.phase==='over'){const winners=leaders.filter(p=>p.score===high);$('resultsTitle').textContent=winners.length===1?winners[0].name+' wins the county career.':winners.map(p=>p.name).join(' & ')+' share the win.';$('finalScores').replaceChildren(...leaders.map(p=>el('li','',p.name+' · '+money(p.score)+' total — '+money(p.cash)+' savings, '+money(tileBonus(p))+' LIFE bonus, '+money(homeValue(p))+' home value, '+money(familyBonus(p))+' family bonus')));}
  $('careerLog').replaceChildren(...[...game.log].reverse().map(text=>el('li','',text)));
 }
 async function render(previous){
  const currentGeneration=++generation;$('careerTokens').getAnimations({subtree:true}).forEach(a=>a.cancel());board.needle.getAnimations().forEach(a=>a.cancel());moving=false;
- if(!game)return;renderRoster();
+ if(!game)return;renderRoster();announceTiles(previous);
  const animations=[];$('careerTokens').replaceChildren();motionHint='Spinning, then making the rounds…';
  const spun=previous&&previous.phase==='roll'&&game.dice&&game.players.some((p,i)=>p.position>previous.players[i].position&&!inCrisis(previous.players[i])||inEntry(p)&&inEntry(previous.players[i])&&p.entryPosition>previous.players[i].entryPosition||inCrisis(p)&&inCrisis(previous.players[i])&&p.crisisPosition>previous.players[i].crisisPosition||previous.phase==='roll'&&game.pending?.type==='crisis');
  const spinDuration=spun&&!reduced()?1600:0;
