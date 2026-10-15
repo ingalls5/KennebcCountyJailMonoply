@@ -111,7 +111,7 @@ export function decision(game){
  if(game.pending.type==='entry'){
   const space=entryTracks[p.careerPath][p.entryPosition];return {title:(p.careerPath==='academy'?'Academy · ':'Jail career · ')+space.name,icon:space.promote?'★':'◷',text:space.text,options:[{...option(space.promote?'Graduate and join the main road':p.entryPosition===entryTracks[p.careerPath].length-1?'Join the main career road':'Continue',space.cash||0,space.reputation||0,space.energy||0),promote:!!space.promote}]};
  }
- if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take the optional ten-space Mid-Life Crisis detour. The detour brings difficult tradeoffs between savings, reputation, and energy. Both paths continue at Stop 57.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
+ if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take the ten-space Mid-Life Crisis detour. The detour brings difficult tradeoffs between savings, reputation, and energy. Both paths continue at Stop 57.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
  if(game.pending.type==='crisis'){const space=crisisSpaces[p.crisisPosition];return {...space,title:'Mid-Life Crisis · '+space.name,icon:'⚡'};}
  if(game.pending.type==='event')return events.find(e=>e.id===game.pending.id);
  if(game.pending.type==='shift')return {title:'Your shift. Your call.',icon:'◷',text:'Money, experience, or a little breathing room? Choose what you need today.',options:[option('Work overtime',550,0,-3),option('Take a training shift',-100,3,-1),option('Take a recovery day',-50,0,4)]};
