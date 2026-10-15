@@ -1,9 +1,9 @@
-import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry} from './rules.js';
+import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork} from './rules.js';
 import {createBoard} from './board.js';
 import {OnlineRoom,roomBanner} from '../online.js';
 import {bindEndGame,clearEndedGame} from '../end-game.js';
 const $=id=>document.getElementById(id),el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
-const locationLabel=p=>p.retired?'Retired':!p.academyDone?'Choose your start':inEntry(p)?(p.careerPath==='academy'?'Academy':'Jail career')+' · Space '+(p.entryPosition+1)+' of '+entryTracks[p.careerPath].length:'Stop '+(p.position+1)+' of '+spaceCount;
+const locationLabel=p=>p.retired?'Retired':!p.academyDone?'Choose your start':inCrisis(p)?'Mid-Life Crisis · Space '+(p.crisisPosition+1)+' of '+crisisSpaces.length:inEntry(p)?(p.careerPath==='academy'?'Academy':'Jail career')+' · Space '+(p.entryPosition+1)+' of '+entryTracks[p.careerPath].length:'Stop '+(p.position+1)+' of '+spaceCount;
 const money=n=>(n<0?'−':'')+'$'+Math.abs(n).toLocaleString('en-US');
 const code=new URLSearchParams(location.search).get('room')?.toUpperCase();
 const online=code?new OnlineRoom('life',code):null;
@@ -15,7 +15,7 @@ function canAct(){return !!game&&!cleared&&!busy&&!moving&&game.phase!=='over'&&
 function error(message){$('lifeError').textContent=message;$('decisionError').textContent=message;}
 function renderDecision(){
  const event=decision(game);if(!event)return;
- $('decisionPlayer').textContent=game.players[game.turn].name+' · '+(game.pending.type==='academy'?'YOUR FIRST DECISION':'ON THE CLOCK');$('decisionTitle').textContent=event.title;$('decisionIcon').textContent=event.icon;$('decisionText').textContent=event.text;$('decisionOptions').replaceChildren();
+ $('decisionPlayer').textContent=game.players[game.turn].name+' · '+(game.pending.type==='academy'?'YOUR FIRST DECISION':game.pending.type==='crisis'?'MID-LIFE CRISIS':'ON THE CLOCK');$('decisionTitle').textContent=event.title;$('decisionIcon').textContent=event.icon;$('decisionText').textContent=event.text;$('decisionOptions').replaceChildren();
  event.options.forEach((choice,index)=>{const button=el('button','decision-choice',choice.label);button.type='button';button.disabled=!!choice.disabled||!canAct();const changes=[];if(choice.cash)changes.push((choice.cash>0?'+':'−')+money(Math.abs(choice.cash)));if(choice.reputation)changes.push((choice.reputation>0?'+':'')+choice.reputation+' reputation');if(choice.energy)changes.push((choice.energy>0?'+':'')+choice.energy+' energy');if(choice.promote)changes.push('Rank +1');button.append(el('span','',changes.join(' · ')+(choice.disabled?' · Not eligible yet':'')));button.onclick=()=>act({type:'choose',index});$('decisionOptions').append(button);});
 }
 function controls(){if(!game)return;const p=game.players[game.turn],mine=!online||online.viewer===game.turn,active=canAct();
@@ -37,12 +37,20 @@ async function render(previous){
  const currentGeneration=++generation;$('careerTokens').getAnimations({subtree:true}).forEach(a=>a.cancel());board.needle.getAnimations().forEach(a=>a.cancel());moving=false;
  if(!game)return;renderRoster();
  const animations=[];$('careerTokens').replaceChildren();motionHint='Spinning, then making the rounds…';
- const spun=previous&&game.dice&&game.players.some((p,i)=>p.position>previous.players[i].position||inEntry(p)&&inEntry(previous.players[i])&&p.entryPosition>previous.players[i].entryPosition);
+ const spun=previous&&game.dice&&game.players.some((p,i)=>p.position>previous.players[i].position&&!inCrisis(previous.players[i])||inEntry(p)&&inEntry(previous.players[i])&&p.entryPosition>previous.players[i].entryPosition||inCrisis(p)&&inCrisis(previous.players[i])&&p.crisisPosition>previous.players[i].crisisPosition||previous.phase==='roll'&&game.pending?.type==='crisis');
  const spinDuration=spun&&!reduced()?1600:0;
  if(spun){const nextAngle=Math.ceil(spinnerAngle/360)*360+1080+(game.dice-1)*spinnerStep;if(spinDuration)animations.push(board.needle.animate([{transform:`rotate(${spinnerAngle}deg)`},{transform:`rotate(${nextAngle}deg)`}],{duration:spinDuration,easing:'cubic-bezier(.15,.65,.12,1)'}));spinnerAngle=nextAngle;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}else if(!previous){spinnerAngle=((game.dice||1)-1)*spinnerStep;board.needle.style.transform=`rotate(${spinnerAngle}deg)`;}
- game.players.forEach((p,i)=>{const img=el('img','career-token'+(i===game.turn?' active':'')+(inEntry(p)?' on-entry':''));img.src=pawns.find(c=>c.id===p.pawn).icon;img.alt=p.name+' · '+pawns.find(c=>c.id===p.pawn).name;img.title=p.name+' — '+locationLabel(p);const target=!p.academyDone&&p.position===0?board.startCoordinates(i):inEntry(p)?board.entryCoordinates(p.careerPath,p.entryPosition,i):coordinates(p.position,i);img.style.left=target.left+'%';img.style.top=target.top+'%';$('careerTokens').append(img);
+ game.players.forEach((p,i)=>{const img=el('img','career-token'+(i===game.turn?' active':'')+(inEntry(p)?' on-entry':''));img.src=pawns.find(c=>c.id===p.pawn).icon;img.alt=p.name+' · '+pawns.find(c=>c.id===p.pawn).name;img.title=p.name+' — '+locationLabel(p);const target=!p.academyDone&&p.position===0?board.startCoordinates(i):inCrisis(p)?board.crisisCoordinates(p.crisisPosition,i):inEntry(p)?board.entryCoordinates(p.careerPath,p.entryPosition,i):coordinates(p.position,i);img.style.left=target.left+'%';img.style.top=target.top+'%';$('careerTokens').append(img);
   const old=previous?.players[i];
-  if(old&&!old.academyDone&&p.academyDone&&p.careerPath&&!reduced()){
+  const frame=at=>({left:at.left+'%',top:at.top+'%',transform:'translate(-50%,-50%)'});
+  if(old&&inCrisis(old)&&!inCrisis(p)&&!reduced()){
+   motionHint='Leaving the crisis behind. Back to the main road…';animations.push(img.animate(board.crisisExitFrames(i).map(frame),{duration:1600,easing:'ease-in-out'}));
+  }else if(old&&!inCrisis(old)&&inCrisis(p)&&!reduced()){
+   motionHint='Taking the Mid-Life Crisis detour…';
+   const distance=Math.max(0,crisisFork-old.position),main=Array.from({length:distance*8+1},(_,j)=>frame(coordinates(old.position+(distance?j/8:0),i))),branch=board.crisisEntryFrames(i).slice(1).map(frame);animations.push(img.animate([...main,...branch],{delay:spinDuration,duration:distance*350+1000,easing:'linear',fill:'backwards'}));
+  }else if(old&&inCrisis(old)&&inCrisis(p)&&old.crisisPosition<p.crisisPosition&&!reduced()){
+   motionHint='Working through the Mid-Life Crisis…';const distance=p.crisisPosition-old.crisisPosition,steps=distance*8,frames=Array.from({length:steps+1},(_,j)=>{const at=board.crisisCoordinates(old.crisisPosition+distance*j/steps,i),hop=Math.abs(Math.sin(j/steps*distance*Math.PI))*8;return {left:at.left+'%',top:at.top+'%',transform:`translate(-50%,calc(-50% - ${hop}px))`,offset:j/steps};});animations.push(img.animate(frames,{delay:spinDuration,duration:distance*350,easing:'linear',fill:'backwards'}));
+  }else if(old&&!old.academyDone&&p.academyDone&&p.careerPath&&!reduced()){
    motionHint=p.careerPath==='academy'?'Heading to the Academy…':'Starting work in the jail…';
    const frames=[board.startCoordinates(i),target].map(at=>({left:at.left+'%',top:at.top+'%',transform:'translate(-50%,-50%)'}));animations.push(img.animate(frames,{duration:600,easing:'ease-in-out'}));
   }else if(old&&inEntry(old)&&inEntry(p)&&old.entryPosition<p.entryPosition&&!reduced()){

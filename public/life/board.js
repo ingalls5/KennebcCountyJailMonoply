@@ -1,7 +1,7 @@
-import {spaces,entryTracks,spinnerMax,spinnerStep} from './rules.js';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
-export const boardWidth=1200,boardHeight=1350;
+export const boardWidth=1540,boardHeight=1350;
 export const road='M 300 1240 L 180 1240 Q 100 1240 100 1160 L 100 895 L 105 775 C 105 730 160 715 220 715 L 340 715 C 430 715 435 625 350 625 L 215 625 C 120 625 120 520 215 520 L 410 520 C 500 520 480 415 400 415 L 190 415 C 65 415 65 275 160 275 L 285 275 C 370 275 375 170 290 170 L 170 170 C 80 170 100 70 200 70 L 950 70 C 1090 70 1110 200 1000 220 L 860 220 C 780 220 780 330 870 330 L 1010 330 C 1120 330 1120 455 1015 455 L 830 455 C 735 455 735 555 830 555 L 1010 555 C 1130 555 1115 700 1000 700 L 800 700 C 700 700 720 805 820 805 L 1010 805 C 1130 805 1120 925 1000 925 L 530 925';
 const svgNS='http://www.w3.org/2000/svg';
 const node=(tag,attrs={},text)=>{const n=document.createElementNS(svgNS,tag);for(const [key,value] of Object.entries(attrs))n.setAttribute(key,String(value));if(text!==undefined)n.textContent=text;return n;};
@@ -24,8 +24,8 @@ function sign(parent,x,y,label,color='#f4edda'){
  const g=add(parent,'g',{transform:`translate(${x} ${y})`});add(g,'path',{d:'M-30 0V28M30 0V28',stroke:'#8d8061','stroke-width':5});add(g,'rect',{x:-72,y:-14,width:144,height:33,rx:5,fill:color,stroke:'#f8ffed','stroke-width':3});add(g,'text',{y:7,'text-anchor':'middle',class:'scenery-label'},label);return g;
 }
 function scenery(root){
- add(root,'rect',{width:1200,height:boardHeight,rx:16,fill:'url(#lifeGrass)'});
- add(root,'rect',{x:10,y:10,width:1180,height:boardHeight-20,rx:12,fill:'url(#lifeMeadow)',opacity:.6});
+ add(root,'rect',{width:boardWidth,height:boardHeight,rx:16,fill:'url(#lifeGrass)'});
+ add(root,'rect',{x:10,y:10,width:boardWidth-20,height:boardHeight-20,rx:12,fill:'url(#lifeMeadow)',opacity:.6});
  // A quiet Maine landscape under the road, with a pond and wooded edges.
  add(root,'path',{d:'M410 635C440 583 562 608 594 664C622 711 565 777 510 770C452 764 377 698 410 635Z',fill:'#6cae94',stroke:'#b3d58a','stroke-width':15});
  add(root,'path',{d:'M423 639C454 610 554 624 575 668C595 710 550 751 510 750C464 751 405 686 423 639Z',fill:'url(#lifeWater)'});
@@ -108,6 +108,34 @@ function startArea(root,step){
  add(g,'circle',{cx:1070,cy:1240,r:30,fill:'#c8784f',stroke:'#fffbe4','stroke-width':4});
  add(g,'text',{x:1070,y:1244,'text-anchor':'middle',class:'start-dot-label'},'START');
 }
+function crisisArea(root,step,point){
+ const g=add(root,'g',{class:'crisis-area'}),fork=point((crisisFork+.5)*step),rejoin=point((crisisRejoin+.5)*step);
+ add(g,'rect',{x:1205,y:15,width:320,height:490,rx:20,fill:'#d9cbb8',stroke:'#f3ead7','stroke-width':3});
+ add(g,'text',{x:1365,y:51,'text-anchor':'middle',class:'crisis-board-title'},'MID-LIFE CRISIS');
+ add(g,'text',{x:1365,y:76,'text-anchor':'middle',class:'crisis-board-subtitle'},'ENTER 56 · REJOIN 57');
+ const entrance=add(g,'path',{d:`M${fork.x} ${fork.y}H1180V150H1260`,fill:'none',stroke:'none','data-crisis-entrance':''});
+ const exit=add(g,'path',{d:`M1260 280H1180V${rejoin.y}H${rejoin.x}`,fill:'none',stroke:'none','data-crisis-exit':''});
+ for(const line of [entrance,exit]){add(g,'path',{d:line.getAttribute('d'),fill:'none',stroke:'#fff9e5','stroke-width':24,'stroke-linejoin':'round'});add(g,'path',{d:line.getAttribute('d'),fill:'none',stroke:'#a47685','stroke-width':14,'stroke-linejoin':'round'});const p=line.getPointAtLength(line.getTotalLength()*.6),a=line.getPointAtLength(line.getTotalLength()*.6-1),b=line.getPointAtLength(line.getTotalLength()*.6+1);add(g,'text',{x:p.x,y:p.y+4,'text-anchor':'middle',class:'crisis-junction-arrow',transform:`rotate(${Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI} ${p.x} ${p.y})`},'➜');}
+ const route=bottom=>`M1260 150H1400A60 60 0 0 1 1460 210V${bottom-60}A60 60 0 0 1 1400 ${bottom}H1320A60 60 0 0 1 1260 ${bottom-60}V280`;
+ const line=add(g,'path',{d:route(400),fill:'none',stroke:'none','data-crisis-road':''});
+ const bottom=400+(crisisSpaces.length*step-line.getTotalLength())/2;line.setAttribute('d',route(bottom));
+ add(g,'path',{d:line.getAttribute('d'),fill:'none',stroke:'#fff9e5','stroke-width':94});
+ const length=line.getTotalLength(),tileStep=length/crisisSpaces.length;
+ crisisSpaces.forEach((space,i)=>{
+  const tile=add(g,'g',{class:'crisis-tile','aria-label':`Mid-Life Crisis space ${i+1}: ${space.name}`}),samples=Array.from({length:17},(_,j)=>line.getPointAtLength((i+j/16)*tileStep));
+  add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x+' '+p.y).join(' '),fill:'none',stroke:i===crisisSpaces.length-1?'#df805f':'#c58c9b','stroke-width':roadWidth,'stroke-linejoin':'round'});
+  const p=line.getPointAtLength((i+.5)*tileStep),a=line.getPointAtLength((i+.5)*tileStep-1),b=line.getPointAtLength((i+.5)*tileStep+1),angle=Math.atan2(b.y-a.y,b.x-a.x);
+  if(i){const p=line.getPointAtLength(i*tileStep);add(tile,'path',{d:`M${p.x-Math.sin(angle)*38} ${p.y+Math.cos(angle)*38}L${p.x+Math.sin(angle)*38} ${p.y-Math.cos(angle)*38}`,stroke:'#714c6088','stroke-width':1.2});}
+  let degrees=angle*180/Math.PI;if(degrees>90)degrees-=180;if(degrees<-90)degrees+=180;
+  const label=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${degrees})`});
+  add(label,'text',{y:-13,'text-anchor':'middle',class:'road-space-title'},space.lines[0]);add(label,'text',{y:1,'text-anchor':'middle',class:'road-space-detail'},space.lines[1]);add(label,'text',{x:-tileStep*.27,y:27,'text-anchor':'middle',class:'road-space-number'},'C'+(i+1));add(label,'text',{x:tileStep*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:angle*180/Math.PI!==degrees?'rotate(180 '+tileStep*.26+' 22)':''},'➜');
+ });
+ for(const [y,text] of [[446,'Every choice has a cost.'],[469,'Savings. Reputation. Energy.'],[490,'What can you afford to lose?']])add(g,'text',{x:1365,y,'text-anchor':'middle',class:'crisis-board-copy'},text);
+ // A quiet wooded rest area fills the landscape beside the career road.
+ for(const [x,y] of [[1240,570],[1490,550],[1500,710],[1240,800],[1480,900],[1260,1040],[1500,1130],[1300,1270],[1440,1280]]){tree(root,x,y,1.4);tree(root,x+24,y+30,.9);}
+ const bench=add(root,'g',{transform:'translate(1280 660)'});add(bench,'path',{d:'M0 0H170V14H0ZM0 23H170V36H0ZM15 36V65M155 36V65',fill:'#b19a66',stroke:'#6a7350','stroke-width':5});add(bench,'text',{x:85,y:110,'text-anchor':'middle',class:'scenery-label'},'TAKE A BREATH');add(bench,'text',{x:85,y:132,'text-anchor':'middle',class:'crisis-board-copy'},'Your next chapter is still yours.');
+ return {line,entrance,exit};
+}
 function startPanel(){
  const panel=document.createElement('section');panel.id='careerStartPanel';panel.className='career-start-panel';panel.setAttribute('aria-labelledby','startPanelTitle');
  const heading=document.createElement('h3');heading.id='startPanelTitle';heading.textContent='Choose your career path.';
@@ -138,7 +166,7 @@ function spinner(root){
 const names={start:['FIRST','BRIEFING'],retire:['RETIREMENT','FINISH'],promotion:['STOP','REVIEW'],shift:['SHIFT','CHOICE'],rest:['DAYS','OFF'],event:['COUNTY','EVENT']};
 const fills={start:'#62b9cc',retire:'#d890b0',promotion:'#e17b59',shift:'#9acb7d',rest:'#a6d9e8',event:'#f2cc5b'};
 export function createBoard(target){
- const svg=node('svg',{viewBox:`0 0 ${boardWidth} ${boardHeight}`,class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. A ten-number spinner sits in the center.');
+ const svg=node('svg',{viewBox:`0 0 ${boardWidth} ${boardHeight}`,class:'life-board-art',role:'img','aria-labelledby':'lifeBoardTitle lifeBoardDescription'});add(svg,'title',{id:'lifeBoardTitle'},'Life on the Inside: winding county career board');add(svg,'desc',{id:'lifeBoardDescription'},'A colorful road winds around the Academy, jail buildings, trees and a pond. Twelve Academy spaces and eight jail-career spaces join one hundred numbered stops from first briefing to retirement. A ten-space Mid-Life Crisis detour branches at Stop 56 and rejoins at Stop 57. A ten-number spinner sits in the center.');
  const defs=add(svg,'defs');
  const grass=add(defs,'linearGradient',{id:'lifeGrass',x2:'0',y2:'1'});add(grass,'stop',{'stop-color':'#9cc97e'});add(grass,'stop',{offset:1,'stop-color':'#85ba75'});
  const meadow=add(defs,'pattern',{id:'lifeMeadow',width:55,height:43,patternUnits:'userSpaceOnUse'});add(meadow,'path',{d:'M0 43L55 0M0 0L55 43',stroke:'#d5e5a9','stroke-width':.7,opacity:.4});add(meadow,'circle',{cx:14,cy:11,r:1.3,fill:'#eff0bd'});
@@ -148,29 +176,35 @@ export function createBoard(target){
  const route=add(svg,'path',{d:road,fill:'none',stroke:'none'}),length=route.getTotalLength(),step=length/spaces.length;
  startArea(svg,step);
  const point=distance=>{const d=Math.max(0,Math.min(length,distance)),p=route.getPointAtLength(d),a=route.getPointAtLength(Math.max(0,d-1)),b=route.getPointAtLength(Math.min(length,d+1)),angle=Math.atan2(b.y-a.y,b.x-a.x);return {x:p.x,y:p.y,angle};};
+ const crisis=crisisArea(svg,step,point);
  add(svg,'path',{d:road,fill:'none',stroke:'#2c643b55','stroke-width':96,'stroke-linecap':'round',transform:'translate(3 7)'});
  add(svg,'path',{d:road,fill:'none',stroke:'#faf9e6','stroke-width':94,'stroke-linecap':'round','stroke-linejoin':'round'});
  add(svg,'path',{d:road,fill:'none',stroke:'#d9ddc1','stroke-width':79,'stroke-linecap':'round'});
  spaces.forEach((space,i)=>{
   const tile=add(svg,'g',{class:'career-tile type-'+space.type,'aria-label':`Stop ${i+1}: ${space.name}`});
   const samples=Array.from({length:17},(_,j)=>point((i+j/16)*step));
-  add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:fills[space.type],'stroke-width':roadWidth,'stroke-linejoin':'round'});
+  add(tile,'path',{d:samples.map((p,j)=>(j?'L':'M')+p.x.toFixed(2)+' '+p.y.toFixed(2)).join(' '),fill:'none',stroke:i===crisisFork?'#c58c9b':fills[space.type],'stroke-width':roadWidth,'stroke-linejoin':'round'});
   if(i){const p=point(i*step),nx=-Math.sin(p.angle),ny=Math.cos(p.angle);add(tile,'path',{d:`M${p.x+nx*38} ${p.y+ny*38}L${p.x-nx*38} ${p.y-ny*38}`,stroke:'#837a4f99','stroke-width':1.2});}
   const p=point((i+.5)*step);let angle=p.angle*180/Math.PI;if(angle>90)angle-=180;if(angle<-90)angle+=180;
   const text=add(tile,'g',{transform:`translate(${p.x} ${p.y}) rotate(${angle})`});
-  add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},names[space.type][0]);
-  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},names[space.type][1]);
+  add(text,'text',{x:0,y:-13,'text-anchor':'middle',class:'road-space-title'},i===crisisFork?'CRISIS':names[space.type][0]);
+  add(text,'text',{x:0,y:1,'text-anchor':'middle',class:'road-space-detail'},i===crisisFork?'DETOUR':names[space.type][1]);
   add(text,'text',{x:-step*.27,y:27,'text-anchor':'middle',class:'road-space-number'},String(i+1).padStart(2,'0'));
   add(text,'text',{x:step*.26,y:28,'text-anchor':'middle',class:'road-direction',transform:p.angle*180/Math.PI!==angle?'rotate(180 '+step*.26+' 22)':''},'➜');
  });
  spinner(svg);target.replaceChildren(svg);
- const spin=document.createElement('button');spin.type='button';spin.id='boardSpin';spin.className='board-spin-button';spin.setAttribute('aria-label','Spin the career wheel');spin.style.left=625/boardWidth*100+'%';spin.style.top=315/boardHeight*100+'%';target.parentElement.append(spin);
+ const spin=document.createElement('button');spin.type='button';spin.id='boardSpin';spin.className='board-spin-button';spin.setAttribute('aria-label','Spin the career wheel');spin.style.width=282/boardWidth*100+'%';spin.style.left=625/boardWidth*100+'%';spin.style.top=315/boardHeight*100+'%';target.parentElement.append(spin);
  const {panel,buttons}=startPanel();target.parentElement.after(panel);
  for(const [index,path] of careerPaths.entries()){const button=document.createElement('button');button.type='button';button.id=path.id==='academy'?'boardAcademy':'boardJail';button.className='board-path-button';button.style.left=path.x/boardWidth*100+'%';button.style.top=path.y/boardHeight*100+'%';button.style.width=path.w/boardWidth*100+'%';button.style.height=path.h/boardHeight*100+'%';button.setAttribute('aria-label',path.label);button.title=path.label+' · '+path.details;target.parentElement.append(button);buttons.push({button,path:path.id,index});}
+ const alongLine=(line,index,position,count)=>{const length=line.getTotalLength(),d=(position+.5)*length/count,p=line.getPointAtLength(d),a=line.getPointAtLength(Math.max(0,d-1)),b=line.getPointAtLength(Math.min(length,d+1)),angle=Math.atan2(b.y-a.y,b.x-a.x),along=(index%2-.5)*25,across=(Math.floor(index/2)-1)*25;return percent({x:p.x+Math.cos(angle)*along-Math.sin(angle)*across,y:p.y+Math.sin(angle)*along+Math.cos(angle)*across});};
+ const lineFrames=line=>Array.from({length:17},(_,i)=>percent(line.getPointAtLength(line.getTotalLength()*i/16)));
  const board={
   svg,spin,needle:svg.querySelector('#careerSpinnerNeedle'),
   startPanel:panel,pathButtons:buttons,
   setPath(path){for(const item of buttons)item.button.setAttribute('aria-pressed',String(item.path===path));for(const lane of svg.querySelectorAll('.start-route'))lane.dataset.selected=String(lane.dataset.path===path);},
+  crisisCoordinates(position,index){return alongLine(crisis.line,index,position,crisisSpaces.length);},
+  crisisEntryFrames(index){return [board.coordinates(crisisFork,index),...lineFrames(crisis.entrance),board.crisisCoordinates(0,index)];},
+  crisisExitFrames(index){return [board.crisisCoordinates(crisisSpaces.length-1,index),...lineFrames(crisis.exit),board.coordinates(crisisRejoin,index)];},
   startCoordinates(index){return percent({x:1057+index%2*26,y:1214+Math.floor(index/2)*26});},
   entryCoordinates(path,position,index){
    const line=svg.querySelector(`[data-start-road="${path}"]`),length=line.getTotalLength(),distance=(position+.5)*length/entryTracks[path].length;

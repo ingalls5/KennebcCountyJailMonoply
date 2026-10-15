@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGame,perform,decision,pawns,spaces,events,validateGame,validateRoster,standings,score,spaceCount,lastSpace,entryTracks,inEntry} from '../public/life/rules.js';
+import {createGame,perform,decision,pawns,spaces,events,validateGame,validateRoster,standings,score,spaceCount,lastSpace,entryTracks,inEntry,crisisSpaces,crisisFork,crisisRejoin,inCrisis} from '../public/life/rules.js';
 import {GameRoom} from '../src/rooms.js';
 const roster=n=>pawns.slice(0,n).map((p,i)=>({name:'Officer '+(i+1),pawn:p.id}));
 test('Choosing a starting route places the pawn on its first playable space',()=>{
@@ -16,7 +16,7 @@ test('Both entry routes play over turns, stop at their final space, and join wit
    g=perform(g,{type:'roll'},()=>0);landings++;assert.equal(g.pending.type,'entry');assert.equal(g.players[0].entryPosition,landings);assert.equal(g.players[0].position,0);
    assert.deepEqual(validateGame(JSON.parse(JSON.stringify(g))),g);assert.match(decision(g).title,/Academy|Jail career/);
    g=perform(g,{type:'choose',index:0});assert.equal(g.phase,'end');assert.throws(()=>perform(g,{type:'choose',index:0}),/no decision/);
-   if(inEntry(g.players[0])){g=perform(g,{type:'end'});if(!g.players[1].academyDone)g=perform(g,{type:'choose',index:1});g=perform(g,{type:'roll'},()=>.999);if(g.phase==='choice')g=perform(g,{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)});g=perform(g,{type:'end'});assert.equal(g.turn,0);}
+   if(inEntry(g.players[0])){g=perform(g,{type:'end'});if(!g.players[1].academyDone)g=perform(g,{type:'choose',index:1});g=perform(g,{type:'roll'},()=>.999);while(g.phase==='choice')g=perform(g,{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)});g=perform(g,{type:'end'});assert.equal(g.turn,0);}
   }
   assert.equal(landings,entryTracks[path].length-1);assert.equal(g.players[0].rank,index?0:1);assert.equal(g.players[0].position,0);
   let near=perform(createGame(roster(2)),{type:'choose',index});near.players[0].entryPosition=entryTracks[path].length-2;
@@ -49,6 +49,30 @@ test('Every event choice respects resource bounds, negative savings and exhausti
  }
  const exhausted=createGame(roster(2));exhausted.pending={type:'shift'};exhausted.players[0].energy=1;const result=perform(exhausted,{type:'choose',index:0});assert.equal(result.players[0].energy,3);assert.equal(result.players[0].cash,1350);assert.match(result.log.at(-1),/recovery/);
 });
+test('Crossing Stop 56 preserves a promotion review, then forces the crisis before unused movement',()=>{
+ let g=perform(createGame(roster(2)),{type:'choose',index:1});g.players[0].entryPosition=null;g.players[0].position=50;
+ g=perform(g,{type:'roll'},()=>.999);assert.equal(g.players[0].position,crisisFork);assert.equal(g.pending.type,'promotion');assert.equal(g.pending.thenCrisis,true);assert.equal(g.route.length,5);assert.equal(g.players[0].crisisPosition,null);
+ g=perform(g,{type:'choose',index:1});assert.equal(g.phase,'choice');assert.equal(g.pending.type,'crisis');assert.equal(g.players[0].crisisPosition,0);assert.match(decision(g).title,/Burnout/);assert.throws(()=>perform(g,{type:'roll'}),/Finish/);
+ g=perform(g,{type:'choose',index:1});assert.equal(g.phase,'end');assert.equal(g.players[0].crisisPosition,0);
+ const exact=perform(createGame(roster(2)),{type:'choose',index:1});exact.players[0].entryPosition=null;exact.players[0].position=54;const entered=perform(exact,{type:'roll'},()=>0);assert.equal(entered.pending.type,'crisis');assert.equal(entered.players[0].position,crisisFork);
+});
+test('All ten crisis dilemmas apply real tradeoffs, survive saves, recover exhaustion, and rejoin only after the final choice',()=>{
+ assert.equal(crisisSpaces.length,10);
+ for(let position=0;position<crisisSpaces.length;position++)for(let index=0;index<2;index++){
+  const g=perform(createGame(roster(2)),{type:'choose',index:1});Object.assign(g.players[0],{entryPosition:null,position:crisisFork,crisisPosition:position,cash:0,reputation:5,energy:1});g.phase='choice';g.pending={type:'crisis'};
+  assert.deepEqual(validateGame(JSON.parse(JSON.stringify(g))),g);assert.equal(decision(g).options.length,2);const effect=crisisSpaces[position].options[index];assert(effect.cash<0||effect.reputation<0||effect.energy<0);
+  const next=perform(g,{type:'choose',index}),p=next.players[0];assert.equal(p.cash,effect.cash-(1+effect.energy<=0?200:0));assert(p.reputation>=0&&p.reputation<=10);assert(p.energy>=1&&p.energy<=10);assert.equal(next.phase,'end');
+  assert.equal(p.crisisDone,position===9);assert.equal(p.position,position===9?crisisRejoin:crisisFork);assert.equal(p.crisisPosition,position===9?null:position);validateGame(next);
+ }
+ const near=perform(createGame(roster(2)),{type:'choose',index:1});Object.assign(near.players[0],{entryPosition:null,position:crisisFork,crisisPosition:8});const stopped=perform(near,{type:'roll'},()=>.999);assert.equal(stopped.players[0].crisisPosition,9);assert.equal(stopped.players[0].position,crisisFork);assert.deepEqual(stopped.route,[9]);assert.equal(stopped.pending.type,'crisis');
+ const joined=perform(stopped,{type:'choose',index:0});joined.phase='roll';const continued=perform(joined,{type:'roll'},()=>0);assert.equal(continued.players[0].position,crisisRejoin+1);assert.equal(continued.players[0].crisisPosition,null);assert.equal(continued.players[0].crisisDone,true);
+});
+test('Older careers past the fork keep their progress, and invalid crisis saves are rejected',()=>{
+ const old=perform(createGame(roster(2)),{type:'choose',index:1});Object.assign(old.players[0],{entryPosition:null,position:60});delete old.players[0].crisisPosition;delete old.players[0].crisisDone;
+ assert.equal(perform(old,{type:'roll'},()=>0).players[0].position,61);
+ for(const change of [{crisisPosition:10},{crisisPosition:-1},{crisisPosition:.5},{crisisPosition:1,position:54},{crisisPosition:1,crisisDone:true},{crisisPosition:1,entryPosition:0},{crisisDone:'yes'}]){const bad=structuredClone(old);Object.assign(bad.players[0],{position:crisisFork},change);assert.throws(()=>validateGame(bad));}
+ assert.throws(()=>validateGame({...old,phase:'choice',pending:{type:'crisis'}}));assert.throws(()=>validateGame({...old,phase:'choice',pending:{type:'promotion',thenCrisis:true}}));
+});
 test('Full careers for 2–6 players finish, skip retirees, preserve saves, and share exact ties',()=>{
  for(let n=2;n<=6;n++)for(let seed=1;seed<=8;seed++){
   let state=seed,random=()=>((state=Math.imul(state,1664525)+1013904223>>>0)/2**32),g=createGame(roster(n),random),steps=0;
@@ -57,7 +81,7 @@ test('Full careers for 2–6 players finish, skip retirees, preserve saves, and 
    const action=g.phase==='roll'?{type:'roll'}:g.phase==='end'?{type:'end'}:{type:'choose',index:decision(g).options.findIndex(o=>!o.disabled)};
    const before=JSON.stringify(g);const next=perform(g,action,random);assert.equal(JSON.stringify(g),before);g=validateGame(JSON.parse(JSON.stringify(next)));
   }
-  assert(g.players.every(p=>p.position===lastSpace&&p.retired));assert(standings(g)[0].score>=standings(g).at(-1).score);assert.throws(()=>perform(g,{type:'roll'}),/finished/);
+  assert(g.players.every(p=>p.position===lastSpace&&p.retired&&p.crisisDone&&p.crisisPosition===null));assert(standings(g)[0].score>=standings(g).at(-1).score);assert.throws(()=>perform(g,{type:'roll'}),/finished/);
  }
  const tied=createGame(roster(2));assert.equal(score(tied.players[0]),score(tied.players[1]));assert.equal(standings(tied).filter(p=>p.score===standings(tied)[0].score).length,2);
 });
@@ -79,6 +103,15 @@ test('Existing online careers restore onto 100 spaces with the same seats, deck 
  const old=room.room.state;delete old.boardSize;Object.assign(old.players[1],{position:17,cash:3200,rank:2,academyDone:true});old.turn=1;old.pending={type:'event',id:events[0].id};old.route=[16,17];const deck=[...old.deck],members=structuredClone(room.room.members);await ctx.storage.put('room',room.room);
  const restored=new GameRoom(ctx,{});await Promise.resolve();const mine=await(await call(restored,'/state',null,guest.token)).json();assert.equal(mine.viewer,1);assert.equal(mine.state.boardSize,100);assert.equal(mine.state.players[1].position,48);assert.equal(mine.state.players[1].cash,3200);assert.equal(mine.state.players[1].rank,2);assert.equal(mine.state.deck,undefined);assert.deepEqual(restored.room.state.deck,deck);assert.deepEqual(restored.room.members,members);
  const response=await call(restored,'/action',{revision:mine.revision,id:crypto.randomUUID(),action:{type:'choose',index:1}},guest.token);assert.equal(response.status,200);const after=await response.json();assert.equal(after.state.phase,'end');assert.equal(after.state.players[1].position,48);assert.equal((await ctx.storage.get('room')).state.boardSize,100);
+});
+test('An online crisis restores mid-route, keeps decisions on the right seat, and applies the final cost once',async()=>{
+ const ctx=memory();let room=new GameRoom(ctx,{});await Promise.resolve();const host=await(await call(room,'/init',{kind:'life',code:'ABC234',name:'Joe',choice:'badge'})).json();const guest=await(await call(room,'/join',{name:'Jacob',choice:'keys'})).json();await call(room,'/start',{revision:2,id:crypto.randomUUID()},host.token);
+ Object.assign(room.room.state.players[0],{academyDone:true,careerPath:'jail',position:crisisFork,crisisPosition:8});Object.assign(room.room.state,{phase:'roll',pending:null});await ctx.storage.put('room',room.room);
+ room=new GameRoom(ctx,{});await Promise.resolve();let snap=await(await call(room,'/state',null,host.token)).json();assert.equal(snap.state.players[0].crisisPosition,8);assert.equal(snap.state.deck,undefined);
+ const roll={revision:snap.revision,id:crypto.randomUUID(),action:{type:'roll'}};assert.equal((await call(room,'/action',roll,guest.token)).status,403);snap=await(await call(room,'/action',roll,host.token)).json();assert.equal(snap.state.pending.type,'crisis');assert.equal(snap.state.players[0].crisisPosition,9);assert.equal(snap.state.players[0].position,crisisFork);
+ room=new GameRoom(ctx,{});await Promise.resolve();snap=await(await call(room,'/state',null,host.token)).json();const cash=snap.state.players[0].cash,choose={revision:snap.revision,id:crypto.randomUUID(),action:{type:'choose',index:0}};
+ const joined=await(await call(room,'/action',choose,host.token)).json(),duplicate=await(await call(room,'/action',choose,host.token)).json();assert.equal(joined.state.players[0].cash,cash-600);assert.equal(joined.state.players[0].position,crisisRejoin);assert.equal(joined.state.players[0].crisisPosition,null);assert.equal(joined.state.players[0].crisisDone,true);assert.deepEqual(duplicate.state,joined.state);assert.equal(duplicate.revision,joined.revision);assert.equal(joined.state.phase,'end');
+ assert.equal((await call(room,'/end',{revision:joined.revision,id:crypto.randomUUID()},host.token)).status,200);
 });
 test('Six-device career authority: own turns, hidden deck, server die, duplicate and stale actions, reconnect and deletion',async()=>{
  const ctx=memory();let room=new GameRoom(ctx,{});await Promise.resolve();const host=await(await call(room,'/init',{kind:'life',code:'ABC234',name:'Officer 1',choice:pawns[0].id})).json(),seats=[host];for(let i=1;i<6;i++)seats.push(await(await call(room,'/join',{name:'Officer '+(i+1),choice:pawns[i].id})).json());
