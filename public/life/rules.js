@@ -66,7 +66,7 @@ export const crisisSpaces=[
 ];
 export const inCrisis=p=>Number.isInteger(p.crisisPosition);
 function offerCrisis(g,p){g.pending={type:'crisis-fork'};g.phase='choice';entry(g,`${p.name} reached the path choice at Stop 56.`);}
-function enterCrisis(g,p){p.crisisTaken=true;p.crisisPosition=0;g.pending={type:'crisis'};g.phase='choice';entry(g,`${p.name} entered Mid-Life Crisis.`);}
+function enterCrisis(g,p){p.crisisTaken=true;p.crisisPosition=0;g.pending={type:'crisis',spinAgain:true};g.phase='choice';entry(g,`${p.name} entered Mid-Life Crisis.`);}
 const legacyHomes=[{id:'starter',name:'Starter Home',price:700,value:900},{id:'family',name:'Family Home',price:1400,value:1800}];
 export const homes=[
  {id:'used-camper',name:'Used Camper',price:250,value:300},
@@ -193,9 +193,9 @@ export function perform(before,action,random=Math.random){
    else if(Number.isInteger(choice.acceptJob)){p.rank=g.pending.cards[choice.acceptJob];entry(g,`${p.name} chose ${ranks[p.rank]} with a $${salary(p)} Pay Day salary.`);g.pending=null;g.phase='roll';g.dice=null;g.route=[];}
    return g;
   }
-  const spinAgain=!!g.pending.spinAgain,thenFamily=!!g.pending.thenFamily,academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1;
+  const spinAgain=!!g.pending.spinAgain,thenFamily=!!g.pending.thenFamily,academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1,fullStop=spinAgain||finishEntry||finishCrisis||forkChoice;
   p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo))p.rank=choice.promoteTo;if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry){p.married=true;p.spouse=choice.spouse||null;}if(choice.divorce){p.married=false;p.spouse=null;}if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
-  entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy||spinAgain?'roll':'end';if(spinAgain){g.route=[];g.dice=null;entry(g,`${p.name} resolved the full stop and can spin again.`);}
+  entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy||fullStop?'roll':'end';if(fullStop){g.route=[];g.dice=null;entry(g,`${p.name} resolved the full stop and can spin again.`);}
   if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;if(p.careerPath==='jail')offerJobs(g,false,random);}if(finishEntry){p.entryPosition=null;if(p.careerPath==='academy')offerJobs(g,true,random);}
   if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}
   if(thenFamily){const id=familySpaces[p.position].eventId;g.pending={...(id==='divorce'?{type:'divorce'}:{type:'event',id}),spinAgain:true};g.phase='choice';}

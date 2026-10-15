@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=job-cards-1';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=stop-spins-1';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;
