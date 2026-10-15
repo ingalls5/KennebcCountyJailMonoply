@@ -7,7 +7,7 @@ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['-
 let current;
 const sizes=[{width:1440,height:1100},{width:1280,height:900},{width:1024,height:768},{width:820,height:1180},{width:390,height:844},{width:320,height:740}];
 async function pageAt(index){const context=await browser.newContext({viewport:sizes[index],reducedMotion:'reduce'});contexts.push(context);await context.addInitScript(()=>{const timer=window.setTimeout;window.setTimeout=(fn,delay,...args)=>timer(fn,delay===1500||delay===5000?150:delay,...args);});const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));return page;}
-async function fit(page){assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow');const size=await page.locator('#careerBoard').evaluate(e=>({client:e.clientWidth,scroll:e.scrollWidth}));assert.equal(size.client,size.scroll);assert.equal(await page.locator('.career-token').count(),6);}
+async function fit(page){assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No page overflow');const size=await page.locator('#careerBoard').evaluate(e=>({client:e.clientWidth,scroll:e.scrollWidth}));assert.equal(size.client,size.scroll);assert.equal(await page.locator('.career-token').count(),6);assert.equal(await page.locator('.career-tile').count(),36);assert.equal(await page.locator('.life-spinner').count(),1);}
 async function pick(page,game,step){await page.locator('#careerDecision[open]').waitFor();const choices=decision(game).options;let index=game.pending.type==='academy'?game.turn%2:step%choices.length;if(choices[index].disabled)index=choices.findIndex(c=>!c.disabled);await page.locator('.decision-choice').nth(index).click();}
 try{
  const local=await pageAt(0);current=local;await local.goto(origin+'/');await local.getByRole('link',{name:'Play Life on the Inside'}).click();await local.getByRole('button',{name:'One device',exact:true}).click();for(let i=0;i<4;i++)await local.locator('#lifeAddPlayer').click();for(let i=0;i<6;i++)await local.locator('#lifePlayerRows input').nth(i).fill('Officer '+(i+1));
@@ -33,7 +33,7 @@ try{
  while(snap.state.phase!=='over'){
   assert(++onlineActions<800);const g=snap.state,p=pages[g.turn];current=p;await p.waitForFunction(revision=>Number(document.querySelector('.online-banner')?.dataset.revision)>=revision,snap.revision);
   if(g.phase==='choice'){if(g.pending.type==='academy')onlineStats.academy++;await pick(p,g,onlineActions);onlineStats.choices++;}
-  else if(g.phase==='roll'){await p.locator('#rollCareer').click();onlineStats.rolls++;}
+  else if(g.phase==='roll'){await p.locator('#boardSpin').click();onlineStats.rolls++;}
   else{await p.locator('#endCareerTurn').click();onlineStats.turns++;}
   await p.waitForFunction(revision=>Number(document.querySelector('.online-banner')?.dataset.revision)>revision,snap.revision);snap=await snapshot(p);assert.equal(snap.state.deck,undefined);assert.equal(await p.locator('#lifeError').innerText(),'');
   if([2,45,100].includes(onlineActions)){const before=structuredClone(snap.state);await p.reload();await p.waitForFunction(revision=>Number(document.querySelector('.online-banner')?.dataset.revision)>=revision,snap.revision);assert.deepEqual((await snapshot(p)).state,before);}

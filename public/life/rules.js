@@ -72,9 +72,9 @@ export function perform(before,action,random=Math.random){
  if(!before||before.phase==='over')throw Error('This career has finished.');
  const g=structuredClone(before),p=g.players[g.turn];
  if(action.type==='roll'){
-  if(g.phase!=='roll')throw Error('Finish this shift before rolling again.');
+  if(g.phase!=='roll')throw Error('Finish this shift before spinning again.');
   g.dice=1+Math.floor(random()*6);const start=p.position,end=Math.min(35,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;
-  const pay=200+p.rank*150;p.cash+=pay;p.energy=clamp(p.energy-1);entry(g,`${p.name} rolled ${g.dice} and earned $${pay} in shift pay.`);
+  const pay=200+p.rank*150;p.cash+=pay;p.energy=clamp(p.energy-1);entry(g,`${p.name} spun ${g.dice} and earned $${pay} in shift pay.`);
   // Passing reviews gives every career a chance to advance, even with large rolls.
   const review=g.route.some(n=>n>0&&n<35&&n%6===0);
   if(end===35){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired with a score of ${score(p).toLocaleString('en-US')}.`);}
