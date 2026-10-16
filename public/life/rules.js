@@ -111,6 +111,7 @@ export const events=[
  {id:'house',title:'Buy a home',icon:'⌂',text:'Choose a home. Its sale value is added to your retirement total.',options:homes.map(home=>option('Buy the '+home.name,-home.price,0,{home}))},
  {id:'anniversary',title:'A milestone worth celebrating',icon:'★',text:'You have a story worth remembering.',options:[option('Celebrate with family and friends',-250,2),option('Enjoy a small celebration',-50,1)]}
 ];
+export const randomEventIds=events.filter(e=>e.id!=='house').map(e=>e.id);
 export const familySpaces={
  13:{name:'Get Married',eventId:'wedding',lines:['GET','MARRIED']},
  23:{name:'Buy a House',eventId:'house',lines:['BUY A','HOUSE']},
@@ -135,7 +136,7 @@ export function validateRoster(roster){
  if(!Array.isArray(roster)||roster.length<2||roster.length>6)throw Error('Choose two to six players.');
  const names=new Set(),chosen=new Set();return roster.map(p=>{const name=typeof p.name==='string'?p.name.trim():'';if(!name||name.length>30)throw Error('Give every player a name of up to 30 characters.');if(names.has(name.toLowerCase()))throw Error('Each player needs a different name.');if(!pawns.some(c=>c.id===p.pawn)||chosen.has(p.pawn))throw Error('Choose a different pawn for each player.');if(p.pegGender!==undefined&&!['male','female'].includes(p.pegGender))throw Error('Choose a male or female driver peg.');names.add(name.toLowerCase());chosen.add(p.pawn);return {name,pawn:p.pawn,pegGender:p.pegGender||'male'};});
 }
-export function createGame(roster,random=Math.random){return {version:1,ruleSet,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,rank:0,jobChosen:false,retired:false,academyDone:false,careerPath:null,entryPosition:null,crisisPosition:null,crisisDone:false,crisisTaken:false,lifeTiles:[],married:false,children:0,home:null})),turn:0,phase:'choice',deck:shuffle(events.map(e=>e.id),random),cursor:0,tileDeck:shuffle(lifeTiles.map(t=>t.id),random),tileCursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived. Build a life and collect memories along the way.'],turns:0};}
+export function createGame(roster,random=Math.random){return {version:1,ruleSet,boardSize:spaceCount,players:validateRoster(roster).map(p=>({...p,position:0,cash:1000,rank:0,jobChosen:false,retired:false,academyDone:false,careerPath:null,entryPosition:null,crisisPosition:null,crisisDone:false,crisisTaken:false,lifeTiles:[],married:false,children:0,home:null})),turn:0,phase:'choice',deck:shuffle(randomEventIds,random),cursor:0,tileDeck:shuffle(lifeTiles.map(t=>t.id),random),tileCursor:0,dice:null,route:[],pending:{type:'academy'},log:['The crew has arrived. Build a life and collect memories along the way.'],turns:0};}
 export function standings(game){return game.players.map((p,index)=>({...p,index,score:game.phase==='over'?score(p):p.cash})).sort((a,b)=>b.score-a.score);}
 function entry(g,text){g.log.push(text);g.log=g.log.slice(-30);}
 function awardTiles(g,p,count,random){
@@ -189,7 +190,7 @@ export function perform(before,action,random=Math.random){
   if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerCards(g,random);return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
-  else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
+  else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(randomEventIds,random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
   if(g.pending.type==='promotion'&&Number.isInteger(choice.drawJob)){g.pending.revealed.push(choice.drawJob);return g;}
@@ -226,7 +227,14 @@ export function validateGame(source){
   if(size!==spaceCount){const position=n=>Math.round(n/(size-1)*lastSpace);g.players.forEach(p=>p.position=position(p.position));g.route=g.route.map(position);g.boardSize=spaceCount;}
   if(source.ruleSet!==ruleSet){g.ruleSet=ruleSet;g.deck.push(...events.filter(e=>!g.deck.includes(e.id)).map(e=>e.id));g.tileDeck=shuffle(lifeTiles.map(t=>t.id),Math.random);g.tileCursor=0;g.players.forEach(p=>{delete p.reputation;delete p.energy;p.lifeTiles=[];p.married=false;p.children=0;p.home=null;});g.log.push('Saved career updated to money, salaries, and LIFE tiles.');}
  }
- if(g.deck.length!==events.length||g.tileDeck?.length!==lifeTiles.length||new Set(g.tileDeck).size!==lifeTiles.length||g.tileDeck.some(id=>!tileById.has(id))||!integer(g.tileCursor,0,lifeTiles.length))invalid();
+ // Remove the old random house card while preserving the consumed-card cursor.
+ if(g.deck.includes('house')){g=structuredClone(g);const at=g.deck.indexOf('house');g.deck.splice(at,1);if(at<g.cursor)g.cursor--;}
+ if(g.pending?.type==='event'&&g.pending.id==='house'&&g.players[g.turn].position!==23){
+  if(g===source)g=structuredClone(g);
+  if(g.cursor===g.deck.length){g.deck=shuffle(randomEventIds,Math.random);g.cursor=0;}
+  g.pending={type:'event',id:g.deck[g.cursor++]};
+ }
+ if(g.deck.length!==randomEventIds.length||g.tileDeck?.length!==lifeTiles.length||new Set(g.tileDeck).size!==lifeTiles.length||g.tileDeck.some(id=>!tileById.has(id))||!integer(g.tileCursor,0,lifeTiles.length))invalid();
  const held=[];for(const p of g.players){
   if(!Array.isArray(p.lifeTiles)||p.lifeTiles.some(id=>!tileById.has(id))||(p.jobChosen!==undefined&&typeof p.jobChosen!=='boolean')||(p.pegGender!==undefined&&!['male','female'].includes(p.pegGender))||typeof p.married!=='boolean'||(p.spouse!==undefined&&![null,'male','female'].includes(p.spouse))||!integer(p.children,0,1000)||(p.home!==null&&![...homes,...legacyHomes].some(h=>h.id===p.home?.id&&h.value===p.home.value&&h.price===p.home.price)))invalid();held.push(...p.lifeTiles);
   if((p.crisisDone!==undefined&&typeof p.crisisDone!=='boolean')||(p.crisisTaken!==undefined&&typeof p.crisisTaken!=='boolean')||(p.crisisPosition!==undefined&&p.crisisPosition!==null&&(!integer(p.crisisPosition,0,crisisSpaces.length-1)||p.crisisDone||!p.academyDone||inEntry(p)||p.position!==crisisFork||p.retired)))invalid();
