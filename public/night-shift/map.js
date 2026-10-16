@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=pra-prb-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=floor-lifts-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -15,7 +15,7 @@ export const passages=[];
 export const staircases=[];
 let elevatorConfig=null;
 export const corridorsFor=floor=>floors[floor].custom?floors[floor].corridors:baseCorridors;
-export const liftFor=floor=>floors[floor].custom?(elevatorConfig?.floors?.includes(floor)?elevatorAt(elevatorConfig,corridorsFor(floor)):null):lift;
+export const liftFor=floor=>floors[floor].custom?(elevatorConfig?.floors?.includes(floor)?elevatorAt(elevatorConfig,corridorsFor(floor),floor):null):lift;
 export const stairsFor=floor=>floors[floor].custom?staircases.filter(s=>floor>=s.startFloor&&floor<=s.endFloor&&!(s.excludedFloors||[]).includes(floor)).map(s=>stairAt(s,corridorsFor(floor))):stairs;
 export const spawnFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).spawn:{x:640,y:480};
 export const linksFor=floor=>floors[floor].custom?[...floors[floor].rooms,...stairsFor(floor),liftFor(floor)].filter(Boolean).flatMap(r=>roomLinks(r,corridorsFor(floor))):[315,905].flatMap(x=>[{x,y:410,w:60,h:40},{x,y:520,w:60,h:40}]);
