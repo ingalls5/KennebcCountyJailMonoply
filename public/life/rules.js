@@ -149,7 +149,7 @@ function awardTiles(g,p,count,random){
  if(received<count)entry(g,'No LIFE tiles are available in the bank or from retired players.');
 }
 function offerJobs(g,graduate,random){g.pending={type:'jobs',graduate,cards:shuffle(ranks.map((_,i)=>i).slice(1),random).slice(0,5),revealed:[]};g.phase='choice';}
-function offerHouseCards(g,random){if(g.pending?.type==='event'&&g.pending.id==='house'&&!g.pending.houseCards){g.pending.houseCards=shuffle(homes.map(h=>h.id),random).slice(0,5);g.pending.revealed=[];}}
+function offerCards(g,random){if(g.pending?.type==='promotion'&&!g.pending.careerCards){g.pending.careerCards=shuffle(ranks.map((_,i)=>i).slice(1).filter(rank=>rank!==g.players[g.turn].rank),random).slice(0,3);g.pending.revealed=[];}if(g.pending?.type==='event'&&g.pending.id==='house'&&!g.pending.houseCards){g.pending.houseCards=shuffle(homes.map(h=>h.id),random).slice(0,5);g.pending.revealed=[];}}
 function collectPay(g,p,count){if(count){const pay=salary(p)*count;p.cash+=pay;entry(g,`${p.name} collected $${pay} at ${count===1?'Pay Day':count+' Pay Days'}.`);}}
 export function decision(game){
  if(!game.pending)return null;const p=game.players[game.turn];
@@ -173,8 +173,8 @@ export function decision(game){
   if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',text:'You are already married. Celebrate another year together.',options:[option('Celebrate with friends',-250,2),option('Keep it small',-50,1)]};
   return event;
  }
- const opportunities=ranks.map((name,rank)=>({name,rank})).filter(job=>job.rank>p.rank);
- return {title:'Career choice',icon:'★',text:opportunities.length?'Choose a new job and pay its training cost, or keep your current job and collect a LIFE tile. Each job pays its listed salary at every Pay Day.':`You are a ${ranks[p.rank]}. Celebrate what you have achieved with a LIFE tile.`,options:[...opportunities.map(job=>option(`${job.name} · Pay $${300*job.rank} · Salary $${salaries[job.rank]}`,-300*job.rank,0,{promoteTo:job.rank})),option('Keep my career and collect a LIFE tile',0,1)]};
+ const cards=game.pending.careerCards||ranks.map((_,i)=>i).slice(1).filter(rank=>rank!==p.rank).slice(0,3),revealed=game.pending.revealed||[],picked=revealed[0];
+ return {title:revealed.length?'Your new job':'Pick your next job',icon:'▤',jobCards:true,text:revealed.length?'This is the job you drew. Keep this card and its Pay Day salary.':'Pick one of these three face-down cards. The job you reveal is your new job.',options:[...cards.map((rank,i)=>option(revealed.includes(i)?`${ranks[rank]} · $${salaries[rank]} per Pay Day`:`Job card ${i+1}`,0,0,{art:revealed.includes(i)?{sheet:'jobs',index:rank-1}:null,drawJob:i,faceDown:!revealed.includes(i),disabled:revealed.length>0})),...(revealed.length?[option(`Continue as ${ranks[cards[picked]]}`,0,0,{promoteTo:cards[picked],acceptJob:picked})]:[])]};
 }
 export function perform(before,action,random=Math.random){
  if(!before||before.phase==='over')throw Error('This career has finished.');
@@ -185,13 +185,14 @@ export function perform(before,action,random=Math.random){
   if(inCrisis(p)){const start=p.crisisPosition,end=Math.min(crisisSpaces.length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);collectPay(g,p,g.route.filter(n=>crisisSpaces[n].payday).length);p.crisisPosition=end;g.pending={type:'crisis'};g.phase='choice';return g;}
   const start=p.position,target=Math.min(lastSpace,start+g.dice),familyStop=Object.keys(familySpaces).map(Number).find(n=>n>start&&n<=target),end=Math.min(target,familyStop??lastSpace,!p.crisisDone&&start<=crisisFork?crisisFork:lastSpace),fork=!p.crisisDone&&end===crisisFork;g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;collectPay(g,p,g.route.filter(n=>spaces[n].type==='payday').length);
   const review=g.route.some(n=>spaces[n].type==='promotion');
-  if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else offerCrisis(g,p);return g;}
-  if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerHouseCards(g,random);return g;}
+  if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';offerCards(g,random);}else offerCrisis(g,p);return g;}
+  if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerCards(g,random);return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
   else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
+  if(g.pending.type==='promotion'&&Number.isInteger(choice.drawJob)){g.pending.revealed.push(choice.drawJob);return g;}
   if(g.pending.type==='event'&&g.pending.id==='house'&&Number.isInteger(choice.drawHouse)){g.pending.revealed.push(choice.drawHouse);return g;}
   if(g.pending.type==='jobs'){
    if(Number.isInteger(choice.drawJob))g.pending.revealed.push(choice.drawJob);
@@ -209,7 +210,7 @@ export function perform(before,action,random=Math.random){
   if(g.phase!=='end')throw Error('Resolve the turn before ending it.');g.turns++;g.route=[];
   if(g.players.every(p=>p.retired)){g.phase='over';entry(g,'Everyone has retired. Reveal all LIFE tiles and add their bonuses, home values, and $100 per child to savings.');}
   else{do{g.turn=(g.turn+1)%g.players.length;}while(g.players[g.turn].retired);g.phase=g.players[g.turn].academyDone?'roll':'choice';g.pending=g.phase==='choice'?{type:'academy'}:null;g.dice=null;}
- }else throw Error('Choose a valid career action.');offerHouseCards(g,random);return g;
+ }else throw Error('Choose a valid career action.');offerCards(g,random);return g;
 }
 export function validateGame(source){
  const invalid=()=>{throw Error('This saved career could not be read.');},integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
@@ -232,9 +233,14 @@ export function validateGame(source){
   if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))invalid();
  }
  if(new Set(held).size!==held.length||held.length!==g.tileCursor||held.some(id=>!g.tileDeck.slice(0,g.tileCursor).includes(id)))invalid();
+ if(g.pending?.type==='promotion'){
+  const j=g.pending;
+  if(j.careerCards===undefined){g=structuredClone(g);offerCards(g,Math.random);}
+  else if(!Array.isArray(j.careerCards)||j.careerCards.length!==3||new Set(j.careerCards).size!==3||j.careerCards.some(rank=>!integer(rank,1,ranks.length-1))||!Array.isArray(j.revealed)||j.revealed.length>1||j.revealed.some(n=>!integer(n,0,2)))invalid();
+ }
  if(g.pending?.type==='event'&&g.pending.id==='house'){
   const j=g.pending;
-  if(j.houseCards===undefined){g=structuredClone(g);offerHouseCards(g,Math.random);}
+  if(j.houseCards===undefined){g=structuredClone(g);offerCards(g,Math.random);}
   else if(!Array.isArray(j.houseCards)||j.houseCards.length!==5||new Set(j.houseCards).size!==5||j.houseCards.some(id=>!homes.some(h=>h.id===id))||!Array.isArray(j.revealed)||j.revealed.length>2||new Set(j.revealed).size!==j.revealed.length||j.revealed.some(n=>!integer(n,0,4)))invalid();
  }
  if(g.pending?.type==='jobs'){
