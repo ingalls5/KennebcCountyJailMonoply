@@ -14,6 +14,10 @@
       {
         "name": "GAME_ROOMS",
         "class_name": "GameRoom"
+      },
+      {
+        "name": "NIGHT_SHIFT_MAP",
+        "class_name": "NightShiftMap"
       }
     ]
   },
@@ -22,6 +26,12 @@
       "tag": "v1-game-rooms",
       "new_sqlite_classes": [
         "GameRoom"
+      ]
+    },
+    {
+      "tag": "v2-shared-night-shift-map",
+      "new_sqlite_classes": [
+        "NightShiftMap"
       ]
     }
   ]

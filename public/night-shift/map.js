@@ -1,4 +1,4 @@
-import {loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=manual-doors-1';
+import {loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=shared-map-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -26,4 +26,7 @@ const inside=(x,y,r)=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h;
 export function walkable(floor,x,y,radius=10){const areas=[...floors[floor].rooms,...stairsFor(floor),liftFor(floor),...linksFor(floor)];return [[0,0],[-radius,0],[radius,0],[0,-radius],[0,radius]].every(([dx,dy])=>(areas.some(r=>inside(x+dx,y+dy,r))||corridorsFor(floor).some(c=>corridorContains(c,x+dx,y+dy))))&&!floors[floor].rooms.flatMap(furniture).filter(r=>r.type!=='parking').some(r=>x>r.x-radius&&x<r.x+r.w+radius&&y>r.y-radius&&y<r.y+r.h+radius);}
 export function findPath(floor,start,end){const step=floors[floor].custom?10:20,key=(x,y)=>x+','+y,snap=n=>Math.round(n/step)*step;const sx=snap(start.x),sy=snap(start.y),tx=snap(end.x),ty=snap(end.y);if(!walkable(floor,tx,ty))return [];const q=[[sx,sy]],seen=new Map([[key(sx,sy),null]]);for(let i=0;i<q.length;i++){const [x,y]=q[i];if(x===tx&&y===ty){const path=[];let k=key(x,y);while(k){const [x,y]=k.split(',').map(Number);path.unshift({x,y});k=seen.get(k);}return path.slice(1);}for(const [dx,dy] of [[step,0],[-step,0],[0,step],[0,-step]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(!seen.has(k)&&nx>=0&&ny>=0&&nx<=width&&ny<=height&&walkable(floor,nx,ny)&&[.25,.5,.75].every(t=>walkable(floor,x+dx*t,y+dy*t))){seen.set(k,key(x,y));q.push([nx,ny]);}}}return [];}
 
-try{const layout=loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);staircases.push(...layout.stairs);elevatorConfig=layout.elevator;}}catch{}
+export let sharedMapRevision=0,sharedMapError=null;
+export let sharedLayout=null;
+if(typeof window!=='undefined'){try{const response=await fetch('/api/night-shift/map',{cache:'no-store'});if(!response.ok)throw Error('Shared map is unavailable. Reload to try again.');const saved=await response.json();sharedMapRevision=saved.revision;sharedLayout=saved.layout;}catch(e){sharedMapError=e.message;}}
+try{const layout=sharedLayout||loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);staircases.push(...layout.stairs);elevatorConfig=layout.elevator;}}catch{}
