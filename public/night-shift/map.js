@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=camera-room-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=camera-buttons-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[

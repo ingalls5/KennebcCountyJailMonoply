@@ -5,3 +5,5 @@
 [hidden]{display:none!important}
 
 #cameraControls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:14px;background:#182c31;border-bottom:1px solid #5b7976;color:#98d4b9;font:12px system-ui}#cameraControls[hidden]{display:none}#cameraControls label{display:flex;gap:8px;align-items:center;flex:1}#cameraControls select{background:#10212b;color:#e0e4d1;border:1px solid #708a83;padding:10px;max-width:100%;min-width:0}#cameraControls button{background:#304d4f;color:#e4ddc7;border:1px solid #7a9386;border-radius:4px;padding:10px;cursor:pointer}.camera-active .touch-pad,.camera-active #interact{display:none}.camera-active canvas{outline:2px solid #7cab94;outline-offset:-3px}
+
+#cameraLabel{flex:1;min-width:120px;line-height:1.5}#cameraControls button:disabled{opacity:.45;cursor:default}
