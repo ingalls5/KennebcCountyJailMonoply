@@ -1,4 +1,4 @@
-import {decorations} from './decorations.js?v=yard-decor-1';
+import {decorations} from './decorations.js?v=door-collision-1';
 export const layoutKey='night-shift-layout-v2';
 export const baseCorridors=[{x:80,y:430,w:1120,h:100},{x:600,y:80,w:80,h:800}];
 export const kinds=['blank','intake','booking','medical','sallyport','cells','dayroom','yard','control','classroom','staff','utilities','laundry','storage','evidence'];
@@ -59,3 +59,5 @@ export function editableElevatorStop(model,floor){const e=model.elevator;if(!e)r
 export function editableStairStop(model,index,floor){const s=model.stairs[index];if(!s)return null;if(!s.stops){const stops={};for(let i=0;i<4;i++){const p=stairAt(s,model.floors[i].corridors);stops[i]={x:p.x,y:p.y,w:p.w,h:p.h,anchor:null};}s.stops=stops;}if(!s.stops[floor]){const p=stairAt({...s,stops:undefined},model.floors[floor].corridors);s.stops[floor]={x:p.x,y:p.y,w:p.w,h:p.h,anchor:null};}const geometry=['x','y','w','h','anchor'];return new Proxy(s,{get:(target,key)=>geometry.includes(key)?target.stops[floor][key]:target[key],set:(target,key,value)=>{if(geometry.includes(key))target.stops[floor][key]=value;else target[key]=value;return true;}});}
 
 export function removeStairStop(model,index,floor){const s=model.stairs[index];if(!s)return;s.excludedFloors=[...new Set([...(s.excludedFloors||[]),floor])];if(!Array.from({length:s.endFloor-s.startFloor+1},(_,i)=>s.startFloor+i).some(i=>!s.excludedFloors.includes(i)))model.stairs.splice(index,1);}
+
+export function roomWalls(room,corridors=[]){const doors=roomDoors(room,corridors),walls=[];for(const side of ['left','right','top','bottom']){const vertical=side==='left'||side==='right',edge=vertical?(side==='left'?room.x:room.x+room.w):(side==='top'?room.y:room.y+room.h),start=vertical?room.y:room.x,end=start+(vertical?room.h:room.w);const gaps=doors.filter(d=>vertical?d.w<d.h&&Math.abs(d.x+d.w/2-edge)<1:d.h<d.w&&Math.abs(d.y+d.h/2-edge)<1).map(d=>[Math.max(start,vertical?d.y:d.x),Math.min(end,vertical?d.y+d.h:d.x+d.w)]).sort((a,b)=>a[0]-b[0]);let cursor=start;const add=(a,b)=>{if(b<=a)return;walls.push(vertical?{x:edge-3,y:a,w:6,h:b-a}:{x:a,y:edge-3,w:b-a,h:6});};for(const [a,b]of gaps){add(cursor,a);cursor=Math.max(cursor,b);}add(cursor,end);}return walls;}
