@@ -1,4 +1,4 @@
-import {loadLayout,baseCorridors,roomLinks,hallwayFixtures} from './layout.js?v=movable-halls-1';
+import {loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks} from './layout.js?v=curves-stairs-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -12,15 +12,17 @@ export const stairs=[{x:88,y:447,w:70,h:66,direction:-1},{x:1120,y:447,w:70,h:66
 export const taskPoints=r=>r.tasks?r.tasks.map(t=>({...t,x:r.x+t.x*r.w,y:r.y+t.y*r.h})):[{id:r.id||r.name,name:r.task,x:r.x+422,y:r.y+235}];
 export const taskPoint=r=>taskPoints(r)[0]||{x:r.x+r.w/2,y:r.y+r.h/2};
 export const passages=[];
+export const staircases=[];
 export const corridorsFor=floor=>floors[floor].custom?floors[floor].corridors:baseCorridors;
 export const liftFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).lift:lift;
-export const stairsFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).stairs:stairs;
+export const stairsFor=floor=>floors[floor].custom?staircases.filter(s=>floor>=s.startFloor&&floor<=s.endFloor).map(s=>stairAt(s,corridorsFor(floor))):stairs;
 export const spawnFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).spawn:{x:640,y:480};
-export const linksFor=floor=>floors[floor].custom?floors[floor].rooms.flatMap(r=>roomLinks(r,corridorsFor(floor))):[315,905].flatMap(x=>[{x,y:410,w:60,h:40},{x,y:520,w:60,h:40}]);
+export const linksFor=floor=>floors[floor].custom?[...floors[floor].rooms,...stairsFor(floor)].flatMap(r=>roomLinks(r,corridorsFor(floor))):[315,905].flatMap(x=>[{x,y:410,w:60,h:40},{x,y:520,w:60,h:40}]);
+export const jobsFor=floor=>[...floors[floor].rooms.flatMap(r=>taskPoints(r)),...corridorsFor(floor).flatMap(corridorTasks)];
 export function furniture(){return [];}
 
 const inside=(x,y,r)=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h;
-export function walkable(floor,x,y,radius=10){const areas=[...corridorsFor(floor),...floors[floor].rooms,...linksFor(floor)];return [[0,0],[-radius,0],[radius,0],[0,-radius],[0,radius]].every(([dx,dy])=>areas.some(r=>inside(x+dx,y+dy,r)))&&!floors[floor].rooms.flatMap(furniture).filter(r=>r.type!=='parking').some(r=>x>r.x-radius&&x<r.x+r.w+radius&&y>r.y-radius&&y<r.y+r.h+radius);}
+export function walkable(floor,x,y,radius=10){const areas=[...floors[floor].rooms,...stairsFor(floor),...linksFor(floor)];return [[0,0],[-radius,0],[radius,0],[0,-radius],[0,radius]].every(([dx,dy])=>(areas.some(r=>inside(x+dx,y+dy,r))||corridorsFor(floor).some(c=>corridorContains(c,x+dx,y+dy))))&&!floors[floor].rooms.flatMap(furniture).filter(r=>r.type!=='parking').some(r=>x>r.x-radius&&x<r.x+r.w+radius&&y>r.y-radius&&y<r.y+r.h+radius);}
 export function findPath(floor,start,end){const step=floors[floor].custom?10:20,key=(x,y)=>x+','+y,snap=n=>Math.round(n/step)*step;const sx=snap(start.x),sy=snap(start.y),tx=snap(end.x),ty=snap(end.y);if(!walkable(floor,tx,ty))return [];const q=[[sx,sy]],seen=new Map([[key(sx,sy),null]]);for(let i=0;i<q.length;i++){const [x,y]=q[i];if(x===tx&&y===ty){const path=[];let k=key(x,y);while(k){const [x,y]=k.split(',').map(Number);path.unshift({x,y});k=seen.get(k);}return path.slice(1);}for(const [dx,dy] of [[step,0],[-step,0],[0,step],[0,-step]]){const nx=x+dx,ny=y+dy,k=key(nx,ny);if(!seen.has(k)&&nx>=0&&ny>=0&&nx<=width&&ny<=height&&walkable(floor,nx,ny)&&[.25,.5,.75].every(t=>walkable(floor,x+dx*t,y+dy*t))){seen.set(k,key(x,y));q.push([nx,ny]);}}}return [];}
 
-try{const layout=loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);}}catch{}
+try{const layout=loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);staircases.push(...layout.stairs);}}catch{}
