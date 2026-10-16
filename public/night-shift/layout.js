@@ -1,4 +1,5 @@
-import {decorations} from './decorations.js?v=hallway-cameras-1';
+import {taskGames} from './tasks.js?v=twenty-tasks-1';
+import {decorations} from './decorations.js?v=twenty-tasks-1';
 export const layoutKey='night-shift-layout-v2';
 export const baseCorridors=[{x:80,y:430,w:1120,h:100},{x:600,y:80,w:80,h:800}];
 export const kinds=['blank','intake','booking','medical','sallyport','cells','dayroom','yard','control','classroom','staff','utilities','laundry','storage','evidence'];
@@ -7,7 +8,7 @@ export function validateLayout(source){
  if(source?.version!==2||!Array.isArray(source.floors)||source.floors.length!==4||!Array.isArray(source.passages)||source.passages.length>60)throw Error('Choose a valid Night Shift map file.');
  const ids=new Set(),number=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max,name=(s,max)=>typeof s==='string'&&s.trim().length>0&&s.length<=max;
  function identity(id){if(!name(id,80)||ids.has(id))throw Error('Each map item needs a unique identifier.');ids.add(id);return id;}
- function tasks(list){if(!Array.isArray(list)||list.length>8)throw Error('Each room or hallway supports up to eight jobs.');return list.map(t=>{if(!name(t.id,80)||!name(t.name,80)||!number(t.x,.1,.9)||!number(t.y,.1,.9))throw Error('Check job station names and positions.');return {id:t.id,name:t.name.trim(),x:t.x,y:t.y};});}
+ function tasks(list){if(!Array.isArray(list)||list.length>8)throw Error('Each room or hallway supports up to eight jobs.');return list.map(t=>{if(!name(t.id,80)||!name(t.name,80)||!number(t.x,.1,.9)||!number(t.y,.1,.9))throw Error('Check job station names and positions.');if(t.game!==undefined&&!taskGames.some(g=>g.id===t.game))throw Error('Choose a valid task mini-game.');return {id:t.id,name:t.name.trim(),x:t.x,y:t.y,...(t.game!==undefined?{game:t.game}:{})};});}
  function cleanDoors(doors=[]){if(!Array.isArray(doors)||doors.length>24)throw Error('Use up to 24 doorways per room.');return doors.map(d=>{if(!['top','right','bottom','left'].includes(d.side)||!number(d.position,.1,.9)||!number(d.depth,20,400))throw Error('Check doorway wall, position, and reach.');return {side:d.side,position:d.position,depth:d.depth};});}
  function cleanDecorations(list){if(!Array.isArray(list)||list.length>150)throw Error('Use up to 150 decorations per floor.');return list.map(d=>{if(!decorations.some(p=>p.type===d.type)||!name(d.name,40)||!number(d.x,20,1240)||!number(d.y,20,920)||!number(d.w,20,400)||!number(d.h,20,400)||d.x+d.w>1260||d.y+d.h>940||![0,90,180,270].includes(d.rotation))throw Error('Check decoration type, size, position, and rotation.');return {id:identity(d.id),type:d.type,name:d.name.trim(),x:d.x,y:d.y,w:d.w,h:d.h,rotation:d.rotation};});}
  function levels(list){if(!Array.isArray(list)||list.some(n=>!Number.isInteger(n)||n<0||n>3))throw Error('Choose valid connected floors.');return [...new Set(list)].sort();}
