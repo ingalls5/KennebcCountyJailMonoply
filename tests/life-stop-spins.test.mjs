@@ -9,6 +9,6 @@ test('Both fork choices grant another spin after all required decisions',()=>{
 });
 test('Final crisis stop grants another spin after rejoining the board',()=>{let g=fixture();Object.assign(g.players[0],{position:crisisFork,crisisPosition:8,crisisTaken:true});g=perform(g,{type:'roll'},()=>.9);g=perform(g,{type:'choose',index:0});assert.equal(g.players[0].position,crisisRejoin);assert.equal(g.players[0].crisisPosition,null);canSpin(g);});
 test('Family stops grant another spin; ordinary turns and retirement still end',()=>{
- for(const stop of [14,24,34,44,64,74]){let g=fixture();Object.assign(g.players[0],{position:stop-3,crisisDone:stop>56});g=perform(g,{type:'roll'},()=>.9);if(g.pending.thenFamily)g=perform(g,{type:'choose',index:decision(g).options.length-1});g=perform(g,{type:'choose',index:0});canSpin(g);}
+ for(const stop of [14,24,34,44,64,74]){let g=fixture();Object.assign(g.players[0],{position:stop-3,crisisDone:stop>56});g=perform(g,{type:'roll'},()=>.9);if(g.pending.thenFamily)g=perform(g,{type:'choose',index:decision(g).options.length-1});if(g.pending.id==='house'){g=perform(g,{type:'choose',index:0});g=perform(g,{type:'choose',index:1});g=perform(g,{type:'choose',index:5});}else g=perform(g,{type:'choose',index:0});canSpin(g);}
  let g=fixture();g=perform(g,{type:'roll'},()=>0);g=perform(g,{type:'choose',index:0});assert.equal(g.phase,'end');g=fixture();Object.assign(g.players[0],{position:98,crisisDone:true});g=perform(g,{type:'roll'},()=>0);assert.equal(g.phase,'end');assert.equal(g.players[0].retired,true);
 });

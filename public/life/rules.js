@@ -149,13 +149,14 @@ function awardTiles(g,p,count,random){
  if(received<count)entry(g,'No LIFE tiles are available in the bank or from retired players.');
 }
 function offerJobs(g,graduate,random){g.pending={type:'jobs',graduate,cards:shuffle(ranks.map((_,i)=>i).slice(1),random).slice(0,5),revealed:[]};g.phase='choice';}
+function offerHouseCards(g,random){if(g.pending?.type==='event'&&g.pending.id==='house'&&!g.pending.houseCards){g.pending.houseCards=shuffle(homes.map(h=>h.id),random).slice(0,5);g.pending.revealed=[];}}
 function collectPay(g,p,count){if(count){const pay=salary(p)*count;p.cash+=pay;entry(g,`${p.name} collected $${pay} at ${count===1?'Pay Day':count+' Pay Days'}.`);}}
 export function decision(game){
  if(!game.pending)return null;const p=game.players[game.turn];
  if(game.pending.type==='academy')return {title:'Choose your career path',icon:'★',text:'Go to the Academy for $500, then reveal two job cards and choose one at graduation. Or collect $300 and start your first day by drawing one unknown job card.',options:[option('Go to the Academy',-500),option('Start my first day on the job',300)]};
  if(game.pending.type==='jobs'){
   const {cards,revealed,graduate}=game.pending,limit=graduate?2:1,ready=revealed.length===limit;
-  return {title:ready?'Choose your job':graduate?'Graduation · Reveal two job cards':'Your first job · Draw a card',icon:'▤',jobCards:true,text:ready?(graduate?'Your two jobs are revealed. Choose the one you want to keep.':'Your job is revealed. Accept it to start your first day.'):(graduate?'Pick two of these five face-down cards. After both are revealed, choose one job.':'Pick one of these five face-down cards. The job stays unknown until you pick it.'),options:[...cards.map((rank,i)=>option(revealed.includes(i)?`${ranks[rank]} · $${salaries[rank]} per Pay Day`:`Job card ${i+1}`,0,0,{drawJob:i,faceDown:!revealed.includes(i),disabled:ready||revealed.includes(i)})),...(ready?revealed.map(i=>option(`${graduate?'Choose':'Accept'} ${ranks[cards[i]]} · $${salaries[cards[i]]} per Pay Day`,0,0,{acceptJob:i})):[])]};
+  return {title:ready?'Choose your job':graduate?'Graduation · Reveal two job cards':'Your first job · Draw a card',icon:'▤',jobCards:true,text:ready?(graduate?'Your two jobs are revealed. Choose the one you want to keep.':'Your job is revealed. Accept it to start your first day.'):(graduate?'Pick two of these five face-down cards. After both are revealed, choose one job.':'Pick one of these five face-down cards. The job stays unknown until you pick it.'),options:[...cards.map((rank,i)=>option(revealed.includes(i)?`${ranks[rank]} · $${salaries[rank]} per Pay Day`:`Job card ${i+1}`,0,0,{art:revealed.includes(i)?{sheet:'jobs',index:rank-1}:null,drawJob:i,faceDown:!revealed.includes(i),disabled:ready||revealed.includes(i)})),...(ready?revealed.map(i=>option(`${graduate?'Choose':'Accept'} ${ranks[cards[i]]} · $${salaries[cards[i]]} per Pay Day`,0,0,{acceptJob:i})):[])]};
  }
  if(game.pending.type==='entry'){const space=entryTracks[p.careerPath][p.entryPosition];return {title:(p.careerPath==='academy'?'Academy · ':'Jail career · ')+space.name,icon:space.tiles?'★':'$',text:space.text,options:[option(space.graduate?'Graduate and draw two job cards':p.entryPosition===entryTracks[p.careerPath].length-1?'Join the main career road':'Continue',space.cash||0,space.tiles||0,{promote:!!space.promote})]};}
  if(game.pending.type==='crisis-fork')return {title:'Mid-Life Crisis · Choose your path',icon:'⇄',text:'Stay on the main road, or take ten spaces of difficult choices between cash now, career changes, and LIFE tiles for retirement. The main road continues at Stop 57; the detour rejoins at Stop 67.',options:[option('Stay on the main road'),option('Take the Mid-Life Crisis detour')]};
@@ -165,7 +166,10 @@ export function decision(game){
  if(game.pending.type==='divorce')return p.married?{title:'Divorce',icon:'♥',text:'Your marriage ends. Choose how to handle the legal costs. Your home, children, and LIFE tiles stay with you.',options:[option('Settle amicably',-300,0,{divorce:true}),option('Hire a lawyer',-600,1,{divorce:true})]}:{title:'A new chapter',icon:'♥',text:'You are single, so there is no divorce to resolve. Choose how to spend this next chapter.',options:[option('Enjoy time with friends',-100,1),option('Keep saving')]};
  if(game.pending.type==='event'){
   const event=events.find(e=>e.id===game.pending.id);
-  if(event.id==='house')return {...event,text:p.home?'Sell your current home and choose a new one. The old home’s value is credited toward this purchase.':event.text,options:event.options.map(o=>({...o,cash:o.cash+homeValue(p)}))};
+  if(event.id==='house'){
+   const cards=game.pending.houseCards||homes.slice(0,5).map(h=>h.id),revealed=game.pending.revealed||[],ready=revealed.length===2;
+   return {...event,houseCards:true,title:ready?'Choose your house':'Reveal two house cards',text:(ready?'Choose one of your two revealed homes.':'Pick two of these five face-down house cards. Then choose which home to buy.')+(p.home?' Your current home’s sale value is credited toward the purchase.':''),options:[...cards.map((id,i)=>{const home=revealed.includes(i)?homes.find(h=>h.id===id):null;return option(home?`${home.name} · Buy $${home.price} · Retirement value $${home.value}`:`House card ${i+1}`,0,0,{art:home?{sheet:'houses',index:homes.indexOf(home)}:null,drawHouse:i,faceDown:!home,disabled:ready||revealed.includes(i)});}),...(ready?revealed.map(i=>{const home=homes.find(h=>h.id===cards[i]);return option(`Buy the ${home.name}`,-home.price+homeValue(p),0,{home});}):[])]};
+  }
   if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',text:'You are already married. Celebrate another year together.',options:[option('Celebrate with friends',-250,2),option('Keep it small',-50,1)]};
   return event;
  }
@@ -182,12 +186,13 @@ export function perform(before,action,random=Math.random){
   const start=p.position,target=Math.min(lastSpace,start+g.dice),familyStop=Object.keys(familySpaces).map(Number).find(n=>n>start&&n<=target),end=Math.min(target,familyStop??lastSpace,!p.crisisDone&&start<=crisisFork?crisisFork:lastSpace),fork=!p.crisisDone&&end===crisisFork;g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;collectPay(g,p,g.route.filter(n=>spaces[n].type==='payday').length);
   const review=g.route.some(n=>spaces[n].type==='promotion');
   if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';}else offerCrisis(g,p);return g;}
-  if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';return g;}
+  if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerHouseCards(g,random);return g;}
   if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
   else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(events.map(e=>e.id),random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
   if(g.phase!=='choice')throw Error('There is no decision to make.');const event=decision(g),choice=Number.isInteger(action.index)?event.options[action.index]:null;if(!choice||choice.disabled)throw Error('Choose an available option.');
+  if(g.pending.type==='event'&&g.pending.id==='house'&&Number.isInteger(choice.drawHouse)){g.pending.revealed.push(choice.drawHouse);return g;}
   if(g.pending.type==='jobs'){
    if(Number.isInteger(choice.drawJob))g.pending.revealed.push(choice.drawJob);
    else if(Number.isInteger(choice.acceptJob)){p.rank=g.pending.cards[choice.acceptJob];entry(g,`${p.name} chose ${ranks[p.rank]} with a $${salary(p)} Pay Day salary.`);g.pending=null;g.phase='roll';g.dice=null;g.route=[];}
@@ -204,7 +209,7 @@ export function perform(before,action,random=Math.random){
   if(g.phase!=='end')throw Error('Resolve the turn before ending it.');g.turns++;g.route=[];
   if(g.players.every(p=>p.retired)){g.phase='over';entry(g,'Everyone has retired. Reveal all LIFE tiles and add their bonuses, home values, and $100 per child to savings.');}
   else{do{g.turn=(g.turn+1)%g.players.length;}while(g.players[g.turn].retired);g.phase=g.players[g.turn].academyDone?'roll':'choice';g.pending=g.phase==='choice'?{type:'academy'}:null;g.dice=null;}
- }else throw Error('Choose a valid career action.');return g;
+ }else throw Error('Choose a valid career action.');offerHouseCards(g,random);return g;
 }
 export function validateGame(source){
  const invalid=()=>{throw Error('This saved career could not be read.');},integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
@@ -227,6 +232,11 @@ export function validateGame(source){
   if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))invalid();
  }
  if(new Set(held).size!==held.length||held.length!==g.tileCursor||held.some(id=>!g.tileDeck.slice(0,g.tileCursor).includes(id)))invalid();
+ if(g.pending?.type==='event'&&g.pending.id==='house'){
+  const j=g.pending;
+  if(j.houseCards===undefined){g=structuredClone(g);offerHouseCards(g,Math.random);}
+  else if(!Array.isArray(j.houseCards)||j.houseCards.length!==5||new Set(j.houseCards).size!==5||j.houseCards.some(id=>!homes.some(h=>h.id===id))||!Array.isArray(j.revealed)||j.revealed.length>2||new Set(j.revealed).size!==j.revealed.length||j.revealed.some(n=>!integer(n,0,4)))invalid();
+ }
  if(g.pending?.type==='jobs'){
   const j=g.pending,p=g.players[g.turn];
   if(g.phase!=='choice'||typeof j.graduate!=='boolean'||!Array.isArray(j.cards)||j.cards.length!==5||new Set(j.cards).size!==5||j.cards.some(n=>!integer(n,1,ranks.length-1))||!Array.isArray(j.revealed)||new Set(j.revealed).size!==j.revealed.length||j.revealed.length>(j.graduate?2:1)||j.revealed.some(n=>!integer(n,0,4))||!p.academyDone||p.careerPath!==(j.graduate?'academy':'jail')||(j.graduate?inEntry(p):p.entryPosition!==0))invalid();

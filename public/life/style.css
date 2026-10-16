@@ -17,3 +17,8 @@
 .payday-notice{position:fixed;z-index:1000;pointer-events:none;padding:10px 16px;border:2px solid #d4bd73;border-radius:12px;background:#244d3d;color:#fff4c9;font-size:18px;font-weight:850;box-shadow:0 5px 20px #152f3d44;white-space:nowrap;transform:translateX(-50%)}.payday-cash{position:fixed;z-index:999;pointer-events:none;width:42px;height:23px;border:2px solid #496e43;border-radius:3px;background:#cce2ad;color:#315632;box-shadow:0 2px 5px #0003;text-align:center;font:bold 18px Georgia,serif}
 
 .payday-notice.money-out{background:#794438;border-color:#e6b394;color:#fff1df}.payday-cash.money-out{border-color:#8d5a45;background:#ead2af;color:#794438}
+
+.job-card-back::before{content:'';width:84px;height:84px;background:url('/board-art/corrections-badge.png') center/contain no-repeat;flex-shrink:0;margin:0 0 10px}.life-tile-back{background:#263e54;border-color:#d7c08e}.life-tile-back img{display:block;width:100%;height:100%;object-fit:contain}
+
+.job-card-options .decision-choice .card-illustration{display:block;flex:none;width:100%;aspect-ratio:1;min-height:90px;margin:0 0 10px;background-size:500% 200%;background-repeat:no-repeat;border-radius:5px}.job-card-options .decision-choice .card-illustration:empty{display:block}.job-card-options .job-card-face{justify-content:flex-start;padding:10px;font-size:13px}
+.job-card-options:has(.job-accept) .job-card-back{display:none}.job-card-back:disabled{opacity:1}

@@ -32,7 +32,7 @@ test('Graduation awards Officer rank and a LIFE tile, and career training uses m
 test('Life events support marriage, children, houses, and retirement assets',()=>{
  let g=ready();g.phase='choice';g.pending={type:'event',id:'wedding'};g=perform(g,{type:'choose',index:1});assert(g.players[0].married);assert.equal(g.players[0].lifeTiles.length,1);
  g.phase='choice';g.pending={type:'event',id:'baby'};g=perform(g,{type:'choose',index:1});assert.equal(g.players[0].children,1);
- g.phase='choice';g.pending={type:'event',id:'house'};g=perform(g,{type:'choose',index:0});assert.equal(g.players[0].home.value,900);assert.equal(score(g.players[0]),g.players[0].cash+tileBonus(g.players[0])+1000);validateGame(g);
+ g.phase='choice';g.pending={type:'event',id:'house'};g=perform(g,{type:'choose',index:0});g=perform(g,{type:'choose',index:1});g=perform(g,{type:'choose',index:5});assert(g.players[0].home.value>0);assert.equal(score(g.players[0]),g.players[0].cash+tileBonus(g.players[0])+g.players[0].home.value+100);validateGame(g);
 });
 test('Mid-Life Crisis remains a choice, pays at C5, and rejoins at Stop 67',()=>{
  const g=ready();g.players[0].position=54;const fork=perform(g,{type:'roll'},()=>0);assert.equal(fork.pending.type,'crisis-fork');const skipped=perform(fork,{type:'choose',index:0});assert.equal(skipped.players[0].position,56);assert.equal(skipped.players[0].lifeTiles.length,0);

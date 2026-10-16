@@ -1,0 +1,1 @@
+Job and house images are original AI-generated photorealistic illustrations for the game, created October 2026. They do not depict actual Kennebec County Jail staff or identified real homes. Each sprite sheet has five columns and two rows. Jobs follow ranks 1–10; homes follow the homes array. The badge back reuses the user-provided corrections badge from the Monoply board.

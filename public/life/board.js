@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=driver-pegs-1';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=house-cards-1';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;
@@ -52,7 +52,7 @@ function scenery(root){
  // Printed card stacks sit in the open spaces between roads.
  const deck=add(root,'g',{transform:'translate(585 607) rotate(12)',class:'board-life-tile-bank'});for(let i=3;i>=0;i--)add(deck,'rect',{x:i*2,y:i*3,width:78,height:108,rx:5,fill:'#fff9e7',stroke:'#a5b68f','stroke-width':1.4});
  add(deck,'text',{x:39,y:18,'text-anchor':'middle','font-size':8,'font-weight':800,fill:'#365e4c'},'COLLECT');
- ['L','I','F','E'].forEach((letter,i)=>{add(deck,'rect',{x:7+i*16,y:28,width:16,height:29,fill:['#955ca0','#428bbc','#77b575','#e3ae36'][i]});add(deck,'text',{x:15+i*16,y:50,'text-anchor':'middle','font-size':23,'font-weight':850,fill:'#fffbe8'},letter);});
+ add(deck,'rect',{x:5,y:23,width:68,height:43,rx:3,fill:'#263e54'});add(deck,'image',{href:'/board-art/corrections-badge.png',x:18,y:25,width:42,height:39});
  add(deck,'text',{x:39,y:74,'text-anchor':'middle','font-size':9,'font-weight':850,fill:'#365e4c'},'TILES');add(deck,'text',{x:39,y:91,'text-anchor':'middle','font-size':5.5,fill:'#365e4c'},'FACE DOWN UNTIL RETIREMENT');
  const pay=add(root,'g',{transform:'translate(407 263) rotate(-10)'});for(let i=3;i>=0;i--)add(pay,'rect',{x:i*2,y:i*3,width:76,height:99,rx:4,fill:'#fffbe9',stroke:'#94b18b','stroke-width':1.3});add(pay,'rect',{x:6,y:6,width:64,height:87,fill:'#a0b39b',rx:3});add(pay,'text',{x:38,y:32,'text-anchor':'middle',class:'deck-title'},'PAY DAY');add(pay,'text',{x:38,y:61,'text-anchor':'middle','font-size':29,fill:'#214a3f'},'$');add(pay,'text',{x:38,y:80,'text-anchor':'middle','font-size':8,fill:'#214a3f'},'PASS OR LAND');
  // Colorful original title printed on the landscape.
