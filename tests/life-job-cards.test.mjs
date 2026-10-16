@@ -5,10 +5,10 @@ import {project} from '../src/rooms.js';
 const fresh=()=>createGame([{name:'One',pawn:'badge'},{name:'Two',pawn:'keys'}]);
 test('Starting work draws exactly one blind job and accepts it before spinning',()=>{
  let g=perform(fresh(),{type:'choose',index:1});
- assert.equal(g.pending.cards.length,5);assert.ok(decision(g).options.every(o=>o.faceDown));assert.throws(()=>perform(g,{type:'roll'}));
+ assert.equal(g.pending.cards.length,5);assert.equal(g.players[0].jobChosen,false);assert.deepEqual(g.pending.revealed,[]);assert.ok(decision(g).options.every(o=>o.faceDown));assert.throws(()=>perform(g,{type:'roll'}));
  g=perform(g,{type:'choose',index:2});const job=g.pending.cards[2];
  assert.throws(()=>perform(g,{type:'choose',index:1}));g=perform(g,{type:'choose',index:5});
- assert.equal(g.players[0].rank,job);assert.equal(g.phase,'roll');validateGame(g);
+ assert.equal(g.players[0].rank,job);assert.equal(g.players[0].jobChosen,true);assert.equal(g.phase,'roll');validateGame(g);
 });
 test('Academy graduates reveal two cards before choosing either job',()=>{
  let g=perform(fresh(),{type:'choose',index:0});g.players[0].entryPosition=11;g.pending={type:'entry'};g.phase='choice';
@@ -16,7 +16,7 @@ test('Academy graduates reveal two cards before choosing either job',()=>{
  g=perform(g,{type:'choose',index:0});assert.equal(decision(g).options.length,5);
  g=perform(g,{type:'choose',index:4});const job=g.pending.cards[4];assert.equal(decision(g).options.length,7);
  assert.throws(()=>perform(g,{type:'choose',index:3}));g=perform(g,{type:'choose',index:6});
- assert.equal(g.players[0].rank,job);assert.equal(g.phase,'roll');validateGame(g);
+ assert.equal(g.players[0].rank,job);assert.equal(g.players[0].jobChosen,true);assert.equal(g.phase,'roll');validateGame(g);
 });
 test('Online snapshots hide every unpicked job from both players',()=>{
  let g=perform(fresh(),{type:'choose',index:1});const members=[{id:'one'},{id:'two'}],room={kind:'life',members,state:g};

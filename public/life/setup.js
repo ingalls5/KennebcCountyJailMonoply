@@ -1,6 +1,6 @@
-import {carIcon} from './cars.js?v=career-three-1';
-import {pawns,createGame,loadGame,gameKey,validateRoster} from './rules.js?v=career-three-1';
-import {onlineSetup} from '../online-setup.js?v=career-three-1';
+import {carIcon} from './cars.js?v=opening-draw-1';
+import {pawns,createGame,loadGame,gameKey,validateRoster} from './rules.js?v=opening-draw-1';
+import {onlineSetup} from '../online-setup.js?v=opening-draw-1';
 const form=document.getElementById('lifeSetupForm'),rows=document.getElementById('lifePlayerRows'),status=document.getElementById('setupStatus');
 const el=(tag,text)=>{const e=document.createElement(tag);if(text)e.textContent=text;return e;};
 let players=[{name:'',pawn:'badge',pegGender:'male'},{name:'',pawn:'keys',pegGender:'male'}];
