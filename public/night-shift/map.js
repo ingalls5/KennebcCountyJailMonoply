@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=stair-travel-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=decorations-cameras-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -30,4 +30,4 @@ export function findPath(floor,start,end){const step=floors[floor].custom?10:20,
 export let sharedMapRevision=0,sharedMapError=null;
 export let sharedLayout=null;
 if(typeof window!=='undefined'){try{const response=await fetch('/api/night-shift/map',{cache:'no-store'});if(!response.ok)throw Error('Shared map is unavailable. Reload to try again.');const saved=await response.json();sharedMapRevision=saved.revision;sharedLayout=saved.layout?validateLayout(saved.layout):null;}catch(e){sharedMapError=e.message;}}
-try{const layout=sharedLayout||loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);staircases.push(...layout.stairs);elevatorConfig=layout.elevator;}}catch{}
+try{const layout=sharedLayout||loadLayout();if(layout){layout.floors.forEach((f,i)=>{floors[i].decorations=f.decorations;floors[i].rooms=f.rooms;floors[i].corridors=f.corridors;floors[i].custom=true;for(const r of floors[i].rooms)r.clearZones=roomLinks(r,corridorsFor(i));});passages.push(...layout.passages);staircases.push(...layout.stairs);elevatorConfig=layout.elevator;}}catch{}
