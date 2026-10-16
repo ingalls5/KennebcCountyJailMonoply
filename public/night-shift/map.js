@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=generator-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=shower-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
