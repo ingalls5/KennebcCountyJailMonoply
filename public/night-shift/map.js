@@ -1,4 +1,4 @@
-import {loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=multi-hall-1';
+import {loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=manual-doors-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[

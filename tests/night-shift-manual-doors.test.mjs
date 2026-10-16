@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {roomLinks,roomDoors,validateLayout,defaultLayout} from '../public/night-shift/layout.js';
+const room={x:300,y:300,w:200,h:200,doors:[]};
+test('Rooms without placed doors never auto-connect',()=>{assert.deepEqual(roomLinks(room,[{x:200,y:300,w:60,h:200}]),[]);});
+test('Placed entrances extend from each selected wall and move with room',()=>{const r={...room,doors:['top','right','bottom','left'].map(side=>({side,position:.5,depth:80}))};assert.deepEqual(roomLinks(r,[]),[{x:370,y:220,w:60,h:100},{x:480,y:370,w:100,h:60},{x:370,y:480,w:60,h:100},{x:220,y:370,w:100,h:60}]);assert.equal(roomDoors(r,[]).length,4);const moved=roomLinks({...r,x:400},[]);assert.equal(moved[0].x,470);});
+test('Doorways survive validation, export, and import; old rooms get manual doors',()=>{const floor={rooms:[{...room,id:'r',name:'Room',kind:'blank',color:'#71858a',tasks:[],doors:[{side:'right',position:.7,depth:100}]}],editableCorridors:true,corridors:[]};const data={version:2,floors:[floor,{rooms:[],corridors:[],editableCorridors:true},{rooms:[],corridors:[],editableCorridors:true},{rooms:[],corridors:[],editableCorridors:true}],passages:[],stairs:[]};assert.deepEqual(validateLayout(JSON.parse(JSON.stringify(data))).floors[0].rooms[0].doors,floor.rooms[0].doors);delete floor.rooms[0].doors;assert.deepEqual(validateLayout(data).floors[0].rooms[0].doors,[]);floor.rooms[0].doors=[{side:'wrong',position:.5,depth:60}];assert.throws(()=>validateLayout(data),/doorway/);});
