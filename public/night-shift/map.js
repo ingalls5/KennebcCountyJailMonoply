@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=camera-buttons-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=hallway-cameras-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -13,6 +13,8 @@ export const taskPoints=r=>r.tasks?r.tasks.map(t=>({...t,x:r.x+t.x*r.w,y:r.y+t.y
 export const taskPoint=r=>taskPoints(r)[0]||{x:r.x+r.w/2,y:r.y+r.h/2};
 export let cameraStationId=null;
 export function cameraRoom(camera){const x=camera.x+camera.w/2,y=camera.y+camera.h/2;return floors[camera.level].rooms.filter(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h).sort((a,b)=>a.w*a.h-b.w*b.h)[0]||null;}
+export function cameraHallway(camera){const x=camera.x+camera.w/2,y=camera.y+camera.h/2;return corridorsFor(camera.level).find(c=>corridorContains(c,x,y))||null;}
+export function cameraCoverage(camera){const room=cameraRoom(camera);if(room)return {kind:'room',name:room.name,bounds:room};const hallway=cameraHallway(camera);if(!hallway)return null;const x=camera.x+camera.w/2,y=camera.y+camera.h/2,reach=160;const left=Math.max(hallway.x,x-reach),top=Math.max(hallway.y,y-reach),right=Math.min(hallway.x+hallway.w,x+reach),bottom=Math.min(hallway.y+hallway.h,y+reach);return {kind:'hallway',name:hallway.name||'Hallway',hallway,bounds:{x:left,y:top,w:right-left,h:bottom-top}};}
 export const cameraStationFor=floor=>(floors[floor].decorations||[]).find(d=>d.type==='monitors'&&d.id===cameraStationId)||null;
 export function atCameraStation(floor,player){const d=cameraStationFor(floor);if(!d)return false;const end={x:d.x+d.w/2,y:d.y+d.h/2},distance=Math.hypot(end.x-player.x,end.y-player.y);if(distance>=85)return false;const steps=Math.max(1,Math.ceil(distance/5));for(let i=0;i<=steps;i++){const t=i/steps;if(!walkable(floor,player.x+(end.x-player.x)*t,player.y+(end.y-player.y)*t,0))return false;}return true;}
 export const passages=[];
