@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {floors,cameraRoom} from '../public/night-shift/map.js';
+test('Camera feeds select the room containing the camera center and never default to the full floor',()=>{const a=floors[1].rooms[0],b=floors[1].rooms[1];assert.equal(cameraRoom({level:1,x:a.x+30,y:a.y+30,w:40,h:35}),a);assert.equal(cameraRoom({level:1,x:b.x+30,y:b.y+30,w:40,h:35}),b);assert.equal(cameraRoom({level:1,x:200,y:450,w:40,h:35}),null);});

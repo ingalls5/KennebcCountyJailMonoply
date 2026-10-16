@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=camera-station-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=camera-room-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -12,6 +12,7 @@ export const stairs=[{x:88,y:447,w:70,h:66,name:'PRA',direction:-1},{x:1120,y:44
 export const taskPoints=r=>r.tasks?r.tasks.map(t=>({...t,x:r.x+t.x*r.w,y:r.y+t.y*r.h})):[{id:r.id||r.name,name:r.task,x:r.x+422,y:r.y+235}];
 export const taskPoint=r=>taskPoints(r)[0]||{x:r.x+r.w/2,y:r.y+r.h/2};
 export let cameraStationId=null;
+export function cameraRoom(camera){const x=camera.x+camera.w/2,y=camera.y+camera.h/2;return floors[camera.level].rooms.filter(r=>x>=r.x&&x<=r.x+r.w&&y>=r.y&&y<=r.y+r.h).sort((a,b)=>a.w*a.h-b.w*b.h)[0]||null;}
 export const cameraStationFor=floor=>(floors[floor].decorations||[]).find(d=>d.type==='monitors'&&d.id===cameraStationId)||null;
 export function atCameraStation(floor,player){const d=cameraStationFor(floor);if(!d)return false;const end={x:d.x+d.w/2,y:d.y+d.h/2},distance=Math.hypot(end.x-player.x,end.y-player.y);if(distance>=85)return false;const steps=Math.max(1,Math.ceil(distance/5));for(let i=0;i<=steps;i++){const t=i/steps;if(!walkable(floor,player.x+(end.x-player.x)*t,player.y+(end.y-player.y)*t,0))return false;}return true;}
 export const passages=[];
