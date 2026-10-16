@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {floors,walkable,findPath,taskPoint} from '../public/night-shift/map.js';
+test('Four-level directory uses the requested names',()=>assert.deepEqual(floors.map(f=>f.name),['Basement','1st floor / Intake','2nd floor','3rd floor']));
+test('All sixteen stations and vertical connections have walkable routes',()=>{for(let i=0;i<floors.length;i++)for(const target of [...floors[i].rooms.map(taskPoint),{x:640,y:240},{x:120,y:480},{x:1160,y:480}]){const path=findPath(i,{x:640,y:480},target);assert(path.length>0);assert(path.every(p=>walkable(i,p.x,p.y)));}});
+test('Exterior walls and furniture block walking',()=>{for(let i=0;i<floors.length;i++){assert(!walkable(i,60,480));assert(!walkable(i,200,425));assert(!walkable(i,700,100));assert.deepEqual(findPath(i,{x:640,y:480},{x:20,y:20}),[]);}});
