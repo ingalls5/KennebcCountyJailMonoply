@@ -1,4 +1,4 @@
-import {loadLayout,baseCorridors,roomLinks} from './layout.js?v=1';
+import {loadLayout,baseCorridors,roomLinks,hallwayFixtures} from './layout.js?v=movable-halls-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -12,7 +12,10 @@ export const stairs=[{x:88,y:447,w:70,h:66,direction:-1},{x:1120,y:447,w:70,h:66
 export const taskPoints=r=>r.tasks?r.tasks.map(t=>({...t,x:r.x+t.x*r.w,y:r.y+t.y*r.h})):[{id:r.id||r.name,name:r.task,x:r.x+422,y:r.y+235}];
 export const taskPoint=r=>taskPoints(r)[0]||{x:r.x+r.w/2,y:r.y+r.h/2};
 export const passages=[];
-export const corridorsFor=floor=>[...baseCorridors,...(floors[floor].corridors||[])];
+export const corridorsFor=floor=>floors[floor].custom?floors[floor].corridors:baseCorridors;
+export const liftFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).lift:lift;
+export const stairsFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).stairs:stairs;
+export const spawnFor=floor=>floors[floor].custom?hallwayFixtures(corridorsFor(floor)).spawn:{x:640,y:480};
 export const linksFor=floor=>floors[floor].custom?floors[floor].rooms.flatMap(r=>roomLinks(r,corridorsFor(floor))):[315,905].flatMap(x=>[{x,y:410,w:60,h:40},{x,y:520,w:60,h:40}]);
 export function furniture(){return [];}
 
