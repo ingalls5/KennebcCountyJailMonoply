@@ -7,7 +7,7 @@ export default {
   if(url.pathname.startsWith('/api/')){
    try{
     if(request.method==='POST'&&request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return json({error:'Use this game site to join the room.'},403);
-    if(url.pathname==='/api/night-shift/map'){const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('shared-facility'));return await stub.fetch(request);}
+    if(['/api/night-shift/map','/api/night-shift/players','/api/night-shift/player','/api/night-shift/player/complete','/api/night-shift/player/new'].includes(url.pathname)){const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('shared-facility'));return await stub.fetch(request);}
     if(url.pathname==='/api/rooms'&&request.method==='POST'){
      const data=await body(request);
      for(let attempt=0;attempt<4;attempt++){const code=roomCode(),stub=env.GAME_ROOMS.get(env.GAME_ROOMS.idFromName(code));const response=await stub.fetch(new Request('https://room/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,code})}));if(response.status!==409)return response;}

@@ -1,0 +1,4 @@
+const key='night-shift-player-v1';let token=null;try{token=localStorage.getItem(key);}catch{}
+export async function playerRequest(path,body){const response=await fetch('/api/night-shift/'+path,{method:body?'POST':'GET',cache:'no-store',headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await response.json();if(!response.ok)throw Object.assign(Error(data.error||'Could not load your shift.'),{status:response.status});if(data.token){token=data.token;try{localStorage.setItem(key,token);}catch{}delete data.token;}return data;}
+export async function loadPlayer(){if(!token)return null;try{return await playerRequest('player');}catch(error){if(error.status===401){token=null;try{localStorage.removeItem(key);}catch{}return null;}throw error;}}
+export const startPlayer=name=>playerRequest(token?'player/new':'players',{name});
