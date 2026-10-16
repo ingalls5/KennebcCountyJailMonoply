@@ -15,3 +15,5 @@
 .decision-player-heading{display:flex;align-items:center;gap:18px;margin:24px 0 18px}.decision-player-heading .decision-icon{margin:0;flex-shrink:0}.decision-player-name{font-size:clamp(26px,6vw,36px);line-height:1.15;overflow-wrap:anywhere;min-width:0;color:var(--ink)}
 
 .payday-notice{position:fixed;z-index:1000;pointer-events:none;padding:10px 16px;border:2px solid #d4bd73;border-radius:12px;background:#244d3d;color:#fff4c9;font-size:18px;font-weight:850;box-shadow:0 5px 20px #152f3d44;white-space:nowrap;transform:translateX(-50%)}.payday-cash{position:fixed;z-index:999;pointer-events:none;width:42px;height:23px;border:2px solid #496e43;border-radius:3px;background:#cce2ad;color:#315632;box-shadow:0 2px 5px #0003;text-align:center;font:bold 18px Georgia,serif}
+
+.payday-notice.money-out{background:#794438;border-color:#e6b394;color:#fff1df}.payday-cash.money-out{border-color:#8d5a45;background:#ead2af;color:#794438}

@@ -1,4 +1,4 @@
-import {paycheckEffects} from './payday.js?v=payday-1';
+import {paycheckEffects} from './payday.js?v=all-money-1';
 import {drivingEffects} from './driving.js?v=driving-1';
 import {carIcon,carDescription} from './cars.js?v=driver-pegs-1';
 import {pawns,colors,ranks,gameKey,loadGame,decision,perform,standings,spaceCount,lastSpace,spinnerStep,entryTracks,inEntry,inCrisis,crisisSpaces,crisisFork,salary,tileCount,tileBonus,homeValue,familyBonus,lifeTiles} from './rules.js?v=driver-pegs-1';
@@ -12,7 +12,7 @@ const code=new URLSearchParams(location.search).get('room')?.toUpperCase();
 const online=code?new OnlineRoom('life',code):null;
 let game=null,busy=false,moving=false,cleared=false,generation=0,lastChoice='',endBinding,motionHint='Making the rounds…';
 const reduced=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
-const paychecks=paycheckEffects({money,reduced,onMoney:(index,cash)=>{if(index===game.turn){const value=$('turnStats').querySelector('.stat strong');if(value)value.textContent=money(cash);}const value=$('careerRoster').children[index]?.querySelector('.officer-numbers strong');if(value)value.textContent=money(cash);}});
+const paychecks=paycheckEffects({money,reduced,activePlayer:()=>game.turn,onMoney:(index,cash)=>{if(index===game.turn){const value=$('turnStats').querySelector('.stat strong');if(value)value.textContent=money(cash);}const value=$('careerRoster').children[index]?.querySelector('.officer-numbers strong');if(value)value.textContent=money(cash);}});
 const board=createBoard($('careerTiles')),coordinates=board.coordinates;
 const driving=drivingEffects($('careerBoard'));
 const panelSpin=document.createElement('button');panelSpin.type='button';panelSpin.id='panelSpin';panelSpin.className='panel-spin';panelSpin.setAttribute('aria-label','Spin the wheel');
@@ -95,8 +95,8 @@ async function render(previous){
   }
   if(animations.length>animationCount){driving.follow(img,animations.at(-1));if(i===game.turn)payments.push(paychecks.watch(animations.at(-1),img));}
  });
- if(!animations.length&&previous&&paychecks.hasPayDays())payments.push(paychecks.instant($('careerTokens').children[game.turn]));
- moving=animations.length>0||payments.length>0;controls();if(moving){$('careerDecision').close();await Promise.allSettled([...animations.map(a=>a.finished),...payments]);if(currentGeneration!==generation)return;await driving.overview();if(currentGeneration!==generation)return;moving=false;controls();}
+ const instantPay=!animations.length&&previous&&paychecks.hasTransfers();if(instantPay)motionHint='Updating savings…';
+ moving=animations.length>0||payments.length>0||!!instantPay;controls();if(moving){$('careerDecision').close();if(instantPay)payments.push(paychecks.instant($('careerTokens').children));await Promise.allSettled([...animations.map(a=>a.finished),...payments]);if(currentGeneration!==generation)return;if(animations.length)await driving.overview();if(currentGeneration!==generation)return;moving=false;controls();}
  maybeOpenDecision();
 }
 function maybeOpenDecision(){if(game?.phase!=='choice'||!canAct()){if(game?.phase!=='choice'||online&&online.viewer!==game.turn)$('careerDecision').close();return;}const key=game.turn+':'+game.turns+':'+game.pending.type+':'+(game.pending.id||'')+':'+(game.pending.revealed||[]).join(',');if(key!==lastChoice&&!$('careerRules').open){lastChoice=key;renderDecision();if(!$('careerDecision').open)$('careerDecision').showModal();}}
