@@ -186,7 +186,7 @@ export function perform(before,action,random=Math.random){
   if(inEntry(p)){const start=p.entryPosition,end=Math.min(entryTracks[p.careerPath].length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.entryPosition=end;g.pending={type:'entry'};g.phase='choice';return g;}
   if(inCrisis(p)){const start=p.crisisPosition,end=Math.min(crisisSpaces.length-1,start+g.dice);g.route=Array.from({length:end-start},(_,i)=>start+i+1);collectPay(g,p,g.route.filter(n=>crisisSpaces[n].payday).length);p.crisisPosition=end;g.pending={type:'crisis'};g.phase='choice';return g;}
   const start=p.position,target=Math.min(lastSpace,start+g.dice),familyStop=Object.keys(familySpaces).map(Number).find(n=>n>start&&n<=target),end=Math.min(target,familyStop??lastSpace,!p.crisisDone&&start<=crisisFork?crisisFork:lastSpace),fork=!p.crisisDone&&end===crisisFork;g.route=Array.from({length:end-start},(_,i)=>start+i+1);p.position=end;collectPay(g,p,g.route.filter(n=>spaces[n].type==='payday').length);
-  const review=g.route.some(n=>spaces[n].type==='promotion');
+  const review=spaces[end].type==='promotion';
   if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';offerCards(g,random);}else offerCrisis(g,p);return g;}
   if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerCards(g,random);return g;}
   if(end===lastSpace){p.retired=true;g.phase=p.home?'choice':'end';g.pending=p.home?{type:'home-sale'}:null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}

@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createGame,perform} from '../public/life/rules.js';
+function fixture(position){const g=createGame([{name:'One',pawn:'badge'},{name:'Two',pawn:'keys'}]);Object.assign(g.players[0],{academyDone:true,careerPath:'jail',position});g.phase='roll';g.pending=null;return g;}
+test('Passing Career Choice on the way to Buy a House shows only houses',()=>{const g=perform(fixture(17),{type:'roll'},()=>.5);assert.equal(g.players[0].position,23);assert.equal(g.pending.id,'house');assert.equal(g.pending.thenFamily,undefined);assert.equal(g.pending.houseCards.length,5);});
+test('Landing on Career Choice still offers three job cards',()=>{const g=perform(fixture(17),{type:'roll'},()=>0);assert.equal(g.players[0].position,18);assert.equal(g.pending.type,'promotion');assert.equal(g.pending.careerCards.length,3);});
+test('Passing Career Choice into the crisis fork offers only the path choice',()=>{const g=perform(fixture(52),{type:'roll'},()=>.9);assert.equal(g.pending.type,'crisis-fork');assert.equal(g.pending.thenCrisis,undefined);});
