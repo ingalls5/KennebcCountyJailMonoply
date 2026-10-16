@@ -1,13 +1,14 @@
 export const layoutKey='night-shift-layout-v2';
 export const baseCorridors=[{x:80,y:430,w:1120,h:100},{x:600,y:80,w:80,h:800}];
 export const kinds=['blank','intake','booking','medical','sallyport','cells','dayroom','yard','control','classroom','staff','utilities','laundry','storage','evidence'];
-const defaultsStairs=()=>[{id:'west-stairs',name:'West stairwell',startFloor:0,endFloor:3,x:100,y:450,w:60,h:60,anchor:'hall-start'},{id:'east-stairs',name:'East stairwell',startFloor:0,endFloor:3,x:1120,y:450,w:60,h:60,anchor:'hall-end'}];
+const defaultsStairs=()=>[{id:'west-stairs',name:'PRA',startFloor:0,endFloor:3,x:100,y:450,w:60,h:60,anchor:'hall-start'},{id:'east-stairs',name:'PRB',startFloor:0,endFloor:3,x:1120,y:450,w:60,h:60,anchor:'hall-end'}];
 export function validateLayout(source){
  if(source?.version!==2||!Array.isArray(source.floors)||source.floors.length!==4||!Array.isArray(source.passages)||source.passages.length>60)throw Error('Choose a valid Night Shift map file.');
  const ids=new Set(),number=(n,min,max)=>Number.isFinite(n)&&n>=min&&n<=max,name=(s,max)=>typeof s==='string'&&s.trim().length>0&&s.length<=max;
  function identity(id){if(!name(id,80)||ids.has(id))throw Error('Each map item needs a unique identifier.');ids.add(id);return id;}
  function tasks(list){if(!Array.isArray(list)||list.length>8)throw Error('Each room or hallway supports up to eight jobs.');return list.map(t=>{if(!name(t.id,80)||!name(t.name,80)||!number(t.x,.1,.9)||!number(t.y,.1,.9))throw Error('Check job station names and positions.');return {id:t.id,name:t.name.trim(),x:t.x,y:t.y};});}
  function cleanDoors(doors=[]){if(!Array.isArray(doors)||doors.length>24)throw Error('Use up to 24 doorways per room.');return doors.map(d=>{if(!['top','right','bottom','left'].includes(d.side)||!number(d.position,.1,.9)||!number(d.depth,20,400))throw Error('Check doorway wall, position, and reach.');return {side:d.side,position:d.position,depth:d.depth};});}
+ function levels(list){if(!Array.isArray(list)||list.some(n=>!Number.isInteger(n)||n<0||n>3))throw Error('Choose valid connected floors.');return [...new Set(list)].sort();}
  const floors=source.floors.map((f,level)=>{
   if(!Array.isArray(f.rooms)||f.rooms.length>30||!Array.isArray(f.corridors)||f.corridors.length>(f.editableCorridors?32:30))throw Error('Each floor supports 30 rooms and 32 hallways.');
   return {editableCorridors:true,rooms:f.rooms.map(r=>{
@@ -21,10 +22,10 @@ export function validateLayout(source){
  });
  const passages=source.passages.map(p=>{if(!name(p.id,80)||!name(p.name,60)||![p.from,p.to].every(e=>Number.isInteger(e?.floor)&&e.floor>=0&&e.floor<4&&floors[e.floor].rooms.some(r=>r.id===e.roomId))||p.from.roomId===p.to.roomId)throw Error('Connect each secret passage to two different rooms.');return {id:p.id,name:p.name.trim(),from:{floor:p.from.floor,roomId:p.from.roomId},to:{floor:p.to.floor,roomId:p.to.roomId}};});
  const stairs=(source.stairs===undefined?defaultsStairs():source.stairs);if(!Array.isArray(stairs)||stairs.length>16)throw Error('Use up to sixteen staircases.');
- const cleanStairs=stairs.map(s=>{if(!name(s.name,40)||!Number.isInteger(s.startFloor)||!Number.isInteger(s.endFloor)||s.startFloor<0||s.endFloor>3||s.startFloor>=s.endFloor||!number(s.x,20,1220)||!number(s.y,20,900)||!number(s.w,40,160)||!number(s.h,40,160)||s.x+s.w>1260||s.y+s.h>940||![undefined,null,'hall-start','hall-end'].includes(s.anchor))throw Error('Choose a lower starting level and a higher stopping level for each staircase.');return {id:identity(s.id),name:s.name.trim(),startFloor:s.startFloor,endFloor:s.endFloor,x:s.x,y:s.y,w:s.w,h:s.h,anchor:s.anchor||null};});
- const e=source.elevator||{name:'Elevator',x:610,y:165,w:60,h:70,anchor:'hall'};
- if(!name(e.name,40)||!number(e.x,20,1220)||!number(e.y,20,900)||!number(e.w,40,160)||!number(e.h,40,160)||e.x+e.w>1260||e.y+e.h>940||![undefined,null,'hall'].includes(e.anchor))throw Error('Keep the elevator inside the map, between 40 and 160 units in size.');
- return {version:2,floors,passages,stairs:cleanStairs,elevator:{name:e.name.trim(),x:e.x,y:e.y,w:e.w,h:e.h,anchor:e.anchor||null}};
+ const cleanStairs=stairs.map(s=>{if(!name(s.name,40)||!Number.isInteger(s.startFloor)||!Number.isInteger(s.endFloor)||s.startFloor<0||s.endFloor>3||s.startFloor>=s.endFloor||!number(s.x,20,1220)||!number(s.y,20,900)||!number(s.w,40,160)||!number(s.h,40,160)||s.x+s.w>1260||s.y+s.h>940||![undefined,null,'hall-start','hall-end'].includes(s.anchor))throw Error('Choose a lower starting level and a higher stopping level for each staircase.');return {id:identity(s.id),name:({ 'West stairwell':'PRA','East stairwell':'PRB','Stair 1':'PRA','Stair 2':'PRB' }[s.name.trim()]||s.name.trim()),excludedFloors:levels(s.excludedFloors||[]),startFloor:s.startFloor,endFloor:s.endFloor,x:s.x,y:s.y,w:s.w,h:s.h,anchor:s.anchor||null};});
+ const e=source.elevator===null?null:source.elevator||{name:'Elevator',x:610,y:165,w:60,h:70,anchor:'hall'};
+ if(e&&(!name(e.name,40)||!number(e.x,20,1220)||!number(e.y,20,900)||!number(e.w,40,160)||!number(e.h,40,160)||e.x+e.w>1260||e.y+e.h>940||![undefined,null,'hall'].includes(e.anchor)))throw Error('Keep the elevator inside the map, between 40 and 160 units in size.');
+ return {version:2,floors,passages,stairs:cleanStairs,elevator:e?{floors:levels(e.floors??[0,1,2,3]),name:e.name.trim(),x:e.x,y:e.y,w:e.w,h:e.h,anchor:e.anchor||null}:null};
 }
 export function defaultLayout(floors){return validateLayout({version:2,floors:floors.map((f,i)=>({rooms:f.rooms.map((r,j)=>({...r,id:`room-${i}-${j}`,tasks:r.tasks||[{id:`task-${i}-${j}`,name:r.task,x:.86,y:.76}]})),editableCorridors:true,corridors:baseCorridors.map(c=>({...c}))})),passages:[],stairs:defaultsStairs()});}
 export function saveLayout(layout){const clean=validateLayout(layout);localStorage.setItem(layoutKey,JSON.stringify(clean));return clean;}
@@ -42,6 +43,9 @@ export function roomDoors(room,corridors){if(Array.isArray(room.doors))return ma
 export function stairAt(s,corridors){if(!s.anchor||!corridors.length)return {...s};const point=corridorPoint(corridors[0],s.anchor==='hall-start'?.04:.96);return {...s,x:point.x-s.w/2,y:point.y-s.h/2};}
 export function hallwayFixtures(corridors){const hall=corridors[0]||baseCorridors[0],shaft=corridors[1]||hall,center=corridorPoint(shaft,.15);return {lift:{x:center.x-30,y:center.y-35,w:60,h:70},stairs:defaultsStairs().map(s=>stairAt(s,corridors)),spawn:corridorPoint(hall,.5)};}
 
-export function elevatorAt(e,corridors){if(!e||e.anchor==='hall')return {...e,...hallwayFixtures(corridors).lift};return {...e};}
+export function elevatorAt(e,corridors){if(!e)return null;if(e.anchor==='hall')return {...e,...hallwayFixtures(corridors).lift};return {...e};}
 
 export function manualDoorways(room,opening=false){return (room.doors||[]).map(d=>{const vertical=d.side==='left'||d.side==='right',span=vertical?room.h:room.w,offset=Math.max(30,Math.min(span-30,span*d.position)),x=vertical?(d.side==='left'?room.x:room.x+room.w):room.x+offset,y=vertical?room.y+offset:(d.side==='top'?room.y:room.y+room.h);if(opening)return vertical?{x:x-8,y:y-30,w:16,h:60}:{x:x-30,y:y-8,w:60,h:16};return vertical?{x:d.side==='left'?x-d.depth:x-20,y:y-30,w:d.depth+20,h:60}:{x:x-30,y:d.side==='top'?y-d.depth:y-20,w:60,h:d.depth+20};});}
+
+export function clearLayoutFloor(model,floor){const ids=new Set(model.floors[floor].rooms.map(r=>r.id));model.floors[floor].rooms=[];model.floors[floor].corridors=[];model.passages=model.passages.filter(p=>!ids.has(p.from.roomId)&&!ids.has(p.to.roomId));model.stairs=model.stairs.map(s=>({...s,excludedFloors:[...new Set([...(s.excludedFloors||[]),floor])]})).filter(s=>Array.from({length:s.endFloor-s.startFloor+1},(_,i)=>s.startFloor+i).some(i=>!s.excludedFloors.includes(i)));if(model.elevator){model.elevator.floors=(model.elevator.floors??[0,1,2,3]).filter(i=>i!==floor);if(!model.elevator.floors.length)model.elevator=null;}}
+export function addElevatorOnFloor(model,floor){if(model.elevator){model.elevator.floors=[...new Set([...(model.elevator.floors??[0,1,2,3]),floor])].sort();}else model.elevator={name:'Elevator',x:610,y:165,w:60,h:70,anchor:null,floors:[floor]};}
