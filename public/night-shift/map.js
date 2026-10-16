@@ -1,4 +1,4 @@
-import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=clear-floor-1';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=pra-prb-1';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[
@@ -8,7 +8,7 @@ export const floors=[
  {code:'03',name:'3rd floor',subtitle:'ABOVE THE NOISE',rooms:[room('Control',100,110,'#687d8b','control','Restore a camera feed'),room('Programs',690,110,'#8b8375','classroom','Sort the program materials'),room('Staff room',100,540,'#867b76','staff','Collect the shift reports'),room('Mechanical',690,540,'#6a7678','utilities','Check ventilation pressure')]}
 ];
 export const lift={x:600,y:112,w:80,h:104};
-export const stairs=[{x:88,y:447,w:70,h:66,direction:-1},{x:1120,y:447,w:70,h:66,direction:1}];
+export const stairs=[{x:88,y:447,w:70,h:66,name:'PRA',direction:-1},{x:1120,y:447,w:70,h:66,name:'PRB',direction:1}];
 export const taskPoints=r=>r.tasks?r.tasks.map(t=>({...t,x:r.x+t.x*r.w,y:r.y+t.y*r.h})):[{id:r.id||r.name,name:r.task,x:r.x+422,y:r.y+235}];
 export const taskPoint=r=>taskPoints(r)[0]||{x:r.x+r.w/2,y:r.y+r.h/2};
 export const passages=[];
