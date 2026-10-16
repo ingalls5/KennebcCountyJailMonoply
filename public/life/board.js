@@ -1,4 +1,4 @@
-import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=house-stop-only-1';
+import {spaces,entryTracks,crisisSpaces,crisisFork,crisisRejoin,spinnerMax,spinnerStep} from './rules.js?v=retirement-sale-1';
 
 // All board art is original SVG. The road geometry also drives pawn movement.
 export const boardWidth=1400,boardHeight=1350;

@@ -154,6 +154,7 @@ function offerCards(g,random){if(g.pending?.type==='promotion'&&!g.pending.caree
 function collectPay(g,p,count){if(count){const pay=salary(p)*count;p.cash+=pay;entry(g,`${p.name} collected $${pay} at ${count===1?'Pay Day':count+' Pay Days'}.`);}}
 export function decision(game){
  if(!game.pending)return null;const p=game.players[game.turn];
+ if(game.pending.type==='home-sale')return {title:'Sell your house at retirement',icon:'⌂',text:`Sell your ${p.home.name} for $${p.home.value}. The proceeds go into your savings, including paying down any debt.`,options:[option(`Sell ${p.home.name}`,p.home.value,0,{sellHome:true})]};
  if(game.pending.type==='academy')return {title:'Choose your career path',icon:'★',text:'Go to the Academy for $500, then reveal two job cards and choose one at graduation. Or collect $300 and start your first day by drawing one unknown job card.',options:[option('Go to the Academy',-500),option('Start my first day on the job',300)]};
  if(game.pending.type==='jobs'){
   const {cards,revealed,graduate}=game.pending,limit=graduate?2:1,ready=revealed.length===limit;
@@ -169,7 +170,7 @@ export function decision(game){
   const event=events.find(e=>e.id===game.pending.id);
   if(event.id==='house'){
    const cards=game.pending.houseCards||homes.slice(0,5).map(h=>h.id),revealed=game.pending.revealed||[],ready=revealed.length===2;
-   return {...event,houseCards:true,title:ready?'Choose your house':'Reveal two house cards',text:(ready?'Choose one of your two revealed homes.':'Pick two of these five face-down house cards. Then choose which home to buy.')+(p.home?' Your current home’s sale value is credited toward the purchase.':''),options:[...cards.map((id,i)=>{const home=revealed.includes(i)?homes.find(h=>h.id===id):null;return option(home?`${home.name} · Buy $${home.price} · Retirement value $${home.value}`:`House card ${i+1}`,0,0,{art:home?{sheet:'houses',index:homes.indexOf(home)}:null,drawHouse:i,faceDown:!home,disabled:ready||revealed.includes(i)});}),...(ready?revealed.map(i=>{const home=homes.find(h=>h.id===cards[i]);return option(`Buy the ${home.name}`,-home.price+homeValue(p),0,{home});}):[])]};
+   return {...event,houseCards:true,title:ready?'Choose your house':'Reveal two house cards',text:(ready?'Choose one of your two revealed homes.':'Pick two of these five face-down house cards. Then choose which home to buy.')+(p.home?' Your current home’s sale value is credited toward the purchase.':''),options:[...cards.map((id,i)=>{const home=revealed.includes(i)?homes.find(h=>h.id===id):null;return option(home?`${home.name} · Buy $${home.price} · Sell $${home.value}`:`House card ${i+1}`,0,0,{art:home?{sheet:'houses',index:homes.indexOf(home)}:null,drawHouse:i,faceDown:!home,disabled:ready||revealed.includes(i)});}),...(ready?revealed.map(i=>{const home=homes.find(h=>h.id===cards[i]);return option(`Buy the ${home.name}`,-home.price+homeValue(p),0,{home});}):[])]};
   }
   if(event.id==='wedding'&&p.married)return {...event,title:'Celebrate your anniversary',text:'You are already married. Celebrate another year together.',options:[option('Celebrate with friends',-250,2),option('Keep it small',-50,1)]};
   return event;
@@ -188,7 +189,7 @@ export function perform(before,action,random=Math.random){
   const review=g.route.some(n=>spaces[n].type==='promotion');
   if(fork){if(review){g.pending={type:'promotion',thenCrisis:true};g.phase='choice';offerCards(g,random);}else offerCrisis(g,p);return g;}
   if(familySpaces[end]){g.pending=review?{type:'promotion',thenFamily:true}:{...(familySpaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:familySpaces[end].eventId}),spinAgain:true};g.phase='choice';offerCards(g,random);return g;}
-  if(end===lastSpace){p.retired=true;g.phase='end';g.pending=null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
+  if(end===lastSpace){p.retired=true;g.phase=p.home?'choice':'end';g.pending=p.home?{type:'home-sale'}:null;entry(g,`${p.name} retired. LIFE tile values will be revealed at the final briefing.`);}
   else if(spaces[end].type==='payday'&&!review){g.pending=null;g.phase='end';}
   else{let type=review?'promotion':spaces[end].type;if(type==='fork')type='event';if(type==='event'&&spaces[end].eventId){g.pending=spaces[end].eventId==='divorce'?{type:'divorce'}:{type:'event',id:spaces[end].eventId};}else if(type==='event'){if(g.cursor===g.deck.length){g.deck=shuffle(randomEventIds,random);g.cursor=0;}g.pending={type,id:g.deck[g.cursor++]};}else g.pending={type};g.phase='choice';}
  }else if(action.type==='choose'){
@@ -201,7 +202,7 @@ export function perform(before,action,random=Math.random){
    return g;
   }
   const spinAgain=!!g.pending.spinAgain,thenFamily=!!g.pending.thenFamily,academy=g.pending.type==='academy',forkChoice=g.pending.type==='crisis-fork',thenCrisis=!!g.pending.thenCrisis,finishCrisis=g.pending.type==='crisis'&&p.crisisPosition===crisisSpaces.length-1,finishEntry=g.pending.type==='entry'&&p.entryPosition===entryTracks[p.careerPath].length-1,fullStop=spinAgain||finishEntry||finishCrisis||forkChoice;
-  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo)){p.rank=choice.promoteTo;p.jobChosen=true;}if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry){p.married=true;p.spouse=choice.spouse||null;}if(choice.divorce){p.married=false;p.spouse=null;}if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.tiles)awardTiles(g,p,choice.tiles,random);
+  p.cash+=choice.cash;if(Number.isInteger(choice.promoteTo)){p.rank=choice.promoteTo;p.jobChosen=true;}if(choice.promote)p.rank=Math.min(ranks.length-1,p.rank+1);if(choice.marry){p.married=true;p.spouse=choice.spouse||null;}if(choice.divorce){p.married=false;p.spouse=null;}if(choice.children)p.children+=choice.children;if(choice.home)p.home=structuredClone(choice.home);if(choice.sellHome){p.homeSale={name:p.home.name,value:p.home.value};entry(g,`${p.name} sold ${p.home.name} for $${p.home.value}. The proceeds are included in savings.`);p.home=null;}if(choice.tiles)awardTiles(g,p,choice.tiles,random);
   entry(g,`${p.name}: ${event.title} — ${choice.label}.`);g.pending=null;g.phase=academy||fullStop?'roll':'end';if(fullStop){g.route=[];g.dice=null;entry(g,`${p.name} resolved the full stop and can spin again.`);}
   if(academy){p.academyDone=true;p.careerPath=action.index===0?'academy':'jail';p.entryPosition=0;if(p.careerPath==='jail')offerJobs(g,false,random);}if(finishEntry){p.entryPosition=null;if(p.careerPath==='academy')offerJobs(g,true,random);}
   if(finishCrisis){p.crisisPosition=null;p.crisisDone=true;p.position=crisisRejoin;entry(g,`${p.name} rejoined the main road at Stop ${crisisRejoin+1}.`);}
@@ -209,7 +210,7 @@ export function perform(before,action,random=Math.random){
   if(thenCrisis)offerCrisis(g,p);if(forkChoice){if(action.index===1)enterCrisis(g,p);else{p.crisisDone=true;p.crisisTaken=false;p.position=crisisFork+1;}}
  }else if(action.type==='end'){
   if(g.phase!=='end')throw Error('Resolve the turn before ending it.');g.turns++;g.route=[];
-  if(g.players.every(p=>p.retired)){g.phase='over';entry(g,'Everyone has retired. Reveal all LIFE tiles and add their bonuses, home values, and $100 per child to savings.');}
+  if(g.players.every(p=>p.retired)){g.phase='over';entry(g,'Everyone has retired. Reveal all LIFE tiles and add their bonuses and $100 per child to savings. Home sale proceeds are already included in savings.');}
   else{do{g.turn=(g.turn+1)%g.players.length;}while(g.players[g.turn].retired);g.phase=g.players[g.turn].academyDone?'roll':'choice';g.pending=g.phase==='choice'?{type:'academy'}:null;g.dice=null;}
  }else throw Error('Choose a valid career action.');offerCards(g,random);return g;
 }
@@ -236,6 +237,7 @@ export function validateGame(source){
  }
  if(g.deck.length!==randomEventIds.length||g.tileDeck?.length!==lifeTiles.length||new Set(g.tileDeck).size!==lifeTiles.length||g.tileDeck.some(id=>!tileById.has(id))||!integer(g.tileCursor,0,lifeTiles.length))invalid();
  const held=[];for(const p of g.players){
+  if(p.homeSale!==undefined&&![...homes,...legacyHomes].some(h=>h.name===p.homeSale?.name&&h.value===p.homeSale.value))invalid();
   if(!Array.isArray(p.lifeTiles)||p.lifeTiles.some(id=>!tileById.has(id))||(p.jobChosen!==undefined&&typeof p.jobChosen!=='boolean')||(p.pegGender!==undefined&&!['male','female'].includes(p.pegGender))||typeof p.married!=='boolean'||(p.spouse!==undefined&&![null,'male','female'].includes(p.spouse))||!integer(p.children,0,1000)||(p.home!==null&&![...homes,...legacyHomes].some(h=>h.id===p.home?.id&&h.value===p.home.value&&h.price===p.home.price)))invalid();held.push(...p.lifeTiles);
   if((p.crisisDone!==undefined&&typeof p.crisisDone!=='boolean')||(p.crisisTaken!==undefined&&typeof p.crisisTaken!=='boolean')||(p.crisisPosition!==undefined&&p.crisisPosition!==null&&(!integer(p.crisisPosition,0,crisisSpaces.length-1)||p.crisisDone||!p.academyDone||inEntry(p)||p.position!==crisisFork||p.retired)))invalid();
   if(p.entryPosition!==undefined&&p.entryPosition!==null&&(!integer(p.entryPosition,0,(entryTracks[p.careerPath]?.length||0)-1)||!p.academyDone||p.position!==0||p.retired))invalid();
@@ -255,7 +257,7 @@ export function validateGame(source){
   const j=g.pending,p=g.players[g.turn];
   if(g.phase!=='choice'||typeof j.graduate!=='boolean'||!Array.isArray(j.cards)||j.cards.length!==5||new Set(j.cards).size!==5||j.cards.some(n=>!integer(n,1,ranks.length-1))||!Array.isArray(j.revealed)||new Set(j.revealed).size!==j.revealed.length||j.revealed.length>(j.graduate?2:1)||j.revealed.some(n=>!integer(n,0,4))||!p.academyDone||p.careerPath!==(j.graduate?'academy':'jail')||(j.graduate?inEntry(p):p.entryPosition!==0))invalid();
  }
- const p=g.players[g.turn];if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis-fork','crisis','promotion','life','rest','shift','event','divorce','jobs'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='entry'&&!inEntry(p))||(g.pending.type==='crisis'&&!inCrisis(p))||(g.pending.type==='crisis-fork'&&(p.position!==crisisFork||p.crisisDone||inCrisis(p)||inEntry(p)||!p.academyDone))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||p.position!==crisisFork||p.crisisDone||inEntry(p)||inCrisis(p)))))invalid();
- if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&p.retired)invalid();return g;
+ const p=g.players[g.turn];if(g.phase==='choice'&&(!g.pending||!['academy','entry','crisis-fork','crisis','promotion','life','rest','shift','event','divorce','jobs','home-sale'].includes(g.pending.type)||(g.pending.type==='event'&&!events.some(e=>e.id===g.pending.id))||(g.pending.type==='home-sale'&&(!p.retired||!p.home))||(g.pending.type==='entry'&&!inEntry(p))||(g.pending.type==='crisis'&&!inCrisis(p))||(g.pending.type==='crisis-fork'&&(p.position!==crisisFork||p.crisisDone||inCrisis(p)||inEntry(p)||!p.academyDone))||(g.pending.thenCrisis!==undefined&&(g.pending.thenCrisis!==true||g.pending.type!=='promotion'||p.position!==crisisFork||p.crisisDone||inEntry(p)||inCrisis(p)))))invalid();
+ if(g.phase==='over'?!g.players.every(p=>p.retired):g.phase!=='end'&&p.retired&&g.pending?.type!=='home-sale')invalid();return g;
 }
 export function loadGame(){try{return validateGame(JSON.parse(localStorage.getItem(gameKey)));}catch{return null;}}
