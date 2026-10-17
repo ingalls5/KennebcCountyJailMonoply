@@ -1,0 +1,129 @@
+// Inspection stations use the same physical controls with a pointer, touch, or keyboard.
+const shuffle=values=>{const a=[...values];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const rand=(min,max)=>min+Math.floor(Math.random()*(max-min+1));
+const symbols={KEY:'⚿',RADIO:'▥',BADGE:'✦',CARD:'▤',Shank:'╱','Unauthorized phone':'▣','Loose pills':'● ●',Towel:'▱',Book:'▤',Soap:'▰'};
+
+export function buildInspection(game,ui){
+ if(!['records','count','memory','order','contraband','fingerprint','tally'].includes(game))return false;
+ const {stage,instructions,node:n,button:b}=ui;
+ stage.classList.add('mb-station');stage.dataset.machine=game;
+ const box=(cls='')=>n('div',{class:cls});
+ const text=(value,cls='mb-caption')=>n('p',{class:cls},value);
+ const panel=(heading,cls='')=>{const el=box('mb-panel '+cls);el.append(n('strong',{class:'mb-panel-title'},heading));return el;};
+ const pressed=(el,on)=>el.setAttribute('aria-pressed',String(on));
+ const choose=(el,list)=>list.forEach(item=>pressed(item,item===el));
+ const change=(input,fn)=>{ui.listen(input,'input',fn);return input;};
+ const range=(label,min,max,value,fn)=>{const wrap=n('label',{class:'mb-control'},label),input=n('input',{type:'range',min,max,step:1,value,'aria-label':label});wrap.append(change(input,()=>fn(Number(input.value))));return {wrap,input};};
+ const activate=(el,fn)=>{el.tabIndex=0;el.setAttribute('role','button');ui.listen(el,'click',e=>{if(e.target===el||!e.target.closest('button'))fn();});ui.listen(el,'keydown',e=>{if(e.target===el&&['Enter',' '].includes(e.key)){e.preventDefault();fn();}});};
+ const glyph=(label,kind)=>{const el=n('span',{class:'mb-glyph mb-glyph-'+(kind||label.toLowerCase().replace(/\W+/g,'-')),'aria-hidden':'true'},symbols[label]||'▤');return el;};
+ const tick=(done,total,label)=>ui.progress(done,total,label);
+
+ if(game==='records'){
+  instructions.textContent='Move a booking file onto the reader, open its cover, and compare every field with the intake receipt. Drag the correct stamp onto it, or tap the stamp.';
+  const names=['Morgan Ellis','Casey Lane','Riley Hayes'],fields=['Booking','Property seal','Transport'],validity=shuffle([false,true,false]);
+  const files=names.map((name,i)=>{const data=[String(rand(100,999)),'KC-'+rand(20,89),String(rand(300,899))],copy=[...data];if(!validity[i]){const field=rand(0,2);copy[field]=field===1?'KC-'+(Number(copy[field].slice(3))+1):String(Number(copy[field])+1);}return {name,data,copy,valid:validity[i],done:false};});
+  const tray=panel('UNREVIEWED FILES','mb-file-tray'),reader=panel('DOCUMENT READER','mb-document-reader'),receipt=panel('INTAKE RECEIPT','mb-paper'),document=box('mb-file-document'),tools=box('mb-stamp-tools');
+  let active=null,opened=false,reviewed=0;
+  const sources=files.map((file,i)=>{const source=b('File '+(i+1)+' · '+file.name,()=>load(i),{class:'mb-folder','aria-label':'Load file '+(i+1)});ui.drag(source,()=>[reader],()=>load(i));tray.append(source);return source;});
+  const load=i=>{if(files[i].done)return;active=i;opened=false;choose(sources[i],sources);render();ui.status('File loaded. Open its cover before using a stamp.');};
+  const verdict=valid=>{if(active===null||!opened){ui.wrong('Load a file and open the cover first.');return;}const file=files[active];if(valid!==file.valid){ui.wrong(valid?'The file has a mismatched field. Compare it with the receipt.':'All fields match this receipt. This file can be verified.');return;}file.done=true;sources[active].disabled=true;sources[active].textContent=(valid?'✓ VERIFIED':'↩ RETURNED')+' · '+file.name;reader.dataset.stamp=valid?'verified':'returned';reviewed++;tick(reviewed,3,'Files processed');active=null;render();if(reviewed===3)ui.finish();else ui.status('Stamped '+(valid?'verified':'return for correction')+'. Load another file.');};
+  const accept=b('✓ VERIFIED',()=>verdict(true),{class:'mb-stamp mb-stamp-accept','aria-label':'Stamp verified'}),reject=b('↩ RETURN',()=>verdict(false),{class:'mb-stamp mb-stamp-reject','aria-label':'Stamp return for correction'});tools.append(accept,reject);ui.drag(accept,()=>[reader],()=>verdict(true));ui.drag(reject,()=>[reader],()=>verdict(false));
+  const render=()=>{receipt.replaceChildren(n('strong',{class:'mb-panel-title'},'INTAKE RECEIPT'));document.replaceChildren();if(active===null){receipt.append(text('Select a file to display its receipt.'));document.append(text('Place the next file here.','mb-empty'));return;}const file=files[active];receipt.append(n('strong',{},file.name));for(let j=0;j<3;j++)receipt.append(text(fields[j]+': '+file.data[j],'mb-receipt-field'));if(!opened){const cover=b('OPEN FILE COVER',()=>{opened=true;render();},{class:'mb-file-cover'});document.append(cover);return;}document.append(n('strong',{},file.name));for(let j=0;j<3;j++)document.append(text(fields[j]+': '+file.copy[j],'mb-receipt-field'));document.append(text('Compare all three fields, then stamp.'));};
+  reader.append(document);stage.append(tray,receipt,reader,tools);render();tick(0,3,'Files processed');
+ }
+
+ if(game==='count'){
+  instructions.textContent='Slide each unit door open. Sweep the hand counter over each person, or tap each person once. Confirm the count and seal both count sheets.';
+  let round=0,total=0,counted=new Set();
+  const start=()=>{
+   stage.replaceChildren();counted=new Set();total=rand(6,9);let door=0,sealed=false;
+   const unit=n('div',{class:'mb-unit'}),residents=box('mb-residents'),doorPanel=box('mb-unit-door'),counter=b('0',()=>ui.status('Sweep the counter over each person, or tap each person.'),{class:'mb-hand-counter'});
+   // The hand counter is a sweep tool; residents remain individually operable.
+   counter.setAttribute('aria-label','Hand counter sweep tool');counter.textContent='0';
+   const mark=i=>{if(door!==100){ui.wrong('Open the unit door completely first.');return;}if(counted.has(i))return;counted.add(i);people[i].classList.add('mb-counted');pressed(people[i],true);counter.textContent=String(counted.size);ui.status(counted.size+' people marked on this sheet.');};
+   const people=Array.from({length:total},(_,i)=>{const p=b('',()=>mark(i),{class:'mb-person','aria-label':'Count person '+(i+1)});p.append(n('span',{'aria-hidden':'true',class:'mb-person-head'}),n('span',{'aria-hidden':'true',class:'mb-person-body'}),n('span',{class:'mb-person-number'},String(i+1)));pressed(p,false);residents.append(p);return p;});
+   ui.drag(counter,()=>people.filter((_,i)=>!counted.has(i)),target=>mark(people.indexOf(target)),event=>{const hit=document.elementFromPoint(event.clientX,event.clientY)?.closest('.mb-person');if(hit&&people.includes(hit))mark(people.indexOf(hit));});
+   const doorControl=range('Slide unit door open',0,100,0,value=>{door=value;doorPanel.style.transform='translateX('+value+'%)';unit.dataset.open=value===100?'yes':'no';});
+   doorPanel.append(n('span',{},'UNIT '+(round+1)),n('i',{class:'mb-door-window','aria-hidden':'true'}));unit.append(residents,doorPanel);
+   const sheet=panel('COUNT SHEET · UNIT '+(round+1),'mb-count-sheet'),display=n('output',{class:'mb-total'},'0');let entered=0;
+   const adjust=step=>{entered=Math.max(0,Math.min(20,entered+step));display.textContent=String(entered);};
+   sheet.append(text('Hand counter'),counter,text('Enter the sheet total'),b('−',()=>adjust(-1),{'aria-label':'Decrease sheet total'}),display,b('+',()=>adjust(1),{'aria-label':'Increase sheet total'}));
+   const submit=b('Confirm and seal count',()=>{if(sealed)return;if(door!==100||counted.size!==total){ui.wrong('Open the door and mark every person before sealing the sheet.');return;}if(entered!==total){ui.wrong('Your sheet total differs from the hand counter. Adjust it first.');return;}sealed=true;round++;tick(round,2,'Unit counts sealed');if(round===2)ui.finish();else{ui.status('First unit sealed. Count the next unit.');start();}},{class:'mb-seal-button'});
+   stage.append(text('UNIT '+(round+1)+' OF 2','mb-kicker'),unit,doorControl.wrap,sheet,submit);
+  };start();tick(0,2,'Unit counts sealed');
+ }
+
+ if(game==='memory'){
+  instructions.textContent='Open two property lockers to find a matching pair. Move a matched pair to its labeled return bag, or choose the pair and tap the bag.';
+  const values=shuffle(['KEY','KEY','RADIO','RADIO','BADGE','BADGE','CARD','CARD']),rack=box('mb-locker-rack'),bags=box('mb-bag-row'),holding=panel('MATCHED PAIR','mb-pair-holding');let opened=[],matched=null,done=0;
+  const bagNodes=['KEY','RADIO','BADGE','CARD'].map(value=>{const bag=b('RETURN '+value,()=>store(value),{class:'mb-property-bag','aria-label':'Return '+value+' pair'});bag.prepend(glyph(value));bag.dataset.bag=value;bags.append(bag);return bag;});
+  const resetUnmatched=()=>{for(const i of opened){cards[i].replaceChildren(n('span',{class:'mb-locker-number'},String(i+1)),n('span',{class:'mb-locker-handle','aria-hidden':'true'}));cards[i].dataset.open='no';pressed(cards[i],false);}opened=[];};
+  const flip=i=>{if(cards[i].disabled||opened.includes(i))return;if(matched){ui.wrong('Return the matched pair before opening another locker.');return;}if(opened.length===2)resetUnmatched();cards[i].replaceChildren(glyph(values[i]),n('span',{},values[i]));cards[i].dataset.open='yes';pressed(cards[i],true);opened.push(i);if(opened.length===2){if(values[opened[0]]===values[opened[1]]){matched=values[i];holding.replaceChildren(n('strong',{class:'mb-panel-title'},'MATCHED PAIR'),pair);pair.textContent=matched+' + '+matched;pair.hidden=false;ui.status('Matching pair found. Return it to its labeled bag.');}else ui.status('Different property. Open another locker to close these and try again.');}};
+  const store=value=>{if(!matched){ui.wrong('Find a matching pair before filling a return bag.');return;}if(value!==matched){ui.wrong('That pair belongs in its labeled property bag.');return;}for(const i of opened){cards[i].disabled=true;cards[i].classList.add('mb-returned');}const bag=bagNodes.find(el=>el.dataset.bag===value);bag.disabled=true;bag.append(n('span',{},'✓ SEALED'));opened=[];matched=null;pair.hidden=true;holding.replaceChildren(n('strong',{class:'mb-panel-title'},'MATCHED PAIR'),text('Find the next matching pair.'));done++;tick(done,4,'Property bags sealed');if(done===4)ui.finish();};
+  const pair=b('Matched property',()=>ui.status('Choose its labeled return bag.'),{class:'mb-matched-pair'});ui.drag(pair,()=>bagNodes.filter(el=>!el.disabled),target=>store(target.dataset.bag));pair.hidden=true;
+  const cards=values.map((value,i)=>{const card=b('',()=>flip(i),{class:'mb-property-locker','aria-label':'Open property locker '+(i+1)});card.append(n('span',{class:'mb-locker-number'},String(i+1)),n('span',{class:'mb-locker-handle','aria-hidden':'true'}));card.dataset.open='no';pressed(card,false);rack.append(card);return card;});
+  holding.append(text('Find two matching property tags.'));stage.append(rack,holding,bags);tick(0,4,'Property bags sealed');
+ }
+
+ if(game==='order'){
+  instructions.textContent='Arrange all five folders from lowest to highest on the filing rail. Drag folders between slots, or select a folder and tap a slot. Slide the drawer closed to file them.';
+  const values=shuffle([rand(110,190),rand(220,290),rand(330,390),rand(440,490),rand(550,590)]),tray=panel('INCOMING FOLDERS','mb-file-tray'),rail=box('mb-filing-rail'),slots=[],occupants=Array(5).fill(null);let selected=null,drawer=0;
+  const select=i=>{selected=i;choose(cards[i],cards);ui.status('Folder '+values[i]+' selected. Choose a filing slot.');};
+  const place=(i,index)=>{if(drawer!==0){ui.wrong('Slide the drawer fully open before moving folders.');return;}if(i===null){ui.wrong('Select a folder first.');return;}const old=occupants.indexOf(i),displaced=occupants[index];if(old>=0)occupants[old]=null;if(displaced!==null&&displaced!==i){tray.append(cards[displaced]);cards[displaced].classList.remove('mb-filed');}occupants[index]=i;slots[index].append(cards[i]);cards[i].classList.add('mb-filed');selected=null;cards.forEach(el=>pressed(el,false));tick(occupants.filter(i=>i!==null).length,5,'Folders on filing rail');};
+  const cards=values.map((value,i)=>{const card=b(String(value),()=>{const index=occupants.indexOf(i);if(selected!==null&&selected!==i&&index>=0)place(selected,index);else select(i);},{class:'mb-folder','aria-label':'Folder '+value});ui.drag(card,()=>slots,slot=>place(i,slots.indexOf(slot)));tray.append(card);return card;});
+  for(let i=0;i<5;i++){const slot=box('mb-file-slot');slot.setAttribute('aria-label','Filing slot '+(i+1));slot.append(n('span',{class:'mb-slot-number'},String(i+1)));activate(slot,()=>place(selected,i));slots.push(slot);rail.append(slot);}
+  const cabinet=panel('LOW → HIGH','mb-cabinet'),shade=box('mb-drawer-shade');cabinet.append(rail,shade);
+  const slider=range('Slide filing drawer closed',0,100,0,value=>{drawer=value;shade.style.height=value+'%';if(value!==100)return;if(occupants.some(i=>i===null)){ui.wrong('The rail still has an empty slot. Open the drawer and add all five folders.');return;}const actual=occupants.map(i=>values[i]);if(actual.some((value,i)=>i>0&&value<actual[i-1])){ui.wrong('The folder numbers are out of order. Open the drawer and rearrange them from lowest to highest.');return;}ui.finish();});
+  stage.append(tray,cabinet,slider.wrap,text('To move a filed folder, select it and choose another slot. A displaced folder returns to the incoming tray.'));tick(0,5,'Folders on filing rail');
+ }
+
+ if(game==='contraband'){
+  instructions.textContent='Unzip the property bag. Sweep the inspection light over each item, or tap to inspect it. Move prohibited items to evidence and authorized items to the return bag.';
+  const properties=shuffle([{name:'Shank',illegal:true},{name:'Unauthorized phone',illegal:true},{name:'Loose pills',illegal:true},{name:'Towel',illegal:false},{name:'Book',illegal:false},{name:'Soap',illegal:false}]);let opened=false,selected=null,done=0;
+  const bag=panel('SEALED PROPERTY BAG','mb-search-bag'),mat=box('mb-search-mat'),tools=box('mb-search-tools'),light=b('INSPECTION LIGHT',()=>ui.status('Drag the light across property, or tap an item to inspect it.'),{class:'mb-inspection-light'});
+  const evidence=b('EVIDENCE TRAY',()=>place(true),{class:'mb-evidence-tray','aria-label':'Place selected item in evidence'}),returns=b('AUTHORIZED PROPERTY',()=>place(false),{class:'mb-return-tray','aria-label':'Return selected authorized item'}),containers=[evidence,returns];
+  const inspect=i=>{if(!opened){ui.wrong('Unzip the bag completely before inspecting property.');return;}if(properties[i].done)return;properties[i].seen=true;selected=i;cards[i].classList.add('mb-inspected');cards[i].replaceChildren(glyph(properties[i].name),n('span',{},properties[i].name));choose(cards[i],cards);ui.status(properties[i].name+' inspected. Choose evidence or authorized property.');};
+  const place=illegal=>{if(selected===null||!properties[selected].seen){ui.wrong('Inspect an item before placing it in a container.');return;}const item=properties[selected];if(item.illegal!==illegal){ui.wrong(item.illegal?'That item is prohibited and belongs in evidence.':'That item is authorized. Return it to the property bag.');return;}const card=cards[selected];item.done=true;card.disabled=true;card.classList.add('mb-property-stored');card.setAttribute('aria-pressed','false');(illegal?evidence:returns).append(n('span',{class:'mb-bag-contents'},item.name));card.remove();selected=null;done++;tick(done,6,'Items inspected and sorted');if(done===6)ui.finish();else ui.status('Item logged. Inspect the remaining property.');};
+  const cards=properties.map((item,i)=>{const card=b('',()=>inspect(i),{class:'mb-wrapped-property','aria-label':'Inspect property item '+(i+1)});card.append(n('span',{class:'mb-wrapped-shape','aria-hidden':'true'}),n('span',{},'Wrapped item '+(i+1)));ui.drag(card,()=>containers,target=>{if(!item.seen){ui.wrong('Inspect the wrapped item first.');return;}selected=i;place(target===evidence);});mat.append(card);return card;});
+  ui.drag(light,()=>cards.filter((_,i)=>!properties[i].done),target=>inspect(cards.indexOf(target)),event=>{const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.mb-wrapped-property');if(target&&cards.includes(target))inspect(cards.indexOf(target));});
+  const zip=range('Unzip property bag',0,100,0,value=>{opened=value===100;bag.style.setProperty('--zip',value+'%');bag.dataset.open=String(opened);mat.inert=!opened;ui.status(opened?'Bag open. Inspect every item.':'Open the zipper fully to remove property.');});bag.append(mat);mat.inert=true;tools.append(light);stage.append(bag,zip.wrap,tools,box('mb-evidence-row'));stage.lastElementChild.append(evidence,returns);tick(0,6,'Items inspected and sorted');
+ }
+
+ if(game==='fingerprint'){
+  instructions.textContent='Dust all six parts of the print. Lift it onto the scanner, then choose a matching file and align its overlay using the registration controls.';
+  const target=rand(0,2),surface=panel('LATENT PRINT · EVIDENCE SURFACE','mb-print-surface'),print=drawPrint(target),dust=box('mb-dust-grid'),scanner=panel('IDENTIFICATION SCANNER','mb-print-scanner'),brush=b('DUSTING BRUSH',()=>ui.status('Sweep over dusty squares, or tap each square.'),{class:'mb-dust-brush'});let dusted=new Set(),loaded=false,choice=null,x=2,angle=90;
+  const reveal=i=>{if(dusted.has(i))return;dusted.add(i);patches[i].classList.add('mb-dusted');patches[i].disabled=true;ui.status(dusted.size+' of 6 areas dusted.');if(dusted.size===6){lift.disabled=false;ui.status('Print revealed. Lift it onto the scanner.');}};
+  const patches=Array.from({length:6},(_,i)=>{const patch=b('DUST',()=>reveal(i),{class:'mb-dust-patch','aria-label':'Dust print area '+(i+1)});dust.append(patch);return patch;});
+  ui.drag(brush,()=>patches.filter(el=>!el.disabled),target=>reveal(patches.indexOf(target)),event=>{const hit=document.elementFromPoint(event.clientX,event.clientY)?.closest('.mb-dust-patch');if(hit&&patches.includes(hit))reveal(patches.indexOf(hit));});
+  const lift=b('LIFT PRINT TO SCANNER',()=>load(),{class:'mb-lift-print'});lift.disabled=true;ui.drag(lift,()=>[scanner],()=>load());
+  const load=()=>{if(dusted.size!==6){ui.wrong('Dust every part of the print before lifting it.');return;}loaded=true;lift.disabled=true;surface.dataset.lifted='yes';renderScanner();tick(1,2,'Print processing stages');ui.status('Print lifted. Select a file and align the overlay.');};
+  const viewport=box('mb-print-viewport'),reference=drawPrint(target),overlay=box('mb-print-overlay');reference.classList.add('mb-scene-print');viewport.append(reference,overlay,n('span',{class:'mb-crosshair','aria-hidden':'true'}));
+  const files=box('mb-fingerprint-files'),choices=shuffle([0,1,2]).map((pattern,i)=>{const file=b('FILE '+String.fromCharCode(65+i),()=>{choice=pattern;choose(file,choices);renderScanner();},{class:'mb-fingerprint-file','aria-label':'Compare print file '+String.fromCharCode(65+i)});file.prepend(drawPrint(pattern));file.dataset.file=String.fromCharCode(65+i);files.append(file);return file;});
+  const renderScanner=()=>{scanner.dataset.loaded=String(loaded);files.inert=!loaded;overlay.replaceChildren();if(choice!==null)overlay.append(drawPrint(choice));overlay.style.transform=`translateX(${x*7}px) rotate(${angle}deg)`;registration.textContent='Horizontal '+(x>0?'+':'')+x+' · Rotation '+angle+'°';};
+  const registration=n('output',{class:'mb-registration'}),shift=range('Horizontal registration',-4,4,x,value=>{x=value;renderScanner();}),rotate=range('Overlay rotation',0,3,1,value=>{angle=value*90;renderScanner();}),verify=b('SCAN ALIGNED OVERLAY',()=>{if(!loaded||choice===null){ui.wrong('Lift the print and select a comparison file first.');return;}if(choice!==target){ui.wrong('The ridge patterns differ. Compare another file.');return;}if(x!==0||angle!==0){ui.wrong('The matching pattern is not registered. Align its center and rotation.');return;}tick(2,2,'Print processing stages');ui.finish();},{class:'mb-scan-submit'});
+  surface.append(print,dust);scanner.append(viewport,registration);stage.append(surface,brush,lift,scanner,files,shift.wrap,rotate.wrap,verify);renderScanner();tick(0,2,'Print processing stages');
+ }
+
+ if(game==='tally'){
+  instructions.textContent='Open each unit report. Reconcile its on-unit, court, and medical counts with the ledger dial, stamp it, then clip the verified report onto the summary board.';
+  const reports=['A-UNIT','T-UNIT','INTAKE'].map(name=>({name,counts:[rand(3,6),rand(1,3),rand(1,2)],verified:false,clipped:false}));let active=null,value=0,done=0;
+  const inbox=panel('UNIT REPORTS','mb-report-inbox'),ledger=panel('RECONCILIATION LEDGER','mb-ledger'),board=panel('VERIFIED UNIT SUMMARY','mb-summary-board'),paper=box('mb-report-paper'),readout=n('output',{class:'mb-ledger-display'},'00'),knob=b('TURN',null,{class:'mb-ledger-dial','aria-label':'Turn ledger count dial'}),controls=box('mb-ledger-controls'),slots=[];
+  const adjust=step=>{if(active===null)return;value=Math.max(0,Math.min(20,value+step));readout.textContent=String(value).padStart(2,'0');knob.style.setProperty('--mb-dial-angle',value*18+'deg');};
+  ui.dial(knob,adjust);ui.listen(knob,'click',()=>adjust(1));
+  const select=i=>{if(reports[i].clipped)return;active=i;value=0;readout.textContent='00';choose(cards[i],cards);render();ui.status('Count all categories on '+reports[i].name+'.');};
+  const clip=i=>{if(active===null||!reports[active].verified){ui.wrong('Reconcile and stamp a report before clipping it to the summary.');return;}if(active!==i){ui.wrong('Use the summary clip labeled '+reports[active].name+'.');return;}reports[i].clipped=true;slots[i].append(n('strong',{},String(reports[i].counts.reduce((a,b)=>a+b,0))+' VERIFIED'));slots[i].classList.add('mb-report-clipped');cards[i].disabled=true;done++;active=null;render();tick(done,3,'Unit reports clipped');if(done===3){seal.disabled=false;ui.status('Every unit reconciled. Seal the summary board.');}};
+  const cards=reports.map((report,i)=>{const card=b(report.name,()=>select(i),{class:'mb-unit-report','aria-label':'Open '+report.name+' report'});ui.drag(card,()=>slots,target=>{if(!report.verified){select(i);ui.wrong('Verify this report in the ledger before clipping it.');return;}active=i;clip(slots.indexOf(target));});inbox.append(card);const slot=b('CLIP '+report.name,()=>clip(i),{class:'mb-summary-clip','aria-label':'Clip '+report.name+' report'});slots.push(slot);board.append(slot);return card;});
+  const stamp=b('STAMP RECONCILED',()=>{if(active===null){ui.wrong('Open a unit report first.');return;}const report=reports[active],total=report.counts.reduce((a,b)=>a+b,0);if(value!==total){ui.wrong('The ledger count does not equal on-unit + court + medical. Adjust the dial and try again.');return;}report.verified=true;cards[active].classList.add('mb-report-verified');render();ui.status(report.name+' reconciled. Drag it to its summary clip, or tap that clip.');},{class:'mb-stamp mb-stamp-accept'});
+  ui.drag(stamp,()=>[paper],()=>stamp.click());
+  const render=()=>{paper.replaceChildren();if(active===null){paper.append(text('Open the next unit report.'));return;}const report=reports[active];paper.append(n('strong',{},report.name));report.counts.forEach((count,i)=>paper.append(text(['On unit','At court','In medical'][i]+': '+count,'mb-receipt-field')));if(report.verified)paper.append(n('strong',{class:'mb-reconciled-mark'},'✓ RECONCILED'));};
+  controls.append(b('−',()=>adjust(-1),{'aria-label':'Decrease ledger count'}),knob,b('+',()=>adjust(1),{'aria-label':'Increase ledger count'}));ledger.append(paper,readout,controls,stamp);const seal=b('SEAL COUNT SUMMARY',()=>{if(done!==3){ui.wrong('Reconcile and clip every unit report first.');return;}ui.finish();},{class:'mb-seal-button'});seal.disabled=true;stage.append(inbox,ledger,board,seal);render();tick(0,3,'Unit reports clipped');
+ }
+ return true;
+}
+
+function drawPrint(pattern){
+ const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 120 140');svg.setAttribute('aria-hidden','true');svg.classList.add('mb-fingerprint');
+ for(let i=0;i<8;i++){const path=document.createElementNS(ns,'path'),inset=i*4,cx=pattern===0?55:pattern===1?68:49,cy=pattern===0?62:pattern===1?75:80;let d;if(pattern===0)d=`M ${15+inset} 127 C ${-9+inset} ${70-inset}, ${18+inset} ${6+inset}, ${cx} ${9+inset} C ${109-inset} ${3+inset}, ${132-inset} ${88-inset}, ${77-inset/3} ${129-inset}`;else if(pattern===1)d=`M ${12+inset} ${127-inset/2} C ${-4+inset} ${28+inset}, ${106-inset} ${1+inset}, ${110-inset} ${69+inset/2} C ${118-inset} ${126-inset}, ${30+inset/2} ${146-inset}, ${30+inset/2} ${cy-inset/2} C ${29+inset} ${38+inset}, ${cx} ${40+inset}, ${cx} ${79+inset/2}`;else d=`M ${12+inset} 128 C ${-5+inset} ${87-inset}, ${15+inset} ${17+inset}, ${cx} ${12+inset} C ${90-inset} ${-1+inset}, ${127-inset} ${57+inset}, ${102-inset} ${124-inset} M ${25+inset} ${128-inset} C ${24+inset} ${82-inset/2}, ${75-inset/2} ${52+inset}, ${79-inset/2} ${111-inset}`;
+ path.setAttribute('d',d);path.setAttribute('fill','none');path.setAttribute('stroke','currentColor');path.setAttribute('stroke-width','2');path.setAttribute('stroke-linecap','round');svg.append(path);}
+ return svg;
+}

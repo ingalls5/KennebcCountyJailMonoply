@@ -1,8 +1,8 @@
-import {loadPlayer,startPlayer,playerRequest} from './player-session.js?v=hands-on-1';
-import {openTask} from './tasks.js?v=hands-on-1';
-import {decorationSource} from './decorations.js?v=hands-on-1';
-import {corridorSamples,corridorTasks,corridorPoint,corridorContains,roomDoors,passageLanding} from './layout.js?v=hands-on-1';
-import {sharedMapError,cameraRoom,cameraCoverage,cameraStationFor,atCameraStation,floors,width,height,liftFor,stairsFor,stairDestination,spawnFor,taskPoint,taskPoints,corridorsFor,linksFor,passages,jobsFor,furniture,walkable} from './map.js?v=hands-on-1';
+import {loadPlayer,startPlayer,playerRequest} from './player-session.js?v=machinery-1';
+import {openTask} from './tasks.js?v=machinery-1';
+import {decorationSource} from './decorations.js?v=machinery-1';
+import {corridorSamples,corridorTasks,corridorPoint,corridorContains,roomDoors,passageLanding} from './layout.js?v=machinery-1';
+import {sharedMapError,cameraRoom,cameraCoverage,cameraStationFor,atCameraStation,floors,width,height,liftFor,stairsFor,stairDestination,spawnFor,taskPoint,taskPoints,corridorsFor,linksFor,passages,jobsFor,furniture,walkable} from './map.js?v=machinery-1';
 const $=id=>document.getElementById(id),canvas=$('building'),ctx=canvas.getContext('2d');let shift=null;const myTasks=(level=null)=>shift?shift.tasks.filter(t=>level===null||t.floor===level):[];let securityView=null;let floor=1,player={x:640,y:480},camera={x:640,y:480,scale:1},overview=true,path=[],keys=new Set(),last=0,time=0,near=null,done=new Set();const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const mapKey='night-shift-map-draft-v1',original=floors.map(f=>f.rooms.map(r=>({name:r.name,task:r.task})));
 function applyDraft(draft){if(!Array.isArray(draft)||draft.length!==4||draft.some(rows=>!Array.isArray(rows)||rows.length!==4||rows.some(r=>typeof r?.name!=='string'||!r.name.trim()||r.name.length>40||typeof r.task!=='string'||!r.task.trim()||r.task.length>80)))throw Error('Give each room and task a name.');draft.forEach((rows,i)=>rows.forEach((r,j)=>{floors[i].rooms[j].name=r.name.trim();floors[i].rooms[j].task=r.task.trim();}));}
