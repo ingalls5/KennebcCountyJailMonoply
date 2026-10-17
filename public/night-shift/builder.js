@@ -1,7 +1,7 @@
-import {taskGames} from './tasks.js?v=players-1';
-import {decorations,decorationSource} from './decorations.js?v=players-1';
-import {floors,sharedLayout,sharedMapRevision,sharedMapError} from './map.js?v=players-1';
-import {baseCorridors,defaultLayout,loadLayout,saveLayout,validateLayout,kinds,roomLinks,hallwayFixtures,corridorPoint,corridorSvg,corridorTasks,stairAt,elevatorAt,roomDoors,clearLayoutFloor,addElevatorOnFloor,editableElevatorStop,editableStairStop,removeStairStop,moveTaskStation,corridorContains} from './layout.js?v=players-1';
+import {taskGames} from './tasks.js?v=meetings-1';
+import {decorations,decorationSource} from './decorations.js?v=meetings-1';
+import {floors,sharedLayout,sharedMapRevision,sharedMapError} from './map.js?v=meetings-1';
+import {baseCorridors,defaultLayout,loadLayout,saveLayout,validateLayout,kinds,roomLinks,hallwayFixtures,corridorPoint,corridorSvg,corridorTasks,stairAt,elevatorAt,roomDoors,clearLayoutFloor,addElevatorOnFloor,editableElevatorStop,editableStairStop,removeStairStop,moveTaskStation,corridorContains} from './layout.js?v=meetings-1';
 const $=id=>document.getElementById(id),svg=$('editorCanvas'),ns='http://www.w3.org/2000/svg';let model=sharedLayout||loadLayout()||defaultLayout(floors),floor=1,selected=null,history=[],drag=null,placingDoor=false,placingDecoration=null,placingTask=null;const uid=()=>crypto.randomUUID();
 try{if(!sharedLayout&&!loadLayout()){const names=JSON.parse(localStorage.getItem('night-shift-map-draft-v1'));if(Array.isArray(names)&&names.length===4)names.forEach((rows,i)=>{if(Array.isArray(rows))rows.forEach((r,j)=>{const room=model.floors[i].rooms[j];if(room&&typeof r?.name==='string'&&typeof r.task==='string'){room.name=r.name;room.tasks[0].name=r.task;}});});}}catch{}
 let revision=sharedMapRevision;

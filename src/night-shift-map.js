@@ -1,5 +1,5 @@
 import {playerColors} from '../public/night-shift/player-rules.js';
-import {handleSession} from './night-shift-session.js';
+import {handleSession,sessionAlarm} from './night-shift-session.js';
 import {assignTasks,repairTaskPlacements} from './night-shift-assignments.js';
 import {validateLayout} from '../public/night-shift/layout.js';
 const json=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
@@ -17,7 +17,7 @@ export class NightShiftMap {
  if(data.revision!==saved.revision)return json({error:'The shared map changed on another device. Export your edits as a backup, then reload before editing the latest map.'},409);
  const next={revision:saved.revision+1,layout:validateLayout(data.layout),updatedAt:new Date().toISOString()};await this.ctx.storage.put('map',next);return json(next);
  }catch(e){return json({error:e.message||'Could not save the map.'},400);}});}
- async alarm(){if(await this.ctx.storage.get('session'))await this.ctx.storage.deleteAll();}
+ async alarm(){return this.ctx.blockConcurrencyWhile(()=>sessionAlarm(this.ctx));}
  async playerRequest(request,saved,path){const create=path==='/api/night-shift/players';if(!create&&!['/api/night-shift/player','/api/night-shift/player/complete','/api/night-shift/player/new'].includes(path))return json({error:'Player route not found.'},404);let credential=request.headers.get('Authorization')?.replace(/^Bearer /,''),player=credential?await this.ctx.storage.get('player:'+credential):null;if(!create&&!player)return json({error:'Start a shift to receive your private tasks.'},401);if(!saved.layout)return json({error:'Save the jail map before starting a shift.'},409);const layout=validateLayout(saved.layout);
  const project=()=>({id:player.id,name:player.name,color:player.color,round:player.round,mapRevision:player.mapRevision,tasks:player.tasks,completed:player.completed});
  if(request.method==='GET'&&!create&&path==='/api/night-shift/player'){if(!player.color){player.color=playerColors[crypto.getRandomValues(new Uint32Array(1))[0]%playerColors.length];await this.ctx.storage.put('player:'+credential,player);}if(player.mapRevision!==saved.revision){player.tasks=assignTasks(layout);player.completed=[];player.mapRevision=saved.revision;player.round++;await this.ctx.storage.put('player:'+credential,player);}if(repairTaskPlacements(player,layout))await this.ctx.storage.put('player:'+credential,player);return json(project());}

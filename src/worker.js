@@ -14,7 +14,7 @@ export default {
      for(let attempt=0;attempt<4;attempt++){const code=roomCode(),stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('night-shift-room:'+code));const result=await stub.fetch(new Request('https://session/session/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:data.name,code,layout:saved.layout,mapRevision:saved.revision})}));if(result.status!==409)return result;}
      return json({error:'Could not create a room. Please try again.'},503);
     }
-    const shiftRoom=url.pathname.match(/^\/api\/night-shift\/rooms\/([A-Z2-9]{6})\/(join|state|map|start|sync|begin|cancel|finish|travel|kill|end|leave)$/);
+    const shiftRoom=url.pathname.match(/^\/api\/night-shift\/rooms\/([A-Z2-9]{6})\/(join|state|map|start|sync|begin|cancel|finish|travel|kill|meeting|speak|speaker-done|vote|end|leave)$/);
     if(shiftRoom){const payload=request.method==='POST'?JSON.stringify(await body(request)):undefined;const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('night-shift-room:'+shiftRoom[1]));return await stub.fetch(new Request('https://session/session/'+shiftRoom[2],{method:request.method,headers:request.headers,...(payload!==undefined?{body:payload}:{})}));}
     if(['/api/night-shift/map','/api/night-shift/players','/api/night-shift/player','/api/night-shift/player/complete','/api/night-shift/player/new'].includes(url.pathname)){const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('shared-facility'));return await stub.fetch(request);}
     if(url.pathname==='/api/rooms'&&request.method==='POST'){

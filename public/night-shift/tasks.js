@@ -1,9 +1,9 @@
-import {buildSabotage} from './task-sabotage.js?v=players-1';
-import {sabotageFor,poweredGames} from './sabotage-rules.js?v=players-1';
-import {taskNode,createTaskKit} from './task-kit.js?v=players-1';
-import {buildEquipment} from './task-machinery-a.js?v=players-1';
-import {buildInspection} from './task-machinery-b.js?v=players-1';
-import {buildPhysical} from './task-machinery-c.js?v=players-1';
+import {buildSabotage} from './task-sabotage.js?v=meetings-1';
+import {sabotageFor,poweredGames} from './sabotage-rules.js?v=meetings-1';
+import {taskNode,createTaskKit} from './task-kit.js?v=meetings-1';
+import {buildEquipment} from './task-machinery-a.js?v=meetings-1';
+import {buildInspection} from './task-machinery-b.js?v=meetings-1';
+import {buildPhysical} from './task-machinery-c.js?v=meetings-1';
 export const taskGames=[{id:'auto',name:'Automatic'},{id:'wires',name:'Reconnect wiring'},{id:'records',name:'Verify records'},{id:'count',name:'Complete a head count'},{id:'sort',name:'Sort supplies'},{id:'sequence',name:'Restart equipment'},{id:'calibrate',name:'Calibrate equipment'},{id:'keypad',name:'Unlock access panel'},{id:'memory',name:'Match property tags'},{id:'order',name:'File booking folders'},{id:'tray',name:'Prepare meal trays'},{id:'balance',name:'Verify supply weight'},{id:'contraband',name:'Inspect for contraband'},{id:'timing',name:'Stabilize a gauge'},{id:'fingerprint',name:'Match identification scan'},{id:'tally',name:'Reconcile unit counts'},{id:'radio',name:'Tune the radio'},{id:'valves',name:'Seal leaking valves'},{id:'clean',name:'Clean the station'},{id:'route',name:'Trace inspection route'},{id:'crates',name:'Restock shelves'}];
 export function gameForTask(task){if(task.game&&task.game!=='auto'&&taskGames.some(g=>g.id===task.game))return task.game;const name=task.name.toLowerCase();for(const [pattern,game]of [[/radio|channel/,'radio'],[/clean|wipe|saniti/,'clean'],[/contraband|search/,'contraband'],[/fingerprint|identif|scan/,'fingerprint'],[/keypad|access|unlock/,'keypad'],[/meal|tray|cook/,'tray'],[/weight|weigh|scale/,'balance'],[/leak|valve/,'valves'],[/crate/,'crates'],[/count|round|inmate/,'count'],[/file|record|booking|intake|log|report/,'records'],[/laundry|sort|stock|suppl|inventory|meal|food|kitchen/,'sort'],[/wire|breaker|power|camera|electri/,'wires'],[/pressure|vent|inspect|check|calibr/,'calibrate'],[/restart|reset|machine|generator/,'sequence']])if(pattern.test(name))return game;let hash=0;for(const c of name)hash=(hash*31+c.charCodeAt(0))>>>0;return taskGames[1+hash%(taskGames.length-1)].id;}
 let activeTask=null;

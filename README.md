@@ -65,7 +65,7 @@ Run `npm run test:online-browser` against `npm run dev` for four independent bro
 
 Open `/clue-preview` to inspect the board without creating players, starting a case, or joining a room. The draft uses the game’s room layout, doors, and shared room illustrations. Its nine numbered rooms can be selected on the board or from the room list, and the board can be enlarged on small screens. Previewing never reads or changes game saves or makes room-service requests. Links are available from the homepage and Clue setup.
 
-## Night Shift sabotage groups
+## Night Shift groups and meetings
 
 At `/night-shift-setup`, create a game and share its six-character code, or join with a code. A host starts with three to twelve players on their own devices. One killer is chosen on the server; only that player's response contains their role and sabotage assignments. Officers receive six private tasks. Solo practice remains available.
 
@@ -73,14 +73,17 @@ Everyone uses the same visible station locations, and nearby players see the sam
 
 Six physical sabotage mini-games cut power, disrupt radios, destabilize equipment, jam doors, corrupt receipts, or disconnect cameras. One sabotage may be active at a time, with a 45-second cooldown and a short grace period after repairs. Power pauses powered tasks; radio and equipment settings drift; records require an archive check; jammed doors block movement until a nearby manual release is repaired; disabled cameras lose their feed. Completed assignments are retained. Repairs use ordinary mini-games at the original station (or either side of a locked door).
 
-Each group keeps a snapshot of the shared jail map. Map-builder edits affect future groups. The existing `NIGHT_SHIFT_MAP` binding stores group rooms under separate Durable Object identities, with server-authorized movement, station work, and tunnel travel. Reconnecting restores the seat, role, and assignments and cancels abandoned station work. Idle groups expire after 24 hours; End game deletes that group's data and returns all devices home without deleting the shared map. Players have random distinct colors, black uniforms, and duty belts. Killers can eliminate nearby officers with the Kill button or K, subject to a server-enforced cooldown and wall checks. Fallen officers can finish their private tasks as ghosts. Meetings, voting, and match victory remain future mechanics.
+Each group keeps a snapshot of the shared jail map. Map-builder edits affect future groups. The existing `NIGHT_SHIFT_MAP` binding stores group rooms under separate Durable Object identities, with server-authorized movement, station work, and tunnel travel. Reconnecting restores the seat, role, and assignments and cancels abandoned station work. Idle groups expire after 24 hours; End game deletes that group's data and returns all devices home without deleting the shared map. Players have random distinct colors, black uniforms, and duty belts. Killers can eliminate nearby officers with the Kill button or K, subject to a server-enforced cooldown and wall checks. Fallen officers can finish their private tasks as ghosts. Three-minute rounds automatically bring everyone to Briefing for a typed meeting. Living players speak in a clockwise order, then everyone must vote for a player or Skip. There is no discussion or voting countdown; disconnected living players must reconnect to submit their turn and vote. A player needs more than half of all eligible votes to be escorted through the Sallyport doors by Goodchild. Ties and no majority remove nobody. The next round starts after the shared result animation. Living players can also call a meeting at the red button in Briefing; the caller speaks first. Eliminated players spectate. Round timers and result transitions use Durable Object alarms and are checked on reconnect; votes and chat persist on the server. Match victory remains a future mechanic.
 
 Focused checks (with `npm run dev` running locally):
 
 ```bash
-node --test tests/night-shift-sabotage.test.mjs
+node --test tests/night-shift-sabotage.test.mjs tests/night-shift-meetings.test.mjs
 node tests/night-shift-sabotage-browser.mjs
 node tests/night-shift-group-browser.mjs
+TEST_TIMED=1 node tests/night-shift-meetings-browser.mjs
 ```
 
 The group browser check creates three isolated seats, exercises shared effects and repair, reconnects, verifies killer-only tunnel travel, tests actual door collisions and camera outages, and ends the group. It changes and restores only the local development map.
+
+The meeting browser check uses four devices to verify typed turns, reconnecting, private votes, a majority escort, Skip, spectators, and the actual three-minute round timer. It changes and restores only the local development map. Run map-changing browser checks sequentially.
