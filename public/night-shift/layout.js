@@ -1,5 +1,5 @@
-import {taskGames} from './tasks.js?v=floor-grates-1';
-import {decorations} from './decorations.js?v=floor-grates-1';
+import {taskGames} from './tasks.js?v=hands-on-1';
+import {decorations} from './decorations.js?v=hands-on-1';
 export const layoutKey='night-shift-layout-v2';
 export const baseCorridors=[{x:80,y:430,w:1120,h:100},{x:600,y:80,w:80,h:800}];
 export const kinds=['blank','intake','booking','medical','sallyport','cells','dayroom','yard','control','classroom','staff','utilities','laundry','storage','evidence'];
