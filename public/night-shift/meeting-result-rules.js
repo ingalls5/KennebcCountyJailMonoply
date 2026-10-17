@@ -1,21 +1,21 @@
 export const escortScenes=[
- {id:'clipboard',caption:'Goodchild insists on finishing the paperwork first.'},
- {id:'coffee',caption:'One last sip. Then it is time to go.'},
- {id:'wrong-door',caption:'Goodchild takes the scenic route. Other door!'},
- {id:'shuffle',caption:'A little Sallyport shuffle on the way out.'},
- {id:'paper-trail',caption:'Goodchild brought the paperwork. All of it.'},
- {id:'flashlight',caption:'Goodchild checks the route with a very serious flashlight inspection.'},
- {id:'keys',caption:'Goodchild has every key except the one needed. Found it!'},
- {id:'radio',caption:'Goodchild calls in the slowest transport of the shift.'},
- {id:'salute',caption:'Goodchild makes this a full ceremonial send-off.'},
- {id:'red-carpet',caption:'A VIP exit. Goodchild even rolls out the red carpet.'}
+ {id:'clipboard',caption:'Goodchild unrolls a wall of paperwork before the escort.'},
+ {id:'coffee',caption:'A spilled coffee turns the escort into a cleanup operation.'},
+ {id:'wrong-door',caption:'Goodchild leads the player to the supply closet, then doubles back.'},
+ {id:'shuffle',caption:'Goodchild and the player dance, spin, and shuffle to the exit.'},
+ {id:'paper-trail',caption:'Goodchild and the player chase a paperwork tornado.'},
+ {id:'flashlight',caption:'A blackout sends Goodchild searching for the exit by flashlight.'},
+ {id:'keys',caption:'Keys scatter across the Sallyport. Goodchild scrambles to recover them.'},
+ {id:'radio',caption:'Goodchild radios for a cart, loads the player, and wheels them out.'},
+ {id:'salute',caption:'A salute turns into a synchronized high-step parade.'},
+ {id:'red-carpet',caption:'Goodchild unrolls a red carpet and invites the player down it.'}
 ];
 export const clearScenes=[
- {id:'all-clear',caption:'Goodchild checks the empty doorway. Everybody stays!'},
- {id:'coffee-break',caption:'No escort? Goodchild finally gets a coffee break.'},
- {id:'case-closed',caption:'Goodchild stamps the paperwork: BACK TO WORK.'},
- {id:'victory-dance',caption:'No escort today. Goodchild celebrates with a tiny victory dance.'},
- {id:'donut-break',caption:'Everybody stays. Goodchild has a very important donut to inspect.'}
+ {id:'all-clear',caption:'Goodchild checks the empty exit, then searches behind a chair.'},
+ {id:'coffee-break',caption:'Goodchild wrestles with the coffee machine and gets an oversized cup.'},
+ {id:'case-closed',caption:'A giant stamp sends approved paperwork flying.'},
+ {id:'victory-dance',caption:'Goodchild dances and spins under a mirror ball and confetti.'},
+ {id:'donut-break',caption:'A runaway donut rolls around Briefing with Goodchild in pursuit.'}
 ];
 export function chooseMeetingScene(ejected,previous){const pool=(ejected?escortScenes:clearScenes).filter(s=>s.id!==previous);return pool[crypto.getRandomValues(new Uint32Array(1))[0]%pool.length].id;}
 export function sceneCaption(id){return [...escortScenes,...clearScenes].find(s=>s.id===id)?.caption||'Goodchild is handling the meeting result.';}

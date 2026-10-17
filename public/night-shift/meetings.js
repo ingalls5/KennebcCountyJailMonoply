@@ -1,6 +1,6 @@
-import {drawMeetingResult} from './meeting-results.js?v=meetings-3';
-import {sceneCaption} from './meeting-result-rules.js?v=meetings-3';
-import {drawOfficer} from './avatars.js?v=meetings-3';
+import {drawMeetingResult} from './meeting-results.js?v=cinema-1';
+import {sceneCaption} from './meeting-result-rules.js?v=cinema-1';
+import {drawOfficer} from './avatars.js?v=cinema-1';
 const $=id=>document.getElementById(id),nameOf=(state,id)=>state.members.find(p=>p.id===id)?.name||'Officer';
 export function createMeetingUI({send,interrupt,endGame}){
  let state=null,busy=false,signature='',chatSignature='',viewedMeeting=null,ballotId=null;const dialog=$('meetingDialog');dialog.oncancel=e=>e.preventDefault();$('meetingEndGame').onclick=endGame;
@@ -25,7 +25,7 @@ export function createMeetingUI({send,interrupt,endGame}){
  m.order.forEach((id,i)=>{const p=state.members.find(p=>p.id===id),a=i/m.order.length*Math.PI*2-Math.PI/2,x=280+Math.cos(a)*207,y=135+Math.sin(a)*94;drawOfficer(ctx,{x,y,color:p.color,scale:.7});ctx.fillStyle=state.phase==='discussion'&&i===m.turn?'#f1cc83':'#d9e0d9';ctx.font=(i===m.turn?'700 ':'500 ')+'12px system-ui';ctx.fillText(p.name,x,y+32,128);if(state.phase==='discussion'&&i===m.turn){ctx.strokeStyle='#f1cc83';ctx.beginPath();ctx.arc(x,y,29,0,Math.PI*2);ctx.stroke();}});
  }
  function drawEscort(now){drawMeetingResult($('escortCanvas'),state,now);}
- function tick(){if(!state)return;const now=Date.now()+(state.serverTime-state.receivedAt);$('roundClock').textContent=state.phase==='round'?'Round '+state.round+' · '+formatTime(Math.max(0,state.roundEndsAt-now)):state.phase==='discussion'?'Meeting · discussion':state.phase==='voting'?'Meeting · voting':'Preparing next round';if(!dialog.open)return;if(state.phase==='escort'){drawEscort(now);$('nextRoundStatus').textContent='Next three-minute round begins in '+Math.max(0,Math.ceil((state.meeting.result.endsAt-now)/1000))+'s.';}else drawCircle();}
+ function tick(){if(!state)return;const now=Date.now()+(state.serverTime-state.receivedAt);$('roundClock').textContent=state.phase==='round'?'Round '+state.round+' · '+formatTime(Math.max(0,state.roundEndsAt-now)):state.phase==='discussion'?'Meeting · discussion':state.phase==='voting'?'Meeting · voting':'Preparing next round';if(!dialog.open)return;if(state.phase==='escort'){drawEscort(now);$('nextRoundStatus').textContent=state.preview?'Animation preview · Replay or choose Next.':'Next three-minute round begins in '+Math.max(0,Math.ceil((state.meeting.result.endsAt-now)/1000))+'s.';}else drawCircle();}
  return {render(value){render({...value,receivedAt:Date.now()});},tick};
 }
 function formatTime(ms){const seconds=Math.ceil(ms/1000);return Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');}

@@ -87,3 +87,5 @@ TEST_TIMED=1 node tests/night-shift-meetings-browser.mjs
 The group browser check creates three isolated seats, exercises shared effects and repair, reconnects, verifies killer-only tunnel travel, tests actual door collisions and camera outages, and ends the group. It changes and restores only the local development map.
 
 The meeting browser check uses four devices to verify typed turns, reconnecting, private votes, a majority escort, Skip, spectators, and the actual three-minute round timer. It changes and restores only the local development map. Run map-changing browser checks sequentially.
+
+Goodchild result scenes use separate 14-second character timelines with posed arms and legs, moving scenery, and staged actions. The standalone `/night-shift-meeting-demo#animationGallery` selector previews all 15 sequences with Replay and Next controls; group games still choose a shared random scene on the server.
