@@ -1,8 +1,9 @@
+import {installMeetingDemo} from './night-shift-demo-fixture.mjs';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright-core';
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']}),page=await browser.newPage({viewport:{width:1120,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
 try{
- await page.goto('http://127.0.0.1:8791/night-shift-meeting-demo');
+ await installMeetingDemo(page);await page.goto('http://127.0.0.1:8791/night-shift-meeting-demo');
  const results=await page.evaluate(async()=>{
   const {drawMeetingResult}=await import('/night-shift/meeting-results.js?v=cinema-1'),{escortScenes,clearScenes,chooseMeetingScene}=await import('/night-shift/meeting-result-rules.js?v=cinema-1');document.body.replaceChildren();document.body.style.cssText='margin:16px;display:block;background:#11191e;';const results=[];
   for(const [i,scene]of [...escortScenes,...clearScenes].entries()){
