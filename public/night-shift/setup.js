@@ -1,7 +1,7 @@
-import {roomSeat,roomRequest,createRoom,joinRoom,clearRoom} from './room-session.js?v=meetings-1';
-import {loadPlayer,startPlayer} from './player-session.js?v=meetings-1';
-import {playerColors} from './player-rules.js?v=meetings-1';
-import {drawOfficer} from './avatars.js?v=meetings-1';
+import {roomSeat,roomRequest,createRoom,joinRoom,clearRoom} from './room-session.js?v=meetings-2';
+import {loadPlayer,startPlayer} from './player-session.js?v=meetings-2';
+import {playerColors} from './player-rules.js?v=meetings-2';
+import {drawOfficer} from './avatars.js?v=meetings-2';
 const $=id=>document.getElementById(id),ctx=$('officerPreview').getContext('2d');let mode='create',color=playerColors[crypto.getRandomValues(new Uint32Array(1))[0]%playerColors.length],busy=false;
 function paint(){ctx.clearRect(0,0,260,270);const glow=ctx.createRadialGradient(130,136,15,130,136,123);glow.addColorStop(0,color+'38');glow.addColorStop(1,color+'00');ctx.fillStyle=glow;ctx.fillRect(0,0,260,270);drawOfficer(ctx,{x:130,y:134,color,scale:4});}
 function chooseMode(value){mode=value;for(const button of document.querySelectorAll('[data-mode]'))button.setAttribute('aria-pressed',String(button.dataset.mode===mode));$('codeField').hidden=mode!=='join';$('menuCode').required=mode==='join';$('enterGame').textContent=mode==='create'?'Create game & get code':mode==='join'?'Join game':'Start new practice shift';$('modeDescription').textContent=mode==='create'?'Create a private room. You’ll receive a six-character code to share with the other players.':mode==='join'?'Enter the six-character code from your host. Your seat and color will be saved on this device.':'Explore the jail and work on six tasks on your own.';$('setupStatus').textContent='';}

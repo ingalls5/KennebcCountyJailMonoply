@@ -1,3 +1,4 @@
+import {chooseMeetingScene} from '../public/night-shift/meeting-result-rules.js';
 import {center,distance,worldSpawn,worldWalkable} from '../public/night-shift/world.js';
 import {roomDoors} from '../public/night-shift/layout.js';
 import {killStartGrace} from '../public/night-shift/player-rules.js';
@@ -37,11 +38,13 @@ export function meetingAction(room,member,path,data,now){
  }else if(path==='speaker-done'){
   if(m.done.includes(member.id))return;if(room.phase!=='discussion'||m.order[m.turn]!==member.id)fail(403,'Wait for your speaking turn.');m.done.push(member.id);m.turn++;if(m.turn>=m.order.length)room.phase='voting';
  }else if(path==='vote'){
-  const target=data.targetId;if(target!=='skip'&&!m.order.includes(target))fail(400,'Choose a player or Skip.');if(Object.hasOwn(m.votes,member.id)){if(m.votes[member.id]===target)return;fail(409,'Your vote is already submitted.');}if(room.phase!=='voting')fail(409,'Everyone must finish speaking before voting.');m.votes[member.id]=target;
-  if(Object.keys(m.votes).length===m.order.length){
-   const counts={};for(const id of Object.values(m.votes))counts[id]=(counts[id]||0)+1;const ejectedId=m.order.find(id=>(counts[id]||0)>m.order.length/2)||null;
-   m.result={ejectedId,counts,votes:{...m.votes},startedAt:now,endsAt:now+escortDuration,route:ejectedId?escortRoute(room.layout):null};room.phase='escort';if(ejectedId){const target=room.members.find(p=>p.id===ejectedId);target.alive=false;target.ejected=true;target.work=null;}
-  }
- }else fail(404,'Meeting action not found.');room.revision++;
+  const target=data.targetId;if(target!=='skip'&&!m.order.includes(target))fail(400,'Choose a player or Skip.');if(Object.hasOwn(m.votes,member.id)){if(m.votes[member.id]===target)return;fail(409,'Your vote is already submitted.');}if(!['discussion','voting'].includes(room.phase))fail(409,'Voting is closed for this meeting.');m.votes[member.id]=target;
+ }else fail(404,'Meeting action not found.');resolveMeeting(room,now);room.revision++;
 }
 export function nextSessionAlarm(room,now=Date.now()){if(room.status==='playing'&&room.phase==='round')return Math.min(room.expiresAt||now+86400000,room.roundEndsAt);if(room.phase==='escort')return Math.min(room.expiresAt||now+86400000,room.meeting.result.endsAt);return room.expiresAt||now+86400000;}
+
+function resolveMeeting(room,now){const m=room.meeting;if(!['discussion','voting'].includes(room.phase)||m.done.length!==m.order.length||Object.keys(m.votes).length!==m.order.length)return;
+ const counts={};for(const id of Object.values(m.votes))counts[id]=(counts[id]||0)+1;const ejectedId=m.order.find(id=>(counts[id]||0)>m.order.length/2)||null;
+ const scene=chooseMeetingScene(!!ejectedId,room.lastMeetingScene);room.lastMeetingScene=scene;
+ m.result={ejectedId,counts,votes:{...m.votes},scene,seed:crypto.getRandomValues(new Uint32Array(1))[0],startedAt:now,endsAt:now+escortDuration,route:ejectedId?escortRoute(room.layout):null};room.phase='escort';if(ejectedId){const target=room.members.find(p=>p.id===ejectedId);target.alive=false;target.ejected=true;target.work=null;}
+}
