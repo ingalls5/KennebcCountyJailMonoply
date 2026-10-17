@@ -30,7 +30,7 @@ export function meetingAction(room,member,path,data,now){
  if(room.status!=='playing')fail(409,'Wait for the game to start.');
  if(path==='meeting'){
   if(room.phase!=='round')fail(409,'A meeting is already underway.');if(member.alive===false)fail(403,'Only living players can call a meeting.');if(data.round!==room.round)fail(409,'This round changed. Reconnect before calling a meeting.');
-  const place=meetingLocation(room.layout);if(place.floor!==member.position.floor||distance(place,member.position)>85||place.room&&(member.position.x<place.room.x||member.position.x>place.room.x+place.room.w||member.position.y<place.room.y||member.position.y>place.room.y+place.room.h))fail(403,'Walk to the meeting button in the briefing room.');startMeeting(room,member.id,now);return;
+  const place=meetingLocation(room.layout);if(place.floor!==member.position.floor||(place.room?member.position.x<place.room.x||member.position.x>place.room.x+place.room.w||member.position.y<place.room.y||member.position.y>place.room.y+place.room.h:distance(place,member.position)>85))fail(403,'Walk to the meeting button in the briefing room.');startMeeting(room,member.id,now);return;
  }
  const m=room.meeting;if(!m||data.meetingId!==m.id)fail(409,'This meeting changed. Reconnect to the current meeting.');if(!m.order.includes(member.id)||member.alive===false)fail(403,'Eliminated players can watch, but cannot speak or vote.');
  if(path==='speak'){

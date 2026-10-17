@@ -1,5 +1,5 @@
-import {roomSeat,roomRequest} from './room-session.js?v=cinema-1';
-import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=cinema-1';
+import {roomSeat,roomRequest} from './room-session.js?v=briefing-button-2';
+import {validateLayout,loadLayout,baseCorridors,roomLinks,roomWalls,hallwayFixtures,stairAt,corridorContains,corridorTasks,elevatorAt} from './layout.js?v=briefing-button-2';
 export const width=1280,height=960;
 const room=(name,x,y,color,kind,task)=>({name,x,y,w:490,h:310,color,kind,task});
 export const floors=[

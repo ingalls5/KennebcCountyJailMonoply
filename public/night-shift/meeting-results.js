@@ -1,4 +1,4 @@
-import {sceneCaption} from './meeting-result-rules.js?v=cinema-1';
+import {sceneCaption} from './meeting-result-rules.js?v=briefing-button-2';
 const clamp=x=>Math.max(0,Math.min(1,x)),ease=x=>{const p=clamp(x);return p*p*(3-2*p);},part=(t,a,b)=>ease((t-a)/(b-a));
 const gold='#e1bd73',ink='#102029';
 function rect(c,x,y,w,h,color,r=0){c.fillStyle=color;c.beginPath();c.roundRect(x,y,w,h,r);c.fill();}
