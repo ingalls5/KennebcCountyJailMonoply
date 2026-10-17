@@ -1,4 +1,4 @@
-import {sabotageFor} from './sabotage-rules.js?v=meetings-2';
+import {sabotageFor} from './sabotage-rules.js?v=meetings-3';
 export function buildSabotage(type,ui){
  const definition=sabotageFor(type);if(!definition)return false;
  const {stage,node:n,button:b,listen,progress,status,wrong,drag,dial,finish}=ui;

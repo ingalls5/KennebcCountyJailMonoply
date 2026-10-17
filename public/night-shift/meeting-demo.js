@@ -1,6 +1,6 @@
-import {chooseMeetingScene} from './meeting-result-rules.js?v=meetings-2';
-import {createMeetingUI} from './meetings.js?v=meetings-2';
-import {playerColors} from './player-rules.js?v=meetings-2';
+import {chooseMeetingScene} from './meeting-result-rules.js?v=meetings-3';
+import {createMeetingUI} from './meetings.js?v=meetings-3';
+import {playerColors} from './player-rules.js?v=meetings-3';
 const $=id=>document.getElementById(id);let state=null,generation=0,scheduledTurn=null,lastDemoScene=null;const votes={};
 const ui=createMeetingUI({send:async(action,data)=>{const m=state.meeting;if(action==='speak'){m.messages.push({id:data.id,playerId:'you',message:data.message,at:Date.now()});}else if(action==='speaker-done'){m.done.push('you');m.turn++;if(m.turn===m.order.length)state.phase='voting';}else if(action==='vote'){votes.you=data.targetId;m.myVote=data.targetId;m.voted=['you'];const run=generation;state.members.filter(p=>p.id!=='you').forEach((p,i)=>setTimeout(()=>{if(run!==generation)return;votes[p.id]=data.targetId;m.voted=Object.keys(votes);render();},900*(i+1)));}render();automate();},interrupt:()=>{},endGame:reset});
 function render(){if(['discussion','voting'].includes(state.phase)&&state.meeting?.done.length===state.meeting.order.length&&state.meeting.voted.length===state.meeting.order.length){result();return;}state.serverTime=Date.now();ui.render(structuredClone(state));}

@@ -1,6 +1,6 @@
-import {drawMeetingResult} from './meeting-results.js?v=meetings-2';
-import {sceneCaption} from './meeting-result-rules.js?v=meetings-2';
-import {drawOfficer} from './avatars.js?v=meetings-2';
+import {drawMeetingResult} from './meeting-results.js?v=meetings-3';
+import {sceneCaption} from './meeting-result-rules.js?v=meetings-3';
+import {drawOfficer} from './avatars.js?v=meetings-3';
 const $=id=>document.getElementById(id),nameOf=(state,id)=>state.members.find(p=>p.id===id)?.name||'Officer';
 export function createMeetingUI({send,interrupt,endGame}){
  let state=null,busy=false,signature='',chatSignature='',viewedMeeting=null,ballotId=null;const dialog=$('meetingDialog');dialog.oncancel=e=>e.preventDefault();$('meetingEndGame').onclick=endGame;
