@@ -1,7 +1,7 @@
-@import url('./task-sabotage.css?v=sabotage-1');
-@import url('./task-machinery-a.css?v=sabotage-1');
-@import url('./task-machinery-b.css?v=sabotage-1');
-@import url('./task-machinery-c.css?v=sabotage-1');
+@import url('./task-sabotage.css?v=players-1');
+@import url('./task-machinery-a.css?v=players-1');
+@import url('./task-machinery-b.css?v=players-1');
+@import url('./task-machinery-c.css?v=players-1');
 
 #taskDialog{--machine-ink:#e4e9dc;--machine-muted:#aec3bb;--machine-gold:#d6be83;--machine-green:#a3c99e;--machine-edge:#6e8985;box-sizing:border-box;width:min(790px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:92dvh;padding:26px;color:var(--machine-ink);background:linear-gradient(135deg,#263c43,#132831 75%);border:2px solid var(--machine-edge);border-radius:16px;box-shadow:0 30px 100px #000a;overflow:auto;font:14px/1.5 system-ui,sans-serif;overscroll-behavior:contain}
 #taskDialog *{box-sizing:border-box}

@@ -1,4 +1,4 @@
-import {roomWalls,roomLinks,roomDoors,corridorContains,hallwayFixtures,stairAt,elevatorAt,passageLanding} from './layout.js?v=sabotage-1';
+import {roomWalls,roomLinks,roomDoors,corridorContains,hallwayFixtures,stairAt,elevatorAt,passageLanding} from './layout.js?v=players-1';
 export const center=r=>({x:r.x+r.w/2,y:r.y+r.h/2});
 export const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const liftAt=(layout,floor)=>layout.elevator?.floors.includes(floor)?elevatorAt(layout.elevator,layout.floors[floor].corridors,floor):null;

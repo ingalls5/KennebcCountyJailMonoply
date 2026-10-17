@@ -1,3 +1,4 @@
+import {playerColors,killRange,killCooldown,killStartGrace} from '../public/night-shift/player-rules.js';
 import {taskGames} from '../public/night-shift/tasks.js';
 import {sabotages,sabotageFor,sabotageCooldown,poweredGames} from '../public/night-shift/sabotage-rules.js';
 import {roomTaskLocation,taskObstacles} from './night-shift-assignments.js';
@@ -7,7 +8,8 @@ const json=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control
 const fail=(status,message)=>{throw Object.assign(Error(message),{status});};
 const shuffle=items=>{const a=[...items];for(let i=a.length-1;i>0;i--){const j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');
-const colors=['#65a5b8','#cc8f80','#c6b674','#8fb698','#ad99be','#ce9d68'];
+const colors=playerColors;
+const newColor=members=>shuffle(colors.filter(c=>!members.some(p=>p.color===c)))[0];
 const cleanName=data=>{const name=typeof data.name==='string'?data.name.trim():'';if(!name||name.length>24)fail(400,'Enter a name with 1 to 24 characters.');return name;};
 export function createStations(layout){
  const rooms=shuffle(layout.floors.flatMap((f,floor)=>f.rooms.map(room=>({room,floor,point:roomTaskLocation(room,f,Math.random,taskObstacles(layout,floor))}))).filter(r=>r.point));if(!rooms.length)fail(400,'Add accessible rooms before creating a game.');
@@ -18,9 +20,9 @@ export function createStations(layout){
 function personalTasks(stations){const groups=shuffle([0,1,2,3]).map(f=>shuffle(stations.filter(s=>s.floor===f))),chosen=[];for(let i=0;chosen.length<6;i++){const list=groups[i%4],pick=list.find(s=>!chosen.includes(s)&&!chosen.some(t=>t.game===s.game))||list.find(s=>!chosen.includes(s));if(pick)chosen.push(pick);if(i>100)fail(400,'Add more task stations before starting.');}return chosen.map(s=>({...s,stationId:s.id,id:crypto.randomUUID()}));}
 const publicEffect=s=>s?{id:s.id,type:s.type,stationId:s.stationId,floor:s.floor,roomName:s.roomName,doors:s.doors||[],startedAt:s.startedAt}:null;
 export function projectSession(room,member,now=Date.now()){
- return {code:room.code,status:room.status,round:room.round,revision:room.revision,serverTime:now,host:room.host===member.id,mapRevision:room.mapRevision,stations:room.stations,sabotage:publicEffect(room.sabotage),
-  members:room.members.map(p=>({id:p.id,name:p.name,color:p.color,position:p.position,working:!!p.work&&p.work.expiresAt>now,online:now-p.seenAt<15000})),
-  me:{id:member.id,name:member.name,role:member.role,position:member.position,tasks:member.tasks,completed:member.completed,sabotageCount:member.sabotageCount,cooldownUntil:member.cooldownUntil,workId:member.work?.id||null},
+ return {code:room.code,status:room.status,round:room.round,revision:room.revision,serverTime:now,host:room.host===member.id,mapRevision:room.mapRevision,stations:room.stations,sabotage:publicEffect(room.sabotage),bodies:room.bodies||[],
+  members:room.members.map(p=>({id:p.id,name:p.name,color:p.color,alive:p.alive!==false,position:p.position,working:p.alive!==false&&!!p.work&&p.work.expiresAt>now,online:now-p.seenAt<15000})),
+  me:{id:member.id,name:member.name,role:member.role,color:member.color,alive:member.alive!==false,killReadyAt:member.role==='killer'?member.killReadyAt||0:0,position:member.position,tasks:member.tasks,completed:member.completed,sabotageCount:member.sabotageCount,cooldownUntil:member.cooldownUntil,workId:member.work?.id||null},
   };
 }
 export async function handleSession(ctx,request){
@@ -28,13 +30,14 @@ export async function handleSession(ctx,request){
   const path=new URL(request.url).pathname.slice('/session/'.length),now=Date.now();const data=request.method==='POST'?(path==='init'?await request.json():await smallBody(request)):null;let room=await ctx.storage.get('session');
   if(path==='init'&&request.method==='POST'){
    if(room)fail(409,'That room code is already in use.');const layout=validateLayout(data.layout),name=cleanName(data);worldSpawn(layout);
-   const member={id:crypto.randomUUID(),token:token(),name,color:colors[0],position:worldSpawn(layout),role:null,tasks:[],completed:[],sabotageCount:0,cooldownUntil:0,seenAt:now,lastMoveAt:now,work:null};
-   room={code:data.code,mapRevision:data.mapRevision,layout,host:member.id,status:'lobby',round:0,revision:1,members:[member],stations:createStations(layout),sabotage:null,nextSabotageAt:0};await save(ctx,room);return json({...projectSession(room,member,now),token:member.token},201);
+   const member={id:crypto.randomUUID(),token:token(),name,color:newColor([]),alive:true,killReadyAt:0,position:worldSpawn(layout),role:null,tasks:[],completed:[],sabotageCount:0,cooldownUntil:0,seenAt:now,lastMoveAt:now,work:null};
+   room={code:data.code,mapRevision:data.mapRevision,layout,host:member.id,status:'lobby',round:0,revision:1,members:[member],stations:createStations(layout),bodies:[],sabotage:null,nextSabotageAt:0};await save(ctx,room);return json({...projectSession(room,member,now),token:member.token},201);
   }
   if(!room)fail(404,'This game has ended or the room code is incorrect.');
+  let migrated=false;if(!Array.isArray(room.bodies)){room.bodies=[];migrated=true;}for(const p of room.members){if(typeof p.alive!=='boolean'){p.alive=true;migrated=true;}if(typeof p.killReadyAt!=='number'){p.killReadyAt=room.status==='playing'&&p.role==='killer'?now+killStartGrace:0;migrated=true;}}if(migrated)await save(ctx,room);
   if(path==='join'&&request.method==='POST'){
-   if(room.status!=='lobby')fail(409,'This game has started. Reconnect using the device you joined with.');if(room.members.length>=6)fail(409,'This room already has six players.');const name=cleanName(data);if(room.members.some(p=>p.name.toLowerCase()===name.toLowerCase()))fail(400,'Choose a different player name.');
-   const member={id:crypto.randomUUID(),token:token(),name,color:colors.find(c=>!room.members.some(p=>p.color===c)),position:worldSpawn(room.layout),role:null,tasks:[],completed:[],sabotageCount:0,cooldownUntil:0,seenAt:now,lastMoveAt:now,work:null};room.members.push(member);room.revision++;await save(ctx,room);return json({...projectSession(room,member,now),token:member.token},201);
+   if(room.status!=='lobby')fail(409,'This game has started. Reconnect using the device you joined with.');if(room.members.length>=12)fail(409,'This room already has twelve players.');const name=cleanName(data);if(room.members.some(p=>p.name.toLowerCase()===name.toLowerCase()))fail(400,'Choose a different player name.');
+   const member={id:crypto.randomUUID(),token:token(),name,color:newColor(room.members),alive:true,killReadyAt:0,position:worldSpawn(room.layout),role:null,tasks:[],completed:[],sabotageCount:0,cooldownUntil:0,seenAt:now,lastMoveAt:now,work:null};room.members.push(member);room.revision++;await save(ctx,room);return json({...projectSession(room,member,now),token:member.token},201);
   }
   const credential=request.headers.get('Authorization')?.replace(/^Bearer /,''),member=room.members.find(p=>p.token===credential);if(!member)fail(401,'Your room seat could not be verified. Rejoin the room.');
   if(path==='map'&&request.method==='GET')return json({layout:room.layout,revision:room.mapRevision});
@@ -48,8 +51,8 @@ export async function handleSession(ctx,request){
   }
   if(path==='start'){
    if(room.host!==member.id)fail(403,'Only the host can start this game.');if(room.status!=='lobby')fail(409,'The game has already started.');if(room.members.length<3)fail(400,'At least three players must join before starting.');
-   const killer=shuffle(room.members)[0].id;room.status='playing';room.round++;room.sabotage=null;room.nextSabotageAt=now+10000;
-   room.members.forEach(p=>{p.role=p.id===killer?'killer':'officer';p.position=worldSpawn(room.layout);p.lastMoveAt=now;p.work=null;p.completed=[];p.cooldownUntil=room.nextSabotageAt;p.sabotageCount=0;p.tasks=p.role==='killer'?sabotages.map(s=>{const station=room.stations.find(t=>t.game===s.game);return {...station,stationId:station.id,id:crypto.randomUUID(),sabotageType:s.id};}):personalTasks(room.stations);});room.revision++;
+   const killer=shuffle(room.members)[0].id;room.status='playing';room.round++;room.bodies=[];room.sabotage=null;room.nextSabotageAt=now+10000;
+   room.members.forEach(p=>{p.role=p.id===killer?'killer':'officer';p.alive=true;p.killReadyAt=p.role==='killer'?now+killStartGrace:0;p.lastKillAction=null;p.position=worldSpawn(room.layout);p.lastMoveAt=now;p.work=null;p.completed=[];p.cooldownUntil=room.nextSabotageAt;p.sabotageCount=0;p.tasks=p.role==='killer'?sabotages.map(s=>{const station=room.stations.find(t=>t.game===s.game);return {...station,stationId:station.id,id:crypto.randomUUID(),sabotageType:s.id};}):personalTasks(room.stations);});room.revision++;
   }else if(path==='sync'){
    let corrected=false;if(member.work?.expiresAt<=now)member.work=null;
    if(room.status==='playing'&&data.position){const p=data.position,elapsed=Math.min(1.5,Math.max(.1,(now-member.lastMoveAt)/1000)),current=member.position;const standing=distance(current,p)<.1;const trail=Array.isArray(data.path)&&data.path.length<=64?data.path:[];const points=[current,...trail,p];let length=0,clear=true;for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];if(!Number.isFinite(b?.x)||!Number.isFinite(b?.y)){clear=false;break;}length+=distance(a,b);if(!lineClear(room.layout,current.floor,a,b,room.sabotage)){clear=false;break;}}
@@ -58,9 +61,15 @@ export async function handleSession(ctx,request){
    if(member.work?.expiresAt<=now)member.work=null;await save(ctx,room);return json({...projectSession(room,member,now),corrected});
   }else{
    if(room.status!=='playing')fail(409,'Wait for the host to start the game.');if(data.round!==room.round)fail(409,'This game changed. Reload to reconnect.');
-   if(path==='travel')travel(room,member,data,now);
+   if(path==='kill'){
+    if(member.role!=='killer'||member.alive===false)fail(403,'Only a living killer can use the kill action.');if(typeof data.id!=='string'||!data.id||data.id.length>80)fail(400,'The kill action needs an identifier.');
+    if(member.lastKillAction===data.id)return json(projectSession(room,member,now));if(member.work)fail(409,'Close your task before using the kill action.');if(now<(member.killReadyAt||0))fail(409,'Wait for the kill cooldown.');
+    const target=room.members.find(p=>p.id===data.targetId);if(!target||target.id===member.id||target.role!=='officer'||target.alive===false)fail(400,'Choose a living officer.');if(now-target.seenAt>=15000)fail(409,'That player is disconnected.');
+    if(target.position.floor!==member.position.floor||distance(member.position,target.position)>killRange||!lineClear(room.layout,member.position.floor,member.position,target.position,room.sabotage))fail(403,'Move closer. You must be on the same floor with no wall or locked door between you.');
+    room.bodies.push({id:crypto.randomUUID(),playerId:target.id,name:target.name,color:target.color,position:{...target.position}});target.alive=false;target.work=null;member.killReadyAt=now+killCooldown;member.lastKillAction=data.id;room.revision++;
+   }else if(path==='travel')travel(room,member,data,now);
    else if(path==='begin'){
-    const station=room.stations.find(s=>s.id===data.stationId);if(!station)fail(400,'Choose a task station.');const kind=data.kind;if(!['task','sabotage','repair'].includes(kind))fail(400,'Choose a valid station action.');
+    const station=room.stations.find(s=>s.id===data.stationId);if(!station)fail(400,'Choose a task station.');const kind=data.kind;if(member.alive===false&&(kind!=='task'||!member.tasks.some(t=>t.stationId===station.id)))fail(403,'Ghosts can complete their assigned tasks, but cannot repair or sabotage.');if(!['task','sabotage','repair'].includes(kind))fail(400,'Choose a valid station action.');
     if(kind==='sabotage'){
      if(member.role!=='killer')fail(403,'Only the killer can sabotage stations.');const def=sabotageFor(data.type);if(!def||station.game!==def.game)fail(400,'That sabotage belongs at its matching task station.');if(room.sabotage)fail(409,'One sabotage is already active.');if(now<room.nextSabotageAt)fail(409,'Wait for the sabotage cooldown.');if(def.id==='doors'&&!jammedDoors(room.layout,station).length)fail(409,'This floor has no room doors to jam.');
     }

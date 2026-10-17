@@ -1,0 +1,9 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright-core';
+const base='http://127.0.0.1:8791',browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']}),page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));let seat;
+try{
+ await page.goto(base+'/night-shift-setup');await page.locator('#menuName').fill('Lobby Host');await page.locator('#enterGame').click();await page.locator('#roomDialog[open]').waitFor();seat=await page.evaluate(()=>JSON.parse(localStorage.getItem('night-shift-room-v1')));assert(await page.locator('#roomStart').isDisabled());
+ for(let i=2;i<=12;i++){const response=await page.request.post(base+'/api/night-shift/rooms/'+seat.code+'/join',{data:{name:'Officer '+i}});assert.equal(response.status(),201);}
+ const excess=await page.request.post(base+'/api/night-shift/rooms/'+seat.code+'/join',{data:{name:'Officer 13'}});assert.equal(excess.status(),409);
+ await page.waitForFunction(()=>document.querySelector('#lobbyMembers').textContent.includes('Officer 12'));assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.locator('#roomStart').scrollIntoViewIfNeeded();assert(await page.locator('#roomStart').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}));await page.screenshot({path:'.runtime/night-shift-twelve-lobby.png'});await page.locator('#roomStart').click();await page.locator('#roleNotice').filter({hasText:'Your secret role:'}).waitFor();assert.deepEqual(errors,[]);console.log('PASS: twelve-player phone lobby, distinct colors (unit checked), thirteenth seat rejected, start button accessible, and twelve-player start.');
+}finally{if(seat)await page.request.post(base+'/api/night-shift/rooms/'+seat.code+'/end',{headers:{Authorization:'Bearer '+seat.token},data:{}});await browser.close();}
