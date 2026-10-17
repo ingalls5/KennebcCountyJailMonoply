@@ -1,6 +1,7 @@
-@import url('./task-machinery-a.css?v=machinery-1');
-@import url('./task-machinery-b.css?v=machinery-1');
-@import url('./task-machinery-c.css?v=machinery-1');
+@import url('./task-sabotage.css?v=sabotage-1');
+@import url('./task-machinery-a.css?v=sabotage-1');
+@import url('./task-machinery-b.css?v=sabotage-1');
+@import url('./task-machinery-c.css?v=sabotage-1');
 
 #taskDialog{--machine-ink:#e4e9dc;--machine-muted:#aec3bb;--machine-gold:#d6be83;--machine-green:#a3c99e;--machine-edge:#6e8985;box-sizing:border-box;width:min(790px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:92dvh;padding:26px;color:var(--machine-ink);background:linear-gradient(135deg,#263c43,#132831 75%);border:2px solid var(--machine-edge);border-radius:16px;box-shadow:0 30px 100px #000a;overflow:auto;font:14px/1.5 system-ui,sans-serif;overscroll-behavior:contain}
 #taskDialog *{box-sizing:border-box}
@@ -31,3 +32,5 @@
 @keyframes machine-seal{from{transform:scale(.75);opacity:.3}to{transform:scale(1);opacity:1}}
 @media(max-width:520px){#taskDialog{padding:18px 14px;border-radius:12px;max-height:94dvh;width:calc(100vw - 16px);max-width:calc(100vw - 16px)}#taskDialog .machine-header{padding-right:35px}#taskDialog .machine-instructions{font-size:12px}.machine-stage{padding:13px}.machine-progress{gap:7px}.machine-progress-label{font-size:10px}.machine-status{font-size:12px}.task-grid{gap:7px}:where(#taskDialog) button{padding:10px 8px;font-size:12px}}
 @media(prefers-reduced-motion:reduce){#taskDialog *,#taskDialog *::before,#taskDialog *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.machine-effect{padding:12px;border:1px solid #cc9c7d;border-radius:5px;background:#623e32;color:#f6dfbc;font:600 12px/1.6 system-ui}.machine-stage[inert]{opacity:.55}

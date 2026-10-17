@@ -7,6 +7,15 @@ export default {
   if(url.pathname.startsWith('/api/')){
    try{
     if(request.method==='POST'&&request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin)return json({error:'Use this game site to join the room.'},403);
+    if(url.pathname==='/api/night-shift/rooms'&&request.method==='POST'){
+     const data=await body(request),shared=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('shared-facility'));
+     const saved=await(await shared.fetch(new Request('https://facility/api/night-shift/map'))).json();
+     if(!saved.layout)return json({error:'Save the jail map before creating a game.'},409);
+     for(let attempt=0;attempt<4;attempt++){const code=roomCode(),stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('night-shift-room:'+code));const result=await stub.fetch(new Request('https://session/session/init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:data.name,code,layout:saved.layout,mapRevision:saved.revision})}));if(result.status!==409)return result;}
+     return json({error:'Could not create a room. Please try again.'},503);
+    }
+    const shiftRoom=url.pathname.match(/^\/api\/night-shift\/rooms\/([A-Z2-9]{6})\/(join|state|map|start|sync|begin|cancel|finish|travel|end|leave)$/);
+    if(shiftRoom){const payload=request.method==='POST'?JSON.stringify(await body(request)):undefined;const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('night-shift-room:'+shiftRoom[1]));return await stub.fetch(new Request('https://session/session/'+shiftRoom[2],{method:request.method,headers:request.headers,...(payload!==undefined?{body:payload}:{})}));}
     if(['/api/night-shift/map','/api/night-shift/players','/api/night-shift/player','/api/night-shift/player/complete','/api/night-shift/player/new'].includes(url.pathname)){const stub=env.NIGHT_SHIFT_MAP.get(env.NIGHT_SHIFT_MAP.idFromName('shared-facility'));return await stub.fetch(request);}
     if(url.pathname==='/api/rooms'&&request.method==='POST'){
      const data=await body(request);
