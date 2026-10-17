@@ -1,8 +1,8 @@
-import {loadPlayer,startPlayer,playerRequest} from './player-session.js?v=visible-task-markers-1';
-import {openTask} from './tasks.js?v=visible-task-markers-1';
-import {decorationSource} from './decorations.js?v=visible-task-markers-1';
-import {corridorSamples,corridorTasks,corridorPoint,corridorContains,roomDoors,passageLanding} from './layout.js?v=visible-task-markers-1';
-import {sharedMapError,cameraRoom,cameraCoverage,cameraStationFor,atCameraStation,floors,width,height,liftFor,stairsFor,stairDestination,spawnFor,taskPoint,taskPoints,corridorsFor,linksFor,passages,jobsFor,furniture,walkable} from './map.js?v=visible-task-markers-1';
+import {loadPlayer,startPlayer,playerRequest} from './player-session.js?v=floor-grates-1';
+import {openTask} from './tasks.js?v=floor-grates-1';
+import {decorationSource} from './decorations.js?v=floor-grates-1';
+import {corridorSamples,corridorTasks,corridorPoint,corridorContains,roomDoors,passageLanding} from './layout.js?v=floor-grates-1';
+import {sharedMapError,cameraRoom,cameraCoverage,cameraStationFor,atCameraStation,floors,width,height,liftFor,stairsFor,stairDestination,spawnFor,taskPoint,taskPoints,corridorsFor,linksFor,passages,jobsFor,furniture,walkable} from './map.js?v=floor-grates-1';
 const $=id=>document.getElementById(id),canvas=$('building'),ctx=canvas.getContext('2d');let shift=null;const myTasks=(level=null)=>shift?shift.tasks.filter(t=>level===null||t.floor===level):[];let securityView=null;let floor=1,player={x:640,y:480},camera={x:640,y:480,scale:1},overview=true,path=[],keys=new Set(),last=0,time=0,near=null,done=new Set();const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const mapKey='night-shift-map-draft-v1',original=floors.map(f=>f.rooms.map(r=>({name:r.name,task:r.task})));
 function applyDraft(draft){if(!Array.isArray(draft)||draft.length!==4||draft.some(rows=>!Array.isArray(rows)||rows.length!==4||rows.some(r=>typeof r?.name!=='string'||!r.name.trim()||r.name.length>40||typeof r.task!=='string'||!r.task.trim()||r.task.length>80)))throw Error('Give each room and task a name.');draft.forEach((rows,i)=>rows.forEach((r,j)=>{floors[i].rooms[j].name=r.name.trim();floors[i].rooms[j].task=r.task.trim();}));}
@@ -36,7 +36,7 @@ function draw(){const lift=liftFor(floor),stairs=stairsFor(floor);const dpr=Math
  if(lift){rect(lift.x-7,lift.y-7,lift.w+14,lift.h+14,'#a5a2b6','#4f5c72');rect(lift.x,lift.y,lift.w,lift.h,'#6c7686');rect(lift.x+5,lift.y+5,lift.w/2-7,lift.h-12,'#9da5af');rect(lift.x+lift.w/2+2,lift.y+5,lift.w/2-7,lift.h-12,'#8792a0');text('ELEVATOR',lift.x+lift.w/2,lift.y+lift.h+23,11,'#dbcee9','center');text(floors[floor].code,lift.x+lift.w/2,lift.y+lift.h/2,18,'#283d50','center');}
  ctx.setLineDash([10,15]);ctx.strokeStyle='#d4bd8060';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(185,480);ctx.lineTo(1090,480);ctx.stroke();ctx.setLineDash([]);text('STAFF ACCESS',640,845,10,'#b8c9cb','center');
  if(path.length){ctx.strokeStyle='#98d1c88a';ctx.lineWidth=3;ctx.setLineDash([4,8]);ctx.beginPath();ctx.moveTo(player.x,player.y);path.forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.setLineDash([]);}
- for(const p of passageEndpoints()){rect(p.point.x-13,p.point.y-13,26,26,'#a998c3','#dfc9f3');text('P',p.point.x,p.point.y+5,14,'#25394b','center');}
+ for(const p of passageEndpoints())drawDecoration({type:'floor-grate',x:p.point.x-16,y:p.point.y-16,w:32,h:32,rotation:0});
  for(const t of myTasks(floor)){const complete=done.has(floor+':'+t.id);ctx.beginPath();ctx.arc(t.x,t.y,complete?13:16+Math.sin(time*3)*2,0,Math.PI*2);ctx.fillStyle=complete?'#8fcebf':'#ddbe80';ctx.shadowColor='#d7bd7e';ctx.shadowBlur=complete?0:12;ctx.fill();ctx.shadowBlur=0;text(complete?'✓':'!',t.x,t.y+5,16,'#263f45','center');}
  if(!securityView||securityView.floor===floor){ctx.save();ctx.translate(player.x,player.y);ctx.fillStyle='#0b172780';ctx.beginPath();ctx.ellipse(3,12,15,8,0,0,Math.PI*2);ctx.fill();rect(-10,-1,8,17,'#193d54');rect(3,-1,8,17,'#193d54');ctx.beginPath();ctx.ellipse(0,-4,16,18,0,0,Math.PI*2);ctx.fillStyle='#65a5b8';ctx.fill();ctx.strokeStyle='#203848';ctx.lineWidth=3;ctx.stroke();rect(-11,-14,22,9,'#c7e1df','#2b4b5d');rect(7,0,4,5,'#e8c87e');ctx.restore();}
  ctx.restore();
